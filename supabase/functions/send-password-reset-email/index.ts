@@ -55,7 +55,8 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const SITE_URL = Deno.env.get("SITE_URL") || "https://tipoagenda.com";
+    // URL fixa do redirect: sempre www.tipoagenda.com/reset-password (não depende de SITE_URL)
+    const REDIRECT_TO = "https://www.tipoagenda.com/reset-password";
 
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       console.error(
@@ -81,7 +82,7 @@ serve(async (req) => {
       type: "recovery",
       email,
       options: {
-        redirectTo: `${SITE_URL}/reset-password`,
+        redirectTo: REDIRECT_TO,
       },
     });
 
@@ -104,7 +105,7 @@ serve(async (req) => {
       );
     }
 
-    const resetLink =
+    let resetLink: string =
       (linkData as any)?.properties?.action_link ||
       (linkData as any)?.action_link;
 
@@ -125,6 +126,15 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    // Garantir que o link redirecione para /reset-password (sobrescreve redirect_to do Supabase)
+    try {
+      const url = new URL(resetLink);
+      url.searchParams.set("redirect_to", REDIRECT_TO);
+      resetLink = url.toString();
+    } catch {
+      // mantém resetLink original se falhar o parse
     }
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");

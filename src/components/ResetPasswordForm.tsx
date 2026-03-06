@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
-// Esquema de validação com Zod
 const resetPasswordSchema = z.object({
   password: z.string().min(6, "A nova senha deve ter pelo menos 6 caracteres."),
   confirmPassword: z.string(),
@@ -22,15 +21,17 @@ const resetPasswordSchema = z.object({
 
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
-const ResetPasswordForm: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const [isRecoverySession, setIsRecoverySession] = useState(false); // Estado para verificar se é uma sessão de recuperação
-  const navigate = useNavigate();
-  const location = useLocation();
+/** Tempo máximo para aguardar o Supabase processar o hash da URL (recovery) antes de redirecionar */
+const RECOVERY_WAIT_MS = 3500;
+/** Quando há sessão mas sem recovery na URL: aguardar este tempo pelo evento PASSWORD_RECOVERY antes de redirecionar */
+const PASSWORD_RECOVERY_EVENT_WAIT_MS = 2500;
 
-  console.log('ResetPasswordForm - Render - window.location.href:', window.location.href);
-  console.log('ResetPasswordForm - Render - window.location.hash:', window.location.hash);
-  console.log('ResetPasswordForm - Render - window.location.search:', window.location.search);
+const ResetPasswordForm: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [isRecoverySession, setIsRecoverySession] = useState(false);
+  const navigate = useNavigate();
+  const decidedRef = useRef(false);
+  const sessionFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     register,
@@ -45,63 +46,86 @@ const ResetPasswordForm: React.FC = () => {
   });
 
   useEffect(() => {
-    const checkSessionForRecovery = async () => {
-      setLoading(true);
-      const { data: { session }, error: getSessionError } = await supabase.auth.getSession();
-      console.log('ResetPasswordForm - Initial getSession:', session, 'Error:', getSessionError);
+    const hash = window.location.hash;
+    const search = window.location.search;
+    const hashParams = hash ? new URLSearchParams(hash.substring(1)) : null;
+    const searchParams = search ? new URLSearchParams(search.substring(1)) : null;
+    const fromHash = !!(hashParams?.get('type') === 'recovery' || hashParams?.get('access_token'));
+    const fromQuery = !!(searchParams?.get('type') === 'recovery' || searchParams?.get('access_token'));
+    const hasRecoveryInUrl = fromHash || fromQuery;
 
-      if (getSessionError) {
-        console.error('ResetPasswordForm - Error getting session:', getSessionError);
-        showError('Erro ao verificar sessão: ' + getSessionError.message);
-        navigate('/login', { replace: true });
-        return;
-      }
-
-      if (session && session.access_token) {
-        // Check if the session is specifically for password recovery
-        // Supabase sets the 'type' in the URL hash, which is then processed into the session.
-        // We can check the URL hash directly or rely on onAuthStateChange.
-        // Let's check the URL hash as a primary indicator for this specific page.
-        const params = new URLSearchParams(location.hash.substring(1));
-        const typeInHash = params.get('type');
-        
-        if (typeInHash === 'recovery') {
-          setIsRecoverySession(true);
-          console.log('ResetPasswordForm useEffect - Recovery session detected via URL hash.');
-        } else {
-          // If there's a session but not for recovery, it's an unexpected state for this page.
-          console.log('ResetPasswordForm useEffect - Session found, but not a recovery type. Redirecting.');
-          showError('Sessão inválida para redefinição de senha. Por favor, solicite um novo link.');
-          navigate('/login', { replace: true });
-        }
-      } else {
-        console.log('ResetPasswordForm useEffect - No active session found. Redirecting to login.');
-        showError('Sessão de redefinição de senha inválida ou expirada. Por favor, solicite um novo link.');
-        navigate('/login', { replace: true });
-      }
+    const redirectToLogin = (message: string) => {
+      if (decidedRef.current) return;
+      decidedRef.current = true;
       setLoading(false);
+      showError(message);
+      navigate('/login', { replace: true });
     };
 
-    checkSessionForRecovery();
+    const acceptRecovery = () => {
+      if (decidedRef.current) return;
+      decidedRef.current = true;
+      setLoading(false);
+      setIsRecoverySession(true);
+    };
 
-    // Listen for auth state changes to react to token expiration or other events
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('ResetPasswordForm - onAuthStateChange event:', event, 'session:', session);
-      if (event === 'SIGNED_OUT' || !session) {
-        console.log('ResetPasswordForm - SIGNED_OUT event or no session. Redirecting to login.');
-        showError('Sessão de redefinição de senha expirada. Por favor, solicite um novo link.');
-        navigate('/login', { replace: true });
-      } else if (event === 'PASSWORD_RECOVERY' && session) {
-        // This event confirms we are in a recovery flow
-        setIsRecoverySession(true);
-        console.log('ResetPasswordForm - PASSWORD_RECOVERY event detected.');
+      if (decidedRef.current) return;
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        acceptRecovery();
+      }
+      if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !session && !hasRecoveryInUrl)) {
+        if (!hasRecoveryInUrl) redirectToLogin('Sessão de redefinição de senha inválida ou expirada. Por favor, solicite um novo link.');
       }
     });
 
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        redirectToLogin('Erro ao verificar sessão. Tente solicitar um novo link.');
+        return;
+      }
+      if (session?.access_token) {
+        const params = new URLSearchParams(window.location.hash?.substring(1) || '');
+        const isRecoveryType = params.get('type') === 'recovery' || hasRecoveryInUrl;
+        if (isRecoveryType) {
+          acceptRecovery();
+          return;
+        }
+        // Sessão existe mas URL não tem recovery (hash pode ter sido consumido). Aguardar evento PASSWORD_RECOVERY antes de redirecionar.
+        if (sessionFallbackTimerRef.current) clearTimeout(sessionFallbackTimerRef.current);
+        sessionFallbackTimerRef.current = setTimeout(() => {
+          if (decidedRef.current) return;
+          redirectToLogin('Sessão inválida para redefinição de senha. Por favor, solicite um novo link.');
+        }, PASSWORD_RECOVERY_EVENT_WAIT_MS);
+        return;
+      }
+      if (!hasRecoveryInUrl) {
+        redirectToLogin('Sessão de redefinição de senha inválida ou expirada. Por favor, solicite um novo link.');
+      }
+    };
+
+    if (hasRecoveryInUrl) {
+      checkSession();
+      const t = setTimeout(() => {
+        if (decidedRef.current) return;
+        checkSession();
+        if (decidedRef.current) return;
+        redirectToLogin('Sessão de redefinição de senha inválida ou expirada. Por favor, solicite um novo link.');
+      }, RECOVERY_WAIT_MS);
+      return () => {
+        clearTimeout(t);
+        if (sessionFallbackTimerRef.current) clearTimeout(sessionFallbackTimerRef.current);
+        authListener.subscription.unsubscribe();
+      };
+    }
+
+    checkSession();
     return () => {
+      if (sessionFallbackTimerRef.current) clearTimeout(sessionFallbackTimerRef.current);
       authListener.subscription.unsubscribe();
     };
-  }, [navigate, location.hash]); // Depend on location.hash to re-evaluate if hash changes
+  }, [navigate]);
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
     setLoading(true);

@@ -1,0 +1,10 @@
+---
+description: Ao alterar Edge Functions, sempre fornecer o código para deploy manual no Supabase
+globs: supabase/functions/**/*
+alwaysApply: false
+---
+
+# Edge Functions – Deploy manual
+
+- O projeto **não usa Supabase CLI** para deploy; as Edge Functions são publicadas pelo painel do Supabase.
+- **Sempre que houver alteração** em qualquer Edge Function em `supabase/functions/`, é **obrigatório** fornecer ao usuário o **código completo** da função alterada em um bloco copiável, para que ele faça o deploy manual no painel (colar no editor da função e clicar em Deploy).
