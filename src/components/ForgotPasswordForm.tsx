@@ -35,19 +35,25 @@ const ForgotPasswordForm: React.FC = () => {
   const onSubmit = async (data: ForgotPasswordFormValues) => {
     setLoading(true);
     try {
-      // Apontando para o caminho base, o Supabase deve adicionar o hash automaticamente
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: window.location.origin + '/reset-password', 
+      // Usar Edge Function que envia email via Resend
+      const normalizedEmail = data.email.trim().toLowerCase();
+
+      const { error } = await supabase.functions.invoke('send-password-reset-email', {
+        body: { email: normalizedEmail },
       });
 
       if (error) {
+        console.error('Erro na Edge Function send-password-reset-email:', error);
         throw error;
       }
 
-      showSuccess('Verifique seu e-mail para instruções de redefinição de senha!');
+      // Mensagem genérica para não expor se o email existe ou não
+      showSuccess(
+        'Se o e-mail informado estiver cadastrado, você receberá um link para redefinir a senha.'
+      );
     } catch (error: any) {
       console.error("Erro ao enviar instruções de redefinição:", error);
-      showError('Erro ao enviar instruções: ' + error.message);
+      showError('Erro ao enviar instruções. Tente novamente em alguns instantes.');
     } finally {
       setLoading(false);
     }

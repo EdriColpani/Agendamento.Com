@@ -21,17 +21,22 @@ const AuthPage: React.FC = () => {
   const pageTitle = location.pathname === '/signup'
     ? 'Cadastre-se no TipoAgenda'
     : location.pathname === '/reset-password'
-      ? 'Redefinir Senha' // Título genérico, o ResetPasswordForm vai ajustar se for o caso
-      : 'Bem-vindo ao TipoAgenda';
+      ? 'Redefinir Senha'
+      : location.pathname === '/forgot-password'
+        ? 'Esqueci minha senha'
+        : 'Bem-vindo ao TipoAgenda';
 
   const renderAuthForm = () => {
     if (location.pathname === '/signup') {
       return <SignupForm />;
-    } else if (location.pathname === '/reset-password') {
-      return <ResetPasswordForm />; // Sempre renderiza ResetPasswordForm nesta rota
-    } else {
-      return <LoginForm />;
     }
+    if (location.pathname === '/reset-password') {
+      return <ResetPasswordForm />;
+    }
+    if (location.pathname === '/forgot-password') {
+      return <ForgotPasswordForm />;
+    }
+    return <LoginForm />;
   };
 
   return (

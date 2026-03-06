@@ -83,7 +83,7 @@ const LoginForm: React.FC = () => {
         {loading ? 'Entrando...' : 'Entrar'}
       </Button>
       <div className="text-center text-sm mt-4">
-        <Link to="/reset-password" className="text-yellow-600 hover:underline">
+        <Link to="/forgot-password" className="text-yellow-600 hover:underline">
           Esqueceu sua senha?
         </Link>
       </div>
