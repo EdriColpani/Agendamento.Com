@@ -425,6 +425,11 @@ const GuestAppointmentPage: React.FC = () => {
     );
   }
 
+  const timeSlotButtonBaseClasses =
+    "text-sm font-medium border-2 rounded-xl transition-all duration-150 " +
+    "disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none " +
+    "disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200";
+
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-2xl bg-white shadow-md rounded-lg mt-4 md:mt-10">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 md:mb-6 text-center">Agendamento para Convidado</h1>
@@ -531,41 +536,70 @@ const GuestAppointmentPage: React.FC = () => {
         {/* Seleção de Data e Hora */}
         <div>
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Data e Hora</h2>
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-shrink-0">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                initialFocus
-                locale={ptBR}
-                disabled={isSubmitting || !selectedServiceId || (!selectedCollaboratorId && selectedCollaboratorValue !== "any")}
-                fromDate={startOfDay(new Date())}
-              />
-            </div>
-            <div className="flex-grow space-y-4">
-              <Label htmlFor="selectedTime" className="block text-sm font-medium text-gray-700 mb-2">Horário *</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {fetchingTimes ? (
-                  <p className="text-gray-500 col-span-3 text-center">Buscando horários...</p>
-                ) : availableTimes.length > 0 ? (
-                  availableTimes.map((slot) => (
-                    <Button
-                      key={slot.time}
-                      type="button"
-                      variant={selectedTime === slot.time ? "default" : "outline"}
-                      className="text-sm"
-                      onClick={() => setSelectedTime(slot.time)}
-                      disabled={isSubmitting || !slot.is_available || services.find(s => s.id === selectedServiceId)?.duration_minutes === 0}
-                    >
-                      {slot.time}
-                    </Button>
-                  ))
-                ) : selectedDate && selectedServiceId && (selectedCollaboratorId || selectedCollaboratorValue === "any") ? (
-                  <p className="text-gray-500 col-span-3">Nenhum horário disponível para a data, colaborador e serviço selecionados.</p>
-                ) : (
-                  <p className="text-gray-500 col-span-3">Selecione um colaborador, serviço e uma data para ver os horários.</p>
-                )}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl shadow-sm p-4 md:p-6">
+            <div className="flex flex-col gap-6">
+              <div className="flex justify-center">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                  locale={ptBR}
+                  disabled={isSubmitting || !selectedServiceId || (!selectedCollaboratorId && selectedCollaboratorValue !== "any")}
+                  fromDate={startOfDay(new Date())}
+                  className="rounded-2xl border-2 border-yellow-500 bg-white shadow-sm p-2"
+                />
+              </div>
+              <div className="space-y-4">
+                <Label
+                  htmlFor="selectedTime"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Horário *
+                </Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {fetchingTimes ? (
+                    <p className="text-gray-500 col-span-full text-center">
+                      Buscando horários...
+                    </p>
+                  ) : availableTimes.length > 0 ? (
+                    availableTimes.map((slot) => (
+                      <Button
+                        key={slot.time}
+                        type="button"
+                        variant="outline"
+                        className={
+                          timeSlotButtonBaseClasses +
+                          " " +
+                          (selectedTime === slot.time
+                            ? "bg-yellow-600 text-black border-yellow-700 shadow-[0_3px_0_0_rgba(202,138,4,1)]"
+                            : "bg-white text-yellow-700 border-yellow-500 shadow-[0_2px_0_0_rgba(202,138,4,1)] hover:-translate-y-0.5 hover:bg-yellow-50 hover:shadow-[0_4px_0_0_rgba(202,138,4,1)]")
+                        }
+                        onClick={() => setSelectedTime(slot.time)}
+                        disabled={
+                          isSubmitting ||
+                          !slot.is_available ||
+                          services.find((s) => s.id === selectedServiceId)
+                            ?.duration_minutes === 0
+                        }
+                      >
+                        {slot.time}
+                      </Button>
+                    ))
+                  ) : selectedDate &&
+                    selectedServiceId &&
+                    (selectedCollaboratorId || selectedCollaboratorValue === "any") ? (
+                    <p className="text-gray-500 col-span-full text-center">
+                      Nenhum horário disponível para a data, colaborador e serviço
+                      selecionados.
+                    </p>
+                  ) : (
+                    <p className="text-gray-500 col-span-full text-center">
+                      Selecione um colaborador, serviço e uma data para ver os
+                      horários.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

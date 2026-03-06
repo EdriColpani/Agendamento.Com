@@ -427,6 +427,11 @@ const NovoAgendamentoPage: React.FC = () => {
     );
   }
 
+  const timeSlotButtonBaseClasses =
+    "text-sm font-medium border-2 rounded-xl transition-all duration-150 " +
+    "disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none " +
+    "disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-6">
@@ -566,56 +571,95 @@ const NovoAgendamentoPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="appointmentDate" className="block text-sm font-medium text-gray-700 mb-2">
-                    Data *
-                  </Label>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => {
-                      setSelectedDate(date);
-                      setValue('appointmentDate', date ? format(date, 'yyyy-MM-dd') : '', { shouldValidate: true });
-                    }}
-                    initialFocus
-                    locale={ptBR}
-                    disabled={(date) => isBefore(date, startOfDay(new Date()))} // Disable dates before today
-                    className="rounded-md border shadow w-full"
-                  />
-                  {errors.appointmentDate && <p className="text-red-500 text-xs mt-1">{errors.appointmentDate.message}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="appointmentTime" className="block text-sm font-medium text-gray-700 mb-2">
-                    Horário *
-                  </Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {loading ? (
-                      <p className="text-gray-500 col-span-3 text-center">Buscando horários...</p>
-                    ) : availableTimeSlots.length > 0 ? (
-                      availableTimeSlots.map((timeSlot) => (
-                        <Button
-                          key={timeSlot}
-                          type="button"
-                          variant={selectedAppointmentTime === timeSlot ? "default" : "outline"}
-                          className="text-sm"
-                          onClick={() => setValue('appointmentTime', timeSlot, { shouldValidate: true })}
-                          disabled={!selectedCollaboratorId || !selectedDate || totalDurationMinutes === 0}
-                        >
-                          {timeSlot}
-                        </Button>
-                      ))
-                    ) : selectedDate && selectedCollaboratorId && totalDurationMinutes > 0 ? (
-                      <p className="text-gray-500 col-span-3">
-                        Nenhum horário disponível para a data, colaborador e serviço selecionados.
-                      </p>
-                    ) : (
-                      <p className="text-gray-500 col-span-3">
-                        Selecione colaborador, serviço e data para ver os horários.
+              <div>
+                <Label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data e Hora *
+                </Label>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl shadow-sm p-4 md:p-6">
+                  <div className="flex flex-col gap-6">
+                    <div className="flex justify-center">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date);
+                          setValue(
+                            "appointmentDate",
+                            date ? format(date, "yyyy-MM-dd") : "",
+                            { shouldValidate: true }
+                          );
+                        }}
+                        initialFocus
+                        locale={ptBR}
+                        disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                        className="rounded-2xl border-2 border-yellow-500 bg-white shadow-sm p-2"
+                      />
+                    </div>
+                    {errors.appointmentDate && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.appointmentDate.message}
                       </p>
                     )}
+                    <div>
+                      <Label
+                        htmlFor="appointmentTime"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Horário *
+                      </Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {loading ? (
+                          <p className="text-gray-500 col-span-full text-center">
+                            Buscando horários...
+                          </p>
+                        ) : availableTimeSlots.length > 0 ? (
+                          availableTimeSlots.map((timeSlot) => (
+                            <Button
+                              key={timeSlot}
+                              type="button"
+                              variant="outline"
+                              className={
+                                timeSlotButtonBaseClasses +
+                                " " +
+                                (selectedAppointmentTime === timeSlot
+                                  ? "bg-yellow-600 text-black border-yellow-700 shadow-[0_3px_0_0_rgba(202,138,4,1)]"
+                                  : "bg-white text-yellow-700 border-yellow-500 shadow-[0_2px_0_0_rgba(202,138,4,1)] hover:-translate-y-0.5 hover:bg-yellow-50 hover:shadow-[0_4px_0_0_rgba(202,138,4,1)]")
+                              }
+                              onClick={() =>
+                                setValue("appointmentTime", timeSlot, {
+                                  shouldValidate: true,
+                                })
+                              }
+                              disabled={
+                                !selectedCollaboratorId ||
+                                !selectedDate ||
+                                totalDurationMinutes === 0
+                              }
+                            >
+                              {timeSlot}
+                            </Button>
+                          ))
+                        ) : selectedDate &&
+                          selectedCollaboratorId &&
+                          totalDurationMinutes > 0 ? (
+                          <p className="text-gray-500 col-span-full text-center">
+                            Nenhum horário disponível para a data, colaborador e
+                            serviço selecionados.
+                          </p>
+                        ) : (
+                          <p className="text-gray-500 col-span-full text-center">
+                            Selecione colaborador, serviço e data para ver os
+                            horários.
+                          </p>
+                        )}
+                      </div>
+                      {errors.appointmentTime && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.appointmentTime.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {errors.appointmentTime && <p className="text-red-500 text-xs mt-1">{errors.appointmentTime.message}</p>}
                 </div>
               </div>
               

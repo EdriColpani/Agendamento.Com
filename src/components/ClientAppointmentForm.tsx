@@ -563,6 +563,11 @@ const ClientAppointmentForm: React.FC<ClientAppointmentFormProps> = ({ companyId
     );
   }
 
+  const timeSlotButtonBaseClasses =
+    "text-sm font-medium border-2 rounded-xl transition-all duration-150 " +
+    "disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none " +
+    "disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-6">
@@ -685,76 +690,113 @@ const ClientAppointmentForm: React.FC<ClientAppointmentFormProps> = ({ companyId
               </div>
 
               <div>
-                <Label htmlFor="appointmentDate" className="block text-sm font-medium text-gray-700 mb-2">
-                  Data *
+                <Label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data e Hora *
                 </Label>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    // Normalizar a data imediatamente ao selecionar para evitar problemas de timezone
-                    // Usar componentes locais para preservar a data correta
-                    const normalizedDate = date ? (() => {
-                      const year = date.getFullYear();
-                      const month = date.getMonth();
-                      const day = date.getDate();
-                      return new Date(year, month, day, 0, 0, 0, 0);
-                    })() : undefined;
-                    console.log('ClientAppointmentForm: Date selected:', date, 'normalized:', normalizedDate, 'formatted:', normalizedDate ? format(normalizedDate, 'yyyy-MM-dd') : 'null', 'ISO:', normalizedDate?.toISOString());
-                    setSelectedDate(normalizedDate);
-                    setValue('appointmentDate', normalizedDate ? format(normalizedDate, 'yyyy-MM-dd') : '', { shouldValidate: true });
-                  }}
-                  initialFocus
-                  locale={ptBR}
-                  disabled={(date) => isBefore(date, startOfDay(new Date()))} // Disable dates before today
-                  className="rounded-md border shadow w-full max-w-sm"
-                />
-                {errors.appointmentDate && <p className="text-red-500 text-xs mt-1">{errors.appointmentDate.message}</p>}
-              </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl shadow-sm p-4 md:p-6">
+                  <div className="flex flex-col gap-6">
+                    <div className="flex justify-center">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          // Normalizar a data imediatamente ao selecionar para evitar problemas de timezone
+                          // Usar componentes locais para preservar a data correta
+                          const normalizedDate = date
+                            ? (() => {
+                                const year = date.getFullYear();
+                                const month = date.getMonth();
+                                const day = date.getDate();
+                                return new Date(year, month, day, 0, 0, 0, 0);
+                              })()
+                            : undefined;
+                          console.log(
+                            "ClientAppointmentForm: Date selected:",
+                            date,
+                            "normalized:",
+                            normalizedDate,
+                            "formatted:",
+                            normalizedDate ? format(normalizedDate, "yyyy-MM-dd") : "null",
+                            "ISO:",
+                            normalizedDate?.toISOString()
+                          );
+                          setSelectedDate(normalizedDate);
+                          setValue(
+                            "appointmentDate",
+                            normalizedDate ? format(normalizedDate, "yyyy-MM-dd") : "",
+                            { shouldValidate: true }
+                          );
+                        }}
+                        initialFocus
+                        locale={ptBR}
+                        disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                        className="rounded-2xl border-2 border-yellow-500 bg-white shadow-sm p-2"
+                      />
+                    </div>
+                    {errors.appointmentDate && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors.appointmentDate.message}
+                      </p>
+                    )}
+                    <div>
+                      <Label
+                        htmlFor="appointmentTime"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Horário *
+                      </Label>
+                      {loading ? (
+                        <p className="text-gray-500 text-center py-4">
+                          Buscando horários disponíveis...
+                        </p>
+                      ) : availableTimeSlots.length === 0 ? (
+                        <p className="text-gray-600 text-sm text-center py-4">
+                          {!selectedCollaboratorId || !selectedDate || totalDurationMinutes === 0
+                            ? "Selecione colaborador, serviços e data para ver os horários disponíveis"
+                            : "Nenhum horário disponível para esta data"}
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                          {availableTimeSlots.map((timeSlot) => {
+                            const isSelected = selectedAppointmentTime === timeSlot;
 
-              <div>
-                <Label htmlFor="appointmentTime" className="block text-sm font-medium text-gray-700 mb-2">
-                  Horário *
-                </Label>
-                {loading ? (
-                  <div className="flex items-center justify-center p-8 border border-gray-200 rounded-lg">
-                    <p className="text-gray-600">Buscando horários disponíveis...</p>
+                            return (
+                              <Button
+                                key={timeSlot}
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  setValue("appointmentTime", timeSlot, {
+                                    shouldValidate: true,
+                                  })
+                                }
+                                className={
+                                  timeSlotButtonBaseClasses +
+                                  " " +
+                                  (isSelected
+                                    ? "bg-yellow-600 text-black border-yellow-700 shadow-[0_3px_0_0_rgba(202,138,4,1)]"
+                                    : "bg-white text-yellow-700 border-yellow-500 shadow-[0_2px_0_0_rgba(202,138,4,1)] hover:-translate-y-0.5 hover:bg-yellow-50 hover:shadow-[0_4px_0_0_rgba(202,138,4,1)]")
+                                }
+                                disabled={
+                                  !selectedCollaboratorId ||
+                                  !selectedDate ||
+                                  totalDurationMinutes === 0
+                                }
+                              >
+                                {timeSlot}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {errors.appointmentTime && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {errors.appointmentTime.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                ) : availableTimeSlots.length === 0 ? (
-                  <div className="flex items-center justify-center p-8 border border-gray-200 rounded-lg bg-gray-50">
-                    <p className="text-gray-600 text-sm">
-                      {!selectedCollaboratorId || !selectedDate || totalDurationMinutes === 0
-                        ? "Selecione colaborador, serviços e data para ver os horários disponíveis"
-                        : "Nenhum horário disponível para esta data"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-2 border border-gray-200 rounded-lg bg-gray-50">
-                    {availableTimeSlots.map((timeSlot) => {
-                      // timeSlot já vem no formato "HH:mm às HH:mm"
-                      // Extrair apenas o horário de início para salvar no campo
-                      const startTimeStr = timeSlot.split(' às ')[0];
-                      const isSelected = selectedAppointmentTime === timeSlot;
-
-                      return (
-                        <Button
-                          key={timeSlot}
-                          type="button"
-                          variant={isSelected ? "default" : "outline"}
-                          onClick={() => setValue('appointmentTime', timeSlot, { shouldValidate: true })}
-                          className={`!rounded-button text-sm py-2.5 px-3 h-auto font-medium transition-all ${
-                            isSelected
-                              ? 'bg-yellow-600 hover:bg-yellow-700 text-black border-yellow-600 shadow-sm'
-                              : 'border-gray-300 hover:border-yellow-500 hover:bg-yellow-50 bg-white'
-                          }`}
-                        >
-                          {timeSlot}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-                {errors.appointmentTime && <p className="text-red-500 text-xs mt-1">{errors.appointmentTime.message}</p>}
+                </div>
               </div>
               
               <div>

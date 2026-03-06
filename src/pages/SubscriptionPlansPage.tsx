@@ -523,27 +523,50 @@ const SubscriptionPlansPage: React.FC = () => {
   const handleCancelSubscription = async () => {
     if (!currentSubscription || !primaryCompanyId) return;
 
+    if (!session?.user) {
+      showError('Você precisa estar logado para cancelar a assinatura.');
+      return;
+    }
+
     setCancelling(true);
     try {
-      // Update the subscription status to 'canceled'
-      const { error } = await supabase
-        .from('company_subscriptions')
-        .update({ status: 'canceled' })
-        .eq('id', currentSubscription.id)
-        .eq('company_id', primaryCompanyId);
+      const response = await supabase.functions.invoke('cancel-subscription', {
+        body: JSON.stringify({
+          companyId: primaryCompanyId,
+          subscriptionId: currentSubscription.id,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
 
-      if (error) throw error;
+      if (response.error) {
+        let edgeFunctionErrorMessage = 'Erro ao cancelar assinatura. Verifique suas permissões.';
 
-      const expirationDateFormatted = currentSubscription.end_date 
-        ? format(parseISO(currentSubscription.end_date), 'dd/MM/yyyy', { locale: ptBR }) 
-        : 'N/A';
+        try {
+          if ((response as any).error?.context?.data?.error) {
+            edgeFunctionErrorMessage = (response as any).error.context.data.error;
+          } else if (response.error.message) {
+            edgeFunctionErrorMessage = response.error.message;
+          }
+        } catch (e) {
+          console.error('Falha ao extrair mensagem de erro da Edge Function (cancel-subscription):', e);
+        }
 
-      showSuccess(`Assinatura cancelada com sucesso! Você manterá o acesso até a data de expiração: ${expirationDateFormatted}.`);
-      fetchSubscriptionData(); // Re-fetch data to update UI
+        throw new Error(edgeFunctionErrorMessage);
+      }
+
+      const message =
+        (response.data as any)?.message ||
+        'Assinatura cancelada com sucesso! Você manterá o acesso até a data de expiração configurada.';
+
+      showSuccess(message);
+      fetchSubscriptionData(); // Recarregar dados para atualizar UI
       setIsCancelModalOpen(false);
     } catch (error: any) {
-      console.error('Erro ao cancelar assinatura:', error);
-      showError('Erro ao cancelar assinatura: ' + error.message);
+      console.error('Erro ao cancelar assinatura via Edge Function:', error);
+      showError('Erro ao cancelar assinatura: ' + (error.message || 'Erro desconhecido.'));
     } finally {
       setCancelling(false);
     }

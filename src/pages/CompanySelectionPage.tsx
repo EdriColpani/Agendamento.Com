@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, CalendarDays, CheckCircle, Clock, Building2, Sparkles, Heart, Activity, GraduationCap, Briefcase, Home, Car, Dog } from 'lucide-react';
+import { Search, MapPin, CalendarDays, CheckCircle, Sparkles, Heart, Activity, GraduationCap, Briefcase, Home, Car, Dog } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useSession } from '@/components/SessionContextProvider';
@@ -295,324 +295,323 @@ const CompanySelectionPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Seção de Busca e Listagem de Empresas */}
-      <section className="pt-24 pb-10 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Selecione uma Empresa para Agendar
+      {/* Seção de Busca e Filtros */}
+      <section className="pt-24 pb-8 bg-white">
+        <div className="container mx-auto px-6 max-w-5xl">
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Onde você quer agendar hoje?
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Encontre a empresa ideal para o seu próximo serviço.
+            <p className="text-sm text-gray-600">
+              <span className="font-semibold">Passo 1:</span> escolha a empresa •{" "}
+              <span className="font-semibold">Passo 2:</span> escolha serviço e horário •{" "}
+              <span className="font-semibold">Passo 3:</span> confirme o agendamento
             </p>
           </div>
 
-          {/* Barra de Busca e Filtros */}
-          <div className="max-w-4xl mx-auto mb-12">
-            <div className="bg-white rounded-2xl p-6 shadow-2xl">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="text"
-                    placeholder="Nome da empresa ou serviço"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSearch();
-                      }
-                    }}
-                    className="pl-12 h-10 rounded-full border-gray-200 text-gray-800"
-                  />
-                </div>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="text"
-                    placeholder="Sua localização (Cidade/Estado)"
-                    value={locationTerm}
-                    onChange={(e) => setLocationTerm(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSearch();
-                      }
-                    }}
-                    className="pl-12 h-10 rounded-full border-gray-200 text-gray-800"
-                  />
-                </div>
-                <Button
-                  className="!rounded-button whitespace-nowrap h-10 font-semibold bg-yellow-600 hover:bg-yellow-700 text-black"
-                  onClick={handleSearch}
-                >
-                  <Search className="h-5 w-5 mr-2" />
-                  Buscar Empresas
-                </Button>
+          {/* Barra de Busca */}
+          <div className="bg-white rounded-2xl p-6 shadow-2xl mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Input
+                  type="text"
+                  placeholder="Nome da empresa ou serviço"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  className="pl-12 h-10 rounded-full border-gray-200 text-gray-800"
+                />
               </div>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Input
+                  type="text"
+                  placeholder="Sua localização (Cidade/Estado)"
+                  value={locationTerm}
+                  onChange={(e) => setLocationTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  className="pl-12 h-10 rounded-full border-gray-200 text-gray-800"
+                />
+              </div>
+              <Button
+                className="!rounded-button whitespace-nowrap h-10 font-semibold bg-yellow-600 hover:bg-yellow-700 text-black"
+                onClick={handleSearch}
+              >
+                <Search className="h-5 w-5 mr-2" />
+                Buscar Empresas
+              </Button>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Seção: Como Funciona */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Como Funciona</h2>
-            <p className="text-xl text-gray-600">Agendar nunca foi tão simples e rápido</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
-            {/* Passo 1 */}
-            <div className="text-center">
-              <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Search className="h-8 w-8 text-black" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                <span className="text-yellow-600">#1</span> Busque e Compare
+          {/* Filtro por Categoria */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-gray-800">
+                Filtrar por categoria (opcional)
               </h3>
-              <p className="text-gray-600 text-lg">
-                Encontre profissionais qualificados na sua região e compare preços e avaliações
+              <p className="text-xs text-gray-500 hidden sm:block">
+                Clique em uma categoria para filtrar. Clique novamente para limpar o filtro.
               </p>
             </div>
-
-            {/* Passo 2 */}
-            <div className="text-center">
-              <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CalendarDays className="h-8 w-8 text-black" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                <span className="text-yellow-600">#2</span> Escolha o Horário
-              </h3>
-              <p className="text-gray-600 text-lg">
-                Selecione o dia e horário que funciona melhor para você em tempo real
-              </p>
-            </div>
-
-            {/* Passo 3 */}
-            <div className="text-center">
-              <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="h-8 w-8 text-black" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                <span className="text-yellow-600">#3</span> Confirme e Relaxe
-              </h3>
-              <p className="text-gray-600 text-lg">
-                Receba confirmação instantânea e lembretes automáticos do seu agendamento
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Seção: Explore Por Categoria */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Explore Por Categoria</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Encontre exatamente o que precisa navegando pelas nossas categorias especializadas
+            <p className="text-xs text-gray-500 sm:hidden mb-2">
+              Toque em uma categoria para filtrar. Toque novamente para limpar.
             </p>
           </div>
 
+          {/* Categorias */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {/* Categoria 1: Beleza & Estética */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Beleza & Estética' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Beleza & Estética'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Beleza & Estética')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Beleza & Estética' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <Sparkles className={`h-8 w-8 ${
-                    selectedCategory === 'Beleza & Estética' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Beleza & Estética'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <Sparkles
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Beleza & Estética'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">Beleza & Estética</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Beleza & Estética
+                </h3>
               </CardContent>
             </Card>
 
             {/* Categoria 2: Saúde & Bem-estar */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Saúde & Bem-estar' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Saúde & Bem-estar'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Saúde & Bem-estar')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Saúde & Bem-estar' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <Heart className={`h-8 w-8 ${
-                    selectedCategory === 'Saúde & Bem-estar' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Saúde & Bem-estar'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <Heart
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Saúde & Bem-estar'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">Saúde & Bem-estar</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Saúde & Bem-estar
+                </h3>
               </CardContent>
             </Card>
 
             {/* Categoria 3: Fitness & Personal */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Fitness & Personal' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Fitness & Personal'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Fitness & Personal')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Fitness & Personal' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <Activity className={`h-8 w-8 ${
-                    selectedCategory === 'Fitness & Personal' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Fitness & Personal'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <Activity
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Fitness & Personal'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">Fitness & Personal</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Fitness & Personal
+                </h3>
               </CardContent>
             </Card>
 
             {/* Categoria 4: Educação & Coaching */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Educação & Coaching' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Educação & Coaching'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Educação & Coaching')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Educação & Coaching' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <GraduationCap className={`h-8 w-8 ${
-                    selectedCategory === 'Educação & Coaching' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Educação & Coaching'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <GraduationCap
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Educação & Coaching'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">Educação & Coaching</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Educação & Coaching
+                </h3>
               </CardContent>
             </Card>
 
             {/* Categoria 5: Consultoria & Negócios */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Consultoria & Negócios' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Consultoria & Negócios'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Consultoria & Negócios')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Consultoria & Negócios' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <Briefcase className={`h-8 w-8 ${
-                    selectedCategory === 'Consultoria & Negócios' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Consultoria & Negócios'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <Briefcase
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Consultoria & Negócios'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">Consultoria & Negócios</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Consultoria & Negócios
+                </h3>
               </CardContent>
             </Card>
 
             {/* Categoria 6: Casa & Manutenção */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Casa & Manutenção' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Casa & Manutenção'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Casa & Manutenção')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Casa & Manutenção' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <Home className={`h-8 w-8 ${
-                    selectedCategory === 'Casa & Manutenção' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Casa & Manutenção'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <Home
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Casa & Manutenção'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">Casa & Manutenção</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Casa & Manutenção
+                </h3>
               </CardContent>
             </Card>
 
             {/* Categoria 7: Automotivo */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Automotivo' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Automotivo'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Automotivo')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Automotivo' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <Car className={`h-8 w-8 ${
-                    selectedCategory === 'Automotivo' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Automotivo'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <Car
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Automotivo'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm">Automotivo</h3>
+                <h3 className="font-semibold text-gray-900 text-sm">
+                  Automotivo
+                </h3>
               </CardContent>
             </Card>
 
             {/* Categoria 8: Pet Care */}
-            <Card 
+            <Card
               className={`border-2 transition-all cursor-pointer ${
-                selectedCategory === 'Pet Care' 
-                  ? 'border-yellow-600 bg-yellow-50' 
+                selectedCategory === 'Pet Care'
+                  ? 'border-yellow-600 bg-yellow-50'
                   : 'border-gray-200 hover:border-yellow-600'
               }`}
               onClick={() => handleCategoryClick('Pet Care')}
             >
               <CardContent className="p-6 text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  selectedCategory === 'Pet Care' 
-                    ? 'bg-yellow-400' 
-                    : 'bg-gray-100'
-                }`}>
-                  <Dog className={`h-8 w-8 ${
-                    selectedCategory === 'Pet Care' 
-                      ? 'text-black' 
-                      : 'text-gray-600'
-                  }`} />
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    selectedCategory === 'Pet Care'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  <Dog
+                    className={`h-8 w-8 ${
+                      selectedCategory === 'Pet Care'
+                        ? 'text-black'
+                        : 'text-gray-600'
+                    }`}
+                  />
                 </div>
                 <h3 className="font-semibold text-gray-900 text-sm">Pet Care</h3>
               </CardContent>
@@ -621,103 +620,141 @@ const CompanySelectionPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Seção: Próximos Passos (3 cards) */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Próximos Passos</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Siga estes passos simples para agendar seu serviço
+      {/* Seção: Lista de Empresas */}
+      <section className="pb-16 bg-gray-50">
+        <div className="container mx-auto px-6 max-w-6xl">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              1. Selecione uma empresa abaixo
+            </h2>
+            <p className="text-sm text-gray-600">
+              Clique no card para ver serviços e horários disponíveis.
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {loading
+                ? 'Carregando empresas...'
+                : `Mostrando ${companies.length} empresa${
+                    companies.length === 1 ? '' : 's'
+                  }${
+                    selectedCategory
+                      ? ` • Categoria: ${selectedCategory}`
+                      : ''
+                  }`}
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Card 1: Selecione uma empresa */}
-            <Card className="border-2 border-yellow-600 bg-yellow-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Building2 className="h-8 w-8 text-black" />
-                </div>
-                <div className="text-2xl font-bold text-yellow-600 mb-2">1</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Selecione uma Empresa</h3>
-                <p className="text-gray-600 text-sm">
-                  Escolha uma das empresas abaixo para ver os serviços disponíveis
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 md:p-6 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {loading ? (
+                <p className="text-gray-600 col-span-full text-center">
+                  Carregando empresas...
                 </p>
-              </CardContent>
-            </Card>
-
-            {/* Card 2: Escolha serviço e horário */}
-            <Card className="border-2 border-gray-200 hover:border-yellow-600 transition-all">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Clock className="h-8 w-8 text-gray-600" />
-                </div>
-                <div className="text-2xl font-bold text-gray-400 mb-2">2</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Escolha o Serviço e Horário</h3>
-                <p className="text-gray-600 text-sm">
-                  Selecione o serviço desejado e o melhor horário para você
+              ) : companies.length === 0 ? (
+                <p className="text-gray-600 col-span-full text-center">
+                  Nenhuma empresa encontrada com os critérios de busca.
                 </p>
-              </CardContent>
-            </Card>
-
-            {/* Card 3: Confirme agendamento */}
-            <Card className="border-2 border-gray-200 hover:border-yellow-600 transition-all">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="h-8 w-8 text-gray-600" />
-                </div>
-                <div className="text-2xl font-bold text-gray-400 mb-2">3</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Confirme seu Agendamento</h3>
-                <p className="text-gray-600 text-sm">
-                  Revise os detalhes e confirme. Você receberá lembretes automáticos!
-                </p>
-              </CardContent>
-            </Card>
+              ) : (
+                companies.map((company) => (
+                  <Card
+                    key={company.id}
+                    className="border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handleCompanyClick(company.id)}
+                  >
+                    <CardContent className="p-6">
+                      <div className="relative mb-4">
+                        <img
+                          src={getImageUrl(company)}
+                          alt={company.name}
+                          className="w-full h-48 object-cover rounded-lg"
+                        />
+                        <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-lg shadow">
+                          <div className="flex items-center gap-1">
+                            <i className="fas fa-star text-yellow-500 text-sm"></i>
+                            <span className="text-sm font-semibold">
+                              {company.avg_rating}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <h3 className="font-bold text-gray-900 text-lg mb-2">
+                        {company.name}
+                      </h3>
+                      <p className="text-yellow-600 font-semibold mb-4">
+                        {company.min_price > 0
+                          ? `A partir de R$ ${company.min_price
+                              .toFixed(2)
+                              .replace('.', ',')}`
+                          : 'Preço sob consulta'}
+                      </p>
+                      <div className="flex items-center text-gray-500 text-sm">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        <span>
+                          {company.city}, {company.state}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Seção: Grid de Empresas */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {loading ? (
-              <p className="text-gray-600 col-span-full text-center">Carregando empresas...</p>
-            ) : companies.length === 0 ? (
-              <p className="text-gray-600 col-span-full text-center">Nenhuma empresa encontrada com os critérios de busca.</p>
-            ) : (
-              companies.map((company) => (
-                <Card
-                  key={company.id}
-                  className="border-gray-200 cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => handleCompanyClick(company.id)}
-                >
-                  <CardContent className="p-6">
-                    <div className="relative mb-4">
-                      <img
-                        src={getImageUrl(company)}
-                        alt={company.name}
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
-                      <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-lg shadow">
-                        <div className="flex items-center gap-1">
-                          <i className="fas fa-star text-yellow-500 text-sm"></i>
-                          <span className="text-sm font-semibold">{company.avg_rating}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <h3 className="font-bold text-gray-900 text-lg mb-2">{company.name}</h3>
-                    <p className="text-yellow-600 font-semibold mb-4">
-                      {company.min_price > 0 ? `A partir de R$ ${company.min_price.toFixed(2).replace('.', ',')}` : 'Preço sob consulta'}
-                    </p>
-                    <div className="flex items-center text-gray-500 text-sm">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      <span>{company.city}, {company.state}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+      {/* Seção: Como Funciona (resumida, abaixo da lista) */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6 max-w-5xl">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+              Como funciona o agendamento
+            </h2>
+            <p className="text-base text-gray-600">
+              Em poucos passos você escolhe a empresa, define o horário e recebe
+              lembretes automáticos.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Passo 1 */}
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="h-8 w-8 text-black" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                1. Encontre a empresa
+              </h3>
+              <p className="text-sm text-gray-600">
+                Use a busca e as categorias para localizar a empresa ideal para
+                o seu atendimento.
+              </p>
+            </div>
+
+            {/* Passo 2 */}
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CalendarDays className="h-8 w-8 text-black" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                2. Escolha serviço e horário
+              </h3>
+              <p className="text-sm text-gray-600">
+                Depois de clicar na empresa, selecione o serviço e o melhor
+                dia/horário para você.
+              </p>
+            </div>
+
+            {/* Passo 3 */}
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 text-black" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                3. Confirme e receba lembretes
+              </h3>
+              <p className="text-sm text-gray-600">
+                Confirme o agendamento e receba lembretes automáticos antes do
+                seu horário.
+              </p>
+            </div>
           </div>
         </div>
       </section>
