@@ -141,6 +141,13 @@ serve(async (req) => {
       });
     }
 
+    // Normalização de campos opcionais / defaults de segurança
+    // commissionPercentage agora é opcional: se vier undefined/null, assumimos 0
+    const normalizedCommissionPercentage =
+      commissionPercentage === undefined || commissionPercentage === null
+        ? 0
+        : Number(commissionPercentage);
+
     // Validação detalhada com mensagens específicas (removido companyId da validação)
     const missingFields: string[] = [];
     if (!firstName) missingFields.push('firstName');
@@ -149,7 +156,6 @@ serve(async (req) => {
     if (!phoneNumber) missingFields.push('phoneNumber');
     if (!hireDate) missingFields.push('hireDate');
     if (!roleTypeId && roleTypeId !== 0) missingFields.push('roleTypeId');
-    if (commissionPercentage === undefined || commissionPercentage === null) missingFields.push('commissionPercentage');
     if (!status) missingFields.push('status');
 
     if (missingFields.length > 0) {
@@ -295,7 +301,7 @@ serve(async (req) => {
         phone_number: phoneNumber,
         hire_date: hireDate,
         role_type_id: roleTypeId,
-        commission_percentage: commissionPercentage,
+        commission_percentage: normalizedCommissionPercentage,
         status: status,
         avatar_url: avatarUrl || null,
         is_temporary_password: true,
@@ -587,7 +593,7 @@ serve(async (req) => {
         phone_number: phoneNumber,
         hire_date: hireDate,
         role_type_id: roleTypeId,
-        commission_percentage: commissionPercentage,
+        commission_percentage: normalizedCommissionPercentage,
         status: status,
         avatar_url: avatarUrl,
       })
