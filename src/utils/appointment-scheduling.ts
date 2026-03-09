@@ -23,6 +23,34 @@ interface Appointment {
   total_duration_minutes: number;
 }
 
+/** Converte "HH:mm" ou "HH:mm:ss" em minutos desde meia-noite */
+function timeToMinutes(t: string): number {
+  const part = (t || '').substring(0, 5);
+  const [h, m] = part.split(':').map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+
+/**
+ * Verifica se um agendamento sobrepõe o intervalo de uma exceção no mesmo dia.
+ * - is_day_off: qualquer horário do dia conflita.
+ * - Caso contrário: compara [appointment_time, appointment_time + duration] com [start_time, end_time].
+ */
+export function appointmentOverlapsException(
+  appointmentTime: string,
+  totalDurationMinutes: number,
+  isDayOff: boolean,
+  exceptionStartTime: string | null,
+  exceptionEndTime: string | null
+): boolean {
+  if (isDayOff) return true;
+  if (!exceptionStartTime || !exceptionEndTime) return true;
+  const appStart = timeToMinutes(appointmentTime);
+  const appEnd = appStart + totalDurationMinutes;
+  const exStart = timeToMinutes(exceptionStartTime);
+  const exEnd = timeToMinutes(exceptionEndTime);
+  return appStart < exEnd && appEnd > exStart;
+}
+
 // Função helper para normalizar data sem problemas de timezone
 function normalizeDate(date: Date): Date {
   // Criar nova data usando componentes locais para evitar problemas de timezone
