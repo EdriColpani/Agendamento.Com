@@ -391,13 +391,16 @@ serve(async (req) => {
     );
   }
 
-  // Verificar autenticação: deve ter Authorization header com service_role_key
+  // Verificar autenticação: Bearer = SUPABASE_SERVICE_ROLE_KEY ou WHATSAPP_CRON_SECRET
   const authHeader = req.headers.get('Authorization');
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     console.error('❌ Acesso negado: Authorization header ausente ou inválido');
     return new Response(
-      JSON.stringify({ error: 'Acesso negado. Authorization header requerido.' }),
+      JSON.stringify({
+        error: 'Acesso negado. Authorization header requerido.',
+        hint: 'Configure app_config: service_role_key OU whatsapp_cron_secret (e Edge Function Secrets: WHATSAPP_CRON_SECRET).',
+      }),
       {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -405,61 +408,49 @@ serve(async (req) => {
     );
   }
   
-  const providedKey = authHeader.replace('Bearer ', '');
+  const providedKey = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const envServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const envCronSecret = Deno.env.get('WHATSAPP_CRON_SECRET') || '';
   
-  // Obter chave esperada: primeiro tenta variável de ambiente
-  const envKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-  
-  // Verificar se a chave fornecida corresponde à variável de ambiente
   let isValid = false;
   
-  if (envKey && envKey !== '' && providedKey === envKey) {
+  if (providedKey === envServiceKey && envServiceKey !== '') {
     isValid = true;
-    console.log('✅ Service role key validada via variável de ambiente');
+    console.log('✅ Autenticação: Service role key');
+  } else if (envCronSecret !== '' && providedKey === envCronSecret) {
+    isValid = true;
+    console.log('✅ Autenticação: WHATSAPP_CRON_SECRET');
+  } else if (envServiceKey && providedKey === envServiceKey) {
+    isValid = true;
   } else {
-    // Se não corresponde à variável de ambiente, verificar se a chave fornecida é válida
-    // tentando ler a tabela app_config com ela (se conseguir ler, é uma service_role_key válida)
+    // Fallback: validar como service_role tentando ler app_config
     try {
       const tempSupabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        providedKey, // Tentar usar a chave fornecida
+        providedKey,
         { auth: { persistSession: false } },
       );
-      
-      // Tentar ler a tabela app_config - se conseguir, a chave é válida
-      const { data: config, error: configError } = await tempSupabase
+      const { error: configError } = await tempSupabase
         .from('app_config')
         .select('value')
         .eq('key', 'service_role_key')
         .single();
-      
-      if (!configError && config?.value) {
-        // Se conseguiu ler a tabela, a chave é válida
-        // Verificar se a chave fornecida corresponde à chave armazenada na tabela
-        if (providedKey === config.value) {
-          isValid = true;
-          console.log('✅ Service role key validada via tabela app_config');
-        } else {
-          console.warn('⚠️ Chave fornecida não corresponde à chave na tabela app_config, mas é válida para leitura');
-          // Mesmo assim, se conseguiu ler a tabela, a chave é válida (service_role)
-          isValid = true;
-        }
-      } else {
-        // Se não conseguiu ler, a chave pode não ser válida
-        console.error('❌ Acesso negado: Service role key inválida (não conseguiu ler app_config)');
-        console.error('Erro:', configError?.message || 'Erro desconhecido');
+      if (!configError) {
+        isValid = true;
+        console.log('✅ Autenticação: Bearer válido (service_role)');
       }
-    } catch (e) {
-      console.error('❌ Acesso negado: Erro ao validar service role key:', e);
+    } catch {
+      // ignore
     }
   }
   
   if (!isValid) {
-    console.error('❌ Acesso negado: Service role key inválida');
-    console.error('Provided key length:', providedKey.length);
-    console.error('Env key length:', envKey.length);
+    const hint = !envCronSecret
+      ? 'Defina no Supabase: Edge Functions → whatsapp-message-scheduler → Secrets → WHATSAPP_CRON_SECRET e app_config.whatsapp_cron_secret com o mesmo valor.'
+      : 'Verifique se o cron envia o mesmo token que está em app_config (service_role_key ou whatsapp_cron_secret).';
+    console.error('❌ Acesso negado: token inválido');
     return new Response(
-      JSON.stringify({ error: 'Acesso negado. Service role key inválida.' }),
+      JSON.stringify({ error: 'Acesso negado. Token inválido.', hint }),
       {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -883,54 +874,20 @@ serve(async (req) => {
     }
 
     // 7) Buscar logs PENDING para envio
-    // IMPORTANTE: Buscar apenas mensagens com scheduled_for <= NOW() (horário atual)
-    // scheduled_for está armazenado como TIMESTAMPTZ no banco, então usamos UTC para comparação
-    console.log('Buscando logs PENDING com scheduled_for <= NOW()...', {
+    // ESTRATÉGIA: Buscar TODAS as PENDING e filtrar em JavaScript por scheduled_for <= NOW()
+    // Assim evitamos qualquer problema de timezone na comparação .lte() do PostgREST.
+    const nowTime = now.getTime();
+    const TOLERANCE_MS = 2 * 60 * 1000; // 2 minutos de tolerância
+    console.log('Buscando logs PENDING e filtrando por scheduled_for <= NOW()...', {
       now_UTC: now.toISOString(),
       now_BR: nowBR.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     });
-    
-    // Primeiro, verificar quantas mensagens PENDING existem (para debug)
-    const { count: pendingCount, error: countError } = await supabaseAdmin
-      .from<MessageSendLogRow>('message_send_log')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'PENDING');
-    
-    console.log(`DEBUG: Total de mensagens PENDING no banco: ${pendingCount}`, {
-      countError: countError?.message,
-    });
-    
-    // Buscar apenas mensagens PENDING com scheduled_for <= NOW()
-    // IMPORTANTE: scheduled_for é TIMESTAMPTZ no banco (armazenado em UTC)
-    // Precisamos comparar corretamente, considerando que o Supabase pode retornar
-    // scheduled_for como string ISO ou como Date object
-    const nowISOString = now.toISOString();
-    
-    console.log(`DEBUG: Comparando scheduled_for <= ${nowISOString} (UTC)`);
-    console.log(`DEBUG: now timestamp: ${now.getTime()}, now ISO: ${nowISOString}`);
-    
-    // Buscar mensagens PENDING que já deveriam ter sido enviadas
-    // Usar .lte() que funciona com TIMESTAMPTZ no Supabase
-    const { data: pendingLogs, error: pendingError } = await supabaseAdmin
+
+    const { data: allPending, error: pendingError } = await supabaseAdmin
       .from<MessageSendLogRow>('message_send_log')
       .select('*')
       .eq('status', 'PENDING')
-      .lte('scheduled_for', nowISOString); // Comparar com timestamp UTC
-    
-    // Se a query não retornou resultados, tentar buscar todas e filtrar manualmente
-    // para garantir que não estamos perdendo mensagens por problemas de timezone
-
-    console.log(`DEBUG: Mensagens PENDING encontradas pela query: ${pendingLogs?.length || 0}`, {
-      pendingError: pendingError?.message,
-      pendingErrorCode: pendingError?.code,
-      pendingErrorDetails: pendingError?.details,
-      nowISOString,
-      pendingLogsDetails: pendingLogs?.map(l => ({
-        id: l.id,
-        scheduled_for: l.scheduled_for,
-        status: l.status,
-      })),
-    });
+      .limit(500);
 
     if (pendingError) {
       console.error('❌ ERRO ao buscar logs pendentes para envio:', pendingError);
@@ -940,126 +897,57 @@ serve(async (req) => {
       });
     }
 
-    // SEMPRE buscar todas as mensagens PENDING e filtrar manualmente para garantir
-    // que não perdemos nenhuma mensagem devido a problemas de timezone ou formato
-    let finalPendingLogs = pendingLogs || [];
-    
-    // Se a query inicial não retornou resultados OU se há mensagens PENDING no banco,
-    // buscar todas e filtrar manualmente
-    if (!finalPendingLogs || finalPendingLogs.length === 0 || (pendingCount && pendingCount > 0)) {
-      console.log(`⚠️ Query inicial retornou ${finalPendingLogs.length} mensagens, mas há ${pendingCount || 0} PENDING no banco. Buscando todas para filtrar manualmente...`);
-      
-      // Buscar TODAS as mensagens PENDING
-      const { data: allPending, error: allPendingError } = await supabaseAdmin
-        .from<MessageSendLogRow>('message_send_log')
-        .select('*')
-        .eq('status', 'PENDING');
-      
-      if (allPendingError) {
-        console.error('Erro ao buscar todas as mensagens PENDING:', allPendingError);
-      } else if (allPending && allPending.length > 0) {
-        console.log(`📋 Total de mensagens PENDING no banco: ${allPending.length}`);
-        
-        // Filtrar manualmente: mensagens com scheduled_for <= NOW()
-        // IMPORTANTE: log.scheduled_for pode vir como string ISO ou já como Date
-        const filtered = allPending.filter(log => {
-          if (!log.scheduled_for) {
-            console.warn(`⚠️ Mensagem ${log.id} não tem scheduled_for`);
-            return false;
-          }
-          
-          // Converter para Date se for string
-          let scheduledDate: Date;
-          try {
-            scheduledDate = typeof log.scheduled_for === 'string' 
-              ? new Date(log.scheduled_for) 
-              : (log.scheduled_for instanceof Date ? log.scheduled_for : new Date(log.scheduled_for));
-          } catch (e) {
-            console.error(`❌ Erro ao converter scheduled_for para Date na mensagem ${log.id}:`, log.scheduled_for, e);
-            return false;
-          }
-          
-          // Verificar se a data é válida
-          if (isNaN(scheduledDate.getTime())) {
-            console.error(`❌ scheduled_for inválido na mensagem ${log.id}:`, log.scheduled_for);
-            return false;
-          }
-          
-          // Comparar timestamps (em milissegundos)
-          const scheduledTime = scheduledDate.getTime();
-          const nowTime = now.getTime();
-          
-          // Adicionar tolerância de 2 minutos para evitar problemas de precisão
-          const isDue = scheduledTime <= (nowTime + 120000); // +2 minutos de tolerância
-          
-          if (isDue) {
-            const diffMinutes = (nowTime - scheduledTime) / 60000;
-            console.log(`✅ Mensagem ${log.id} está pronta para envio:`, {
-              scheduled_for: log.scheduled_for,
-              scheduledTime,
-              scheduledDateISO: scheduledDate.toISOString(),
-              nowTime,
-              nowISO: now.toISOString(),
-              diffMinutes: diffMinutes.toFixed(2),
-              appointment_id: log.appointment_id,
-            });
-          } else {
-            const diffMinutes = (scheduledTime - nowTime) / 60000;
-            if (diffMinutes < 60) { // Log apenas se faltar menos de 1 hora
-              console.log(`⏳ Mensagem ${log.id} ainda não é hora (faltam ${diffMinutes.toFixed(2)} minutos):`, {
-                scheduled_for: log.scheduled_for,
-                scheduledDateISO: scheduledDate.toISOString(),
-                nowISO: now.toISOString(),
-              });
-            }
-          }
-          
-          return isDue;
-        });
-        
-        console.log(`✅ Filtradas ${filtered.length} mensagens prontas para envio de ${allPending.length} total`);
-        
-        if (filtered.length > 0) {
-          finalPendingLogs = filtered;
-        } else if (allPending.length > 0) {
-          // Log detalhado das primeiras mensagens que não foram filtradas
-          console.log(`⚠️ Nenhuma mensagem foi filtrada. Exemplos das primeiras 5:`);
-          allPending.slice(0, 5).forEach(log => {
-            const scheduledDate = typeof log.scheduled_for === 'string' 
-              ? new Date(log.scheduled_for) 
-              : (log.scheduled_for instanceof Date ? log.scheduled_for : new Date(log.scheduled_for));
-            const diffMinutes = (scheduledDate.getTime() - now.getTime()) / 60000;
-            console.log(`  - ${log.id}: scheduled_for=${log.scheduled_for}, diff=${diffMinutes.toFixed(2)} minutos`);
-          });
-        }
+    function isScheduledForDue(log: MessageSendLogRow): boolean {
+      if (!log.scheduled_for) return false;
+      let scheduledDate: Date;
+      try {
+        scheduledDate = typeof log.scheduled_for === 'string'
+          ? new Date(log.scheduled_for)
+          : (log.scheduled_for instanceof Date ? log.scheduled_for : new Date((log.scheduled_for as any)));
+      } catch {
+        return false;
       }
+      if (isNaN(scheduledDate.getTime())) return false;
+      return scheduledDate.getTime() <= (nowTime + TOLERANCE_MS);
     }
-    
-    if (!finalPendingLogs || finalPendingLogs.length === 0) {
-      console.log(`⚠️ Nenhuma mensagem PENDING para envio. (Total no banco: ${pendingCount || 0})`);
+
+    const finalPendingLogs = (allPending || []).filter(log => {
+      const due = isScheduledForDue(log);
+      if (due && log.scheduled_for) {
+        const scheduledDate = typeof log.scheduled_for === 'string' ? new Date(log.scheduled_for) : log.scheduled_for;
+        const diffMin = (nowTime - scheduledDate.getTime()) / 60000;
+        console.log(`✅ Mensagem ${log.id} pronta para envio (atrasada ${diffMin.toFixed(1)} min):`, log.scheduled_for);
+      }
+      return due;
+    });
+
+    console.log(`Mensagens PENDING no banco: ${(allPending || []).length}, prontas para envio (scheduled_for <= NOW): ${finalPendingLogs.length}`);
+
+    if (finalPendingLogs.length === 0) {
+      console.log('⚠️ Nenhuma mensagem PENDING para envio no momento.');
       
-      // Log adicional: verificar se há mensagens PENDING que não foram encontradas
-      if (pendingCount && pendingCount > 0) {
-        const { data: allPending, error: allPendingError } = await supabaseAdmin
-          .from<MessageSendLogRow>('message_send_log')
-          .select('id, scheduled_for, status')
-          .eq('status', 'PENDING')
-          .limit(5);
-        
-        console.log(`DEBUG: Exemplo de mensagens PENDING no banco (primeiras 5):`, {
-          allPending,
-          allPendingError: allPendingError?.message,
-          comparacao: `scheduled_for <= ${nowISOString}`,
-          now_UTC: now.toISOString(),
-          now_BR: nowBR.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+      if ((allPending || []).length > 0) {
+        const sample = (allPending || []).slice(0, 3);
+        sample.forEach(log => {
+          if (log.scheduled_for) {
+            const d = typeof log.scheduled_for === 'string' ? new Date(log.scheduled_for) : new Date((log.scheduled_for as any));
+            const diffMin = (d.getTime() - nowTime) / 60000;
+            console.log(`  Exemplo: id=${log.id} scheduled_for=${log.scheduled_for} (faltam ${diffMin.toFixed(1)} min)`);
+          }
         });
       }
       
+      const nextLog = (allPending || []).find(log => log.scheduled_for && !isScheduledForDue(log));
+      if (nextLog && nextLog.scheduled_for) {
+        const d = typeof nextLog.scheduled_for === 'string' ? new Date(nextLog.scheduled_for) : new Date((nextLog.scheduled_for as any));
+        console.log(`Próxima mensagem agendada para: ${d.toISOString()} (${d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })})`);
+      }
+
       return new Response(
         JSON.stringify({
           message: 'Execução concluída sem mensagens a enviar.',
           insertedLogsCount: insertedLogs.length,
-          pendingCountInDB: pendingCount || 0,
+          pendingCountInDB: (allPending || []).length,
         }),
         {
           status: 200,
@@ -1117,6 +1005,19 @@ serve(async (req) => {
       const client = log.client_id ? clientsMap.get(log.client_id) : null;
       const template =
         templatesByCompanyAndKind.get(`${log.company_id}_${log.message_kind_id}`) || null;
+
+      // Provedor para esta empresa (específico ou global)
+      let provider = providersByCompany.get(log.company_id) ?? allProviders?.find(p => !p.company_id) ?? null;
+      if (!provider) {
+        console.warn(`Nenhum provedor WhatsApp para company_id ${log.company_id}. Log ${log.id} marcado como FAILED.`);
+        updates.push({
+          id: log.id,
+          status: 'FAILED',
+          sent_at: new Date().toISOString(),
+          provider_response: { error: 'Nenhum provedor WhatsApp configurado para esta empresa' },
+        });
+        continue;
+      }
 
       const rawPhone = client?.phone || null;
       const formattedPhone = formatPhoneToE164Brazil(rawPhone);
@@ -1241,7 +1142,7 @@ serve(async (req) => {
           details: {
             execution_id: executionId,
             inserted_logs: insertedLogs.length,
-            pending_count: pendingCount || 0,
+            pending_count: (allPending || []).length,
             timestamp: new Date().toISOString(),
           },
           error_message: failedCount > 0 ? `${failedCount} mensagens falharam` : null,

@@ -152,7 +152,8 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   }, []);
 
   const filteredMessages = useMemo(() => {
-    return messages.filter((msg) => {
+    // 1) Aplica filtros atuais
+    const visible = messages.filter((msg) => {
       if (statusFilter !== 'ALL' && msg.status !== statusFilter) {
         return false;
       }
@@ -163,6 +164,28 @@ const WhatsAppMessageQueuePage: React.FC = () => {
       }
 
       return true;
+    });
+
+    // 2) Ordena por prioridade de status e horário
+    const statusPriority: Record<MessageStatus, number> = {
+      PENDING: 1,    // primeiro: o que ainda vai ser enviado
+      SENT: 2,       // depois: o que já foi enviado
+      FAILED: 3,     // por último: falhas
+      CANCELLED: 4,  // e canceladas
+    };
+
+    return [...visible].sort((a, b) => {
+      const pa = statusPriority[a.status];
+      const pb = statusPriority[b.status];
+
+      if (pa !== pb) {
+        return pa - pb;
+      }
+
+      // Dentro do mesmo status, ordenar por data/hora de envio (mais antigo primeiro)
+      const da = a.scheduled_for || '';
+      const db = b.scheduled_for || '';
+      return da.localeCompare(db);
     });
   }, [messages, statusFilter, selectedDate]);
 
