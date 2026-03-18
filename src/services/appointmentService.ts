@@ -120,37 +120,5 @@ export async function createGuestAppointment(
     throw new Error('Erro ao vincular serviço ao agendamento de convidado.');
   }
 
-  // 3. Agendar mensagens WhatsApp (lembrete e agradecimento) se configurado
-  try {
-    console.log('[appointmentService] Agendando mensagens WhatsApp para appointment:', appointment.id);
-    const { data: scheduleResult, error: scheduleError } = await supabase.rpc(
-      'schedule_whatsapp_messages_for_appointment',
-      { p_appointment_id: appointment.id }
-    );
-
-    if (scheduleError) {
-      console.error('[appointmentService] ❌ ERRO ao agendar mensagens WhatsApp:', scheduleError);
-      console.error('[appointmentService] Detalhes do erro:', JSON.stringify(scheduleError, null, 2));
-      // Não falha o processo, apenas loga o erro
-    } else {
-      console.log('[appointmentService] ✅ Resultado do agendamento:', JSON.stringify(scheduleResult, null, 2));
-      if (scheduleResult && !scheduleResult.success) {
-        console.warn('[appointmentService] ⚠️ Função retornou success=false:', scheduleResult.error || scheduleResult.message);
-      }
-      if (scheduleResult && scheduleResult.logs_created === 0) {
-        console.warn('[appointmentService] ⚠️ Nenhum log foi criado. Verifique:', {
-          logs_created: scheduleResult.logs_created,
-          logs_skipped: scheduleResult.logs_skipped,
-          errors: scheduleResult.errors,
-          message: scheduleResult.message
-        });
-      }
-    }
-  } catch (scheduleErr: any) {
-    console.error('[appointmentService] ❌ EXCEÇÃO ao agendar mensagens WhatsApp:', scheduleErr);
-    console.error('[appointmentService] Stack:', scheduleErr.stack);
-    // Não falha o processo, apenas loga o erro
-  }
-
   return appointment.id;
 }

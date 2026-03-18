@@ -241,10 +241,9 @@ BEGIN
                 v_reference_date := v_appointment.created_at;
                 
             ELSIF v_schedules.reference = 'APPOINTMENT_COMPLETION' THEN
-                -- Para finalização, usar created_at (já que não temos updated_at)
-                -- Em produção, quando o status muda para 'concluido', o trigger será chamado
-                -- e usará o momento atual (NOW()) como referência
-                v_reference_date := v_appointment.created_at;
+                -- Momento em que a função é chamada = finalização do atendimento.
+                -- "1 minuto após finalizar" = NOW() + offset (ex.: 1 minuto).
+                v_reference_date := NOW();
                 
             ELSE
                 -- Tipo de referência não suportado

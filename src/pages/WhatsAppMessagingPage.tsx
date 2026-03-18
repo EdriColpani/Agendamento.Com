@@ -41,6 +41,8 @@ interface MessageTemplate {
   message_kinds?: MessageKind;
 }
 
+type MessageReference = 'APPOINTMENT_START' | 'APPOINTMENT_CREATION' | 'APPOINTMENT_COMPLETION';
+
 interface MessageSchedule {
   id: string;
   company_id: string;
@@ -48,7 +50,7 @@ interface MessageSchedule {
   channel: string;
   offset_value: number;
   offset_unit: 'MINUTES' | 'HOURS' | 'DAYS';
-  reference: 'APPOINTMENT_START' | 'APPOINTMENT_CREATION';
+  reference: MessageReference;
   is_active: boolean;
   message_kinds?: MessageKind;
 }
@@ -84,11 +86,17 @@ const WhatsAppMessagingPage: React.FC = () => {
   const [schedules, setSchedules] = useState<MessageSchedule[]>([]);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<MessageSchedule | null>(null);
-  const [scheduleForm, setScheduleForm] = useState({
+  const [scheduleForm, setScheduleForm] = useState<{
+    message_kind_id: string;
+    offset_value: number;
+    offset_unit: 'MINUTES' | 'HOURS' | 'DAYS';
+    reference: MessageReference;
+    is_active: boolean;
+  }>({
     message_kind_id: '',
     offset_value: 1,
-    offset_unit: 'DAYS' as 'MINUTES' | 'HOURS' | 'DAYS',
-    reference: 'APPOINTMENT_START' as 'APPOINTMENT_START' | 'APPOINTMENT_CREATION',
+    offset_unit: 'DAYS',
+    reference: 'APPOINTMENT_START',
     is_active: true,
   });
 
@@ -346,7 +354,7 @@ const WhatsAppMessagingPage: React.FC = () => {
 
       setIsScheduleModalOpen(false);
       setEditingSchedule(null);
-      setScheduleForm({ message_kind_id: '', offset_value: 1, offset_unit: 'DAYS', reference: 'APPOINTMENT_START', is_active: true });
+      setScheduleForm({ message_kind_id: '', offset_value: 1, offset_unit: 'DAYS', reference: 'APPOINTMENT_START' as const, is_active: true });
       fetchAllData();
     } catch (error: any) {
       console.error('Erro ao salvar regra de envio:', error);
@@ -405,6 +413,7 @@ const WhatsAppMessagingPage: React.FC = () => {
     const map: { [key: string]: string } = {
       APPOINTMENT_START: 'Início do agendamento',
       APPOINTMENT_CREATION: 'Criação do agendamento',
+      APPOINTMENT_COMPLETION: 'Finalização do atendimento',
     };
     return map[ref] || ref;
   };
@@ -573,7 +582,7 @@ const WhatsAppMessagingPage: React.FC = () => {
             <Button
               onClick={() => {
                 setEditingSchedule(null);
-                setScheduleForm({ message_kind_id: '', offset_value: 1, offset_unit: 'DAYS', reference: 'APPOINTMENT_START', is_active: true });
+                setScheduleForm({ message_kind_id: '', offset_value: 1, offset_unit: 'DAYS', reference: 'APPOINTMENT_START' as const, is_active: true });
                 setIsScheduleModalOpen(true);
               }}
               disabled={!whatsappEnabled}
@@ -812,7 +821,7 @@ const WhatsAppMessagingPage: React.FC = () => {
                 <Label>Referência *</Label>
                 <Select
                   value={scheduleForm.reference}
-                  onValueChange={(value: 'APPOINTMENT_START' | 'APPOINTMENT_CREATION') => setScheduleForm({ ...scheduleForm, reference: value })}
+                  onValueChange={(value: MessageReference) => setScheduleForm({ ...scheduleForm, reference: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -820,6 +829,7 @@ const WhatsAppMessagingPage: React.FC = () => {
                   <SelectContent>
                     <SelectItem value="APPOINTMENT_START">Início do agendamento</SelectItem>
                     <SelectItem value="APPOINTMENT_CREATION">Criação do agendamento</SelectItem>
+                    <SelectItem value="APPOINTMENT_COMPLETION">Finalização do atendimento</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -837,7 +847,7 @@ const WhatsAppMessagingPage: React.FC = () => {
                 <Button variant="outline" onClick={() => {
                   setIsScheduleModalOpen(false);
                   setEditingSchedule(null);
-                  setScheduleForm({ message_kind_id: '', offset_value: 1, offset_unit: 'DAYS', reference: 'APPOINTMENT_START', is_active: true });
+                  setScheduleForm({ message_kind_id: '', offset_value: 1, offset_unit: 'DAYS', reference: 'APPOINTMENT_START' as const, is_active: true });
                 }}>
                   Cancelar
                 </Button>

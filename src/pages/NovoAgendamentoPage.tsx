@@ -325,46 +325,7 @@ const NovoAgendamentoPage: React.FC = () => {
 
       if (servicesLinkError) throw servicesLinkError;
 
-      // 3. Agendar mensagens WhatsApp (lembrete e agradecimento) se configurado
-      // IMPORTANTE: Só agendar se a empresa tiver acesso ao menu WhatsApp no plano
-      try {
-        const hasWhatsAppAccess = await checkWhatsAppMenuAccess(supabase, currentCompanyId);
-        
-        if (hasWhatsAppAccess) {
-          console.log('[NovoAgendamentoPage] Agendando mensagens WhatsApp para appointment:', appointmentData.id);
-          const { data: scheduleResult, error: scheduleError } = await supabase.rpc(
-            'schedule_whatsapp_messages_for_appointment',
-            { p_appointment_id: appointmentData.id }
-          );
-
-          if (scheduleError) {
-            console.error('[NovoAgendamentoPage] ❌ ERRO ao agendar mensagens WhatsApp:', scheduleError);
-            console.error('[NovoAgendamentoPage] Detalhes do erro:', JSON.stringify(scheduleError, null, 2));
-            // Não falha o processo, apenas loga o erro
-          } else {
-            console.log('[NovoAgendamentoPage] ✅ Resultado do agendamento:', JSON.stringify(scheduleResult, null, 2));
-            if (scheduleResult && !scheduleResult.success) {
-              console.warn('[NovoAgendamentoPage] ⚠️ Função retornou success=false:', scheduleResult.error || scheduleResult.message);
-            }
-            if (scheduleResult && scheduleResult.logs_created === 0) {
-              console.warn('[NovoAgendamentoPage] ⚠️ Nenhum log foi criado. Verifique:', {
-                logs_created: scheduleResult.logs_created,
-                logs_skipped: scheduleResult.logs_skipped,
-                errors: scheduleResult.errors,
-                message: scheduleResult.message
-              });
-            }
-          }
-        } else {
-          console.log('[NovoAgendamentoPage] ⚠️ Empresa não tem acesso ao menu WhatsApp no plano. Mensagens não serão agendadas.');
-        }
-      } catch (scheduleErr: any) {
-        console.error('[NovoAgendamentoPage] ❌ EXCEÇÃO ao verificar acesso ou agendar mensagens WhatsApp:', scheduleErr);
-        console.error('[NovoAgendamentoPage] Stack:', scheduleErr.stack);
-        // Não falha o processo, apenas loga o erro
-      }
-
-      // 4. If the client was previously unassociated (company_id is null), associate them now.
+      // 3. If the client was previously unassociated (company_id is null), associate them now.
       // We use the admin client for this update to bypass RLS if necessary, although the user should have update permission on clients they created.
       const selectedClient = clients.find(c => c.id === data.clientId);
       if (selectedClient) {

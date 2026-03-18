@@ -488,45 +488,6 @@ const ClientAppointmentForm: React.FC<ClientAppointmentFormProps> = ({ companyId
         throw servicesLinkError;
       }
 
-      // 3. Agendar mensagens WhatsApp (lembrete e agradecimento) se configurado
-      // IMPORTANTE: Só agendar se a empresa tiver acesso ao menu WhatsApp no plano
-      try {
-        const hasWhatsAppAccess = await checkWhatsAppMenuAccess(supabase, companyId);
-        
-        if (hasWhatsAppAccess) {
-          console.log('[ClientAppointmentForm] Agendando mensagens WhatsApp para appointment:', appointmentData.id);
-          const { data: scheduleResult, error: scheduleError } = await supabase.rpc(
-            'schedule_whatsapp_messages_for_appointment',
-            { p_appointment_id: appointmentData.id }
-          );
-
-          if (scheduleError) {
-            console.error('[ClientAppointmentForm] ❌ ERRO ao agendar mensagens WhatsApp:', scheduleError);
-            console.error('[ClientAppointmentForm] Detalhes do erro:', JSON.stringify(scheduleError, null, 2));
-            // Não falha o processo, apenas loga o erro
-          } else {
-            console.log('[ClientAppointmentForm] ✅ Resultado do agendamento:', JSON.stringify(scheduleResult, null, 2));
-            if (scheduleResult && !scheduleResult.success) {
-              console.warn('[ClientAppointmentForm] ⚠️ Função retornou success=false:', scheduleResult.error || scheduleResult.message);
-            }
-            if (scheduleResult && scheduleResult.logs_created === 0) {
-              console.warn('[ClientAppointmentForm] ⚠️ Nenhum log foi criado. Verifique:', {
-                logs_created: scheduleResult.logs_created,
-                logs_skipped: scheduleResult.logs_skipped,
-                errors: scheduleResult.errors,
-                message: scheduleResult.message
-              });
-            }
-          }
-        } else {
-          console.log('[ClientAppointmentForm] ⚠️ Empresa não tem acesso ao menu WhatsApp no plano. Mensagens não serão agendadas.');
-        }
-      } catch (scheduleErr: any) {
-        console.error('[ClientAppointmentForm] ❌ EXCEÇÃO ao verificar acesso ou agendar mensagens WhatsApp:', scheduleErr);
-        console.error('[ClientAppointmentForm] Stack:', scheduleErr.stack);
-        // Não falha o processo, apenas loga o erro
-      }
-
       showSuccess('Agendamento criado com sucesso!');
       navigate('/meus-agendamentos'); // Redirect to client's appointments list
     } catch (error: any) {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from '@/integrations/supabase/client';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { showError, showSuccess } from '@/utils/toast';
@@ -100,6 +101,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchMessages = useCallback(async () => {
     if (!primaryCompanyId) return;
@@ -143,11 +145,11 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     }
   }, [loadingPrimaryCompany, primaryCompanyId, fetchMessages]);
 
-  const todayYmd = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+  const todayYmdBR = useMemo(() => {
+    const nowBR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const year = nowBR.getFullYear();
+    const month = String(nowBR.getMonth() + 1).padStart(2, '0');
+    const day = String(nowBR.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }, []);
 
@@ -159,8 +161,11 @@ const WhatsAppMessageQueuePage: React.FC = () => {
       }
 
       if (selectedDate) {
-        const scheduledDate = msg.scheduled_for?.slice(0, 10);
-        if (scheduledDate !== selectedDate) return false;
+        if (!msg.scheduled_for) return false;
+        const scheduledBR = new Date(msg.scheduled_for).toLocaleDateString('en-CA', {
+          timeZone: 'America/Sao_Paulo',
+        }); // yyyy-MM-dd
+        if (scheduledBR !== selectedDate) return false;
       }
 
       return true;
@@ -190,15 +195,111 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   }, [messages, statusFilter, selectedDate]);
 
   const metrics = useMemo(() => {
-    const forToday = messages.filter(
-      (m) => m.status === 'PENDING' && m.scheduled_for?.slice(0, 10) === todayYmd
-    ).length;
+    const forToday = messages.filter((m) => {
+      if (m.status !== 'PENDING' || !m.scheduled_for) return false;
+      const dateBR = new Date(m.scheduled_for).toLocaleDateString('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+      }); // yyyy-MM-dd
+      return dateBR === todayYmdBR;
+    }).length;
 
     const cancelled = messages.filter((m) => m.status === 'CANCELLED').length;
     const sent = messages.filter((m) => m.status === 'SENT').length;
 
     return { forToday, cancelled, sent };
-  }, [messages, todayYmd]);
+  }, [messages, todayYmdBR]);
+
+  const toggleSelectAllVisible = (checked: boolean) => {
+    if (!checked) {
+      setSelectedIds(new Set());
+      return;
+    }
+    const ids = new Set(filteredMessages.map((m) => m.id));
+    setSelectedIds(ids);
+  };
+
+  const toggleSelectOne = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!primaryCompanyId) return;
+    if (selectedIds.size === 0) {
+      showError('Nenhuma mensagem selecionada para excluir.');
+      return;
+    }
+
+    const confirm = window.confirm(
+      `Tem certeza que deseja excluir ${selectedIds.size} mensagem(ns) da fila? Essa ação não pode ser desfeita.`
+    );
+    if (!confirm) return;
+
+    try {
+      const ids = Array.from(selectedIds);
+      const { data, error } = await supabase.rpc('delete_whatsapp_messages_for_company', {
+        p_company_id: primaryCompanyId,
+        p_ids: ids,
+      });
+
+      if (error || data?.success === false) {
+        throw error || new Error(data?.error || 'Falha ao excluir mensagens.');
+      }
+
+      setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
+      setSelectedIds(new Set());
+      showSuccess('Mensagens selecionadas excluídas com sucesso.');
+    } catch (error: any) {
+      console.error('Erro ao excluir mensagens selecionadas:', error);
+      showError('Erro ao excluir mensagens selecionadas: ' + (error.message || 'Erro desconhecido.'));
+    }
+  };
+
+  const handleDeleteAllFiltered = async () => {
+    if (!primaryCompanyId) return;
+    if (filteredMessages.length === 0) {
+      showError('Não há mensagens na lista atual para excluir.');
+      return;
+    }
+
+    const confirm = window.prompt(
+      `Você está prestes a excluir ${filteredMessages.length} mensagem(ns) da lista atual.\n` +
+      'Digite EXCLUIR para confirmar.'
+    );
+    if (confirm !== 'EXCLUIR') {
+      showError('Exclusão cancelada.');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('delete_whatsapp_messages_for_company', {
+        p_company_id: primaryCompanyId,
+        p_ids: null,
+        p_status: statusFilter === 'ALL' ? null : statusFilter,
+        p_date: selectedDate || null,
+      });
+
+      if (error || data?.success === false) {
+        throw error || new Error(data?.error || 'Falha ao excluir mensagens.');
+      }
+
+      // Atualiza estado local removendo todas as que batem com o filtro atual
+      const filteredIds = new Set(filteredMessages.map((m) => m.id));
+      setMessages((prev) => prev.filter((m) => !filteredIds.has(m.id)));
+      setSelectedIds(new Set());
+      showSuccess('Mensagens da lista atual excluídas com sucesso.');
+    } catch (error: any) {
+      console.error('Erro ao excluir mensagens filtradas:', error);
+      showError('Erro ao excluir mensagens filtradas: ' + (error.message || 'Erro desconhecido.'));
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -401,16 +502,38 @@ const WhatsAppMessageQueuePage: React.FC = () => {
 
       {/* Tabela de mensagens */}
       <Card className="border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-lg">Mensagens Agendadas</CardTitle>
-          <CardDescription>
-            Visualize as mensagens pendentes, enviadas, falhas ou canceladas.
-            {filteredMessages.length > 0 && (
-              <span className="ml-2 text-gray-600">
-                ({filteredMessages.length} {filteredMessages.length === 1 ? 'mensagem' : 'mensagens'})
-              </span>
-            )}
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle className="text-lg">Mensagens Agendadas</CardTitle>
+            <CardDescription>
+              Visualize as mensagens pendentes, enviadas, falhas ou canceladas.
+              {filteredMessages.length > 0 && (
+                <span className="ml-2 text-gray-600">
+                  ({filteredMessages.length} {filteredMessages.length === 1 ? 'mensagem' : 'mensagens'})
+                </span>
+              )}
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="!rounded-button"
+              onClick={handleDeleteSelected}
+              disabled={selectedIds.size === 0}
+            >
+              Excluir selecionadas
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="!rounded-button border-red-500 text-red-600 hover:bg-red-50"
+              onClick={handleDeleteAllFiltered}
+              disabled={filteredMessages.length === 0}
+            >
+              Excluir tudo da lista
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {filteredMessages.length === 0 ? (
@@ -424,6 +547,16 @@ const WhatsAppMessageQueuePage: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                        <Checkbox
+                          checked={
+                            filteredMessages.length > 0 &&
+                            filteredMessages.every((m) => selectedIds.has(m.id))
+                          }
+                          onCheckedChange={(checked) => toggleSelectAllVisible(!!checked)}
+                          aria-label="Selecionar todas"
+                        />
+                      </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                         Cliente
                       </th>
@@ -455,6 +588,13 @@ const WhatsAppMessageQueuePage: React.FC = () => {
 
                       return (
                         <tr key={msg.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            <Checkbox
+                              checked={selectedIds.has(msg.id)}
+                              onCheckedChange={(checked) => toggleSelectOne(msg.id, !!checked)}
+                              aria-label="Selecionar mensagem"
+                            />
+                          </td>
                           <td className="px-4 py-3 text-sm text-gray-900">
                             {clientName}
                           </td>

@@ -225,6 +225,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       if (appUpdateError) throw appUpdateError;
 
+      // O agradecimento WhatsApp é criado pelo trigger handle_appointment_completion_whatsapp (UPDATE status = concluido).
+
       // 2. Calcular e gravar comissões do colaborador (se houver)
       let totalCommission = 0;
       const commissionDetails: Array<{ serviceId: string; commission: number; type: string }> = [];

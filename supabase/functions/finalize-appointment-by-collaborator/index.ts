@@ -142,6 +142,8 @@ serve(async (req) => {
       });
     }
 
+    // O agradecimento WhatsApp é criado pelo trigger handle_appointment_completion_whatsapp (UPDATE status = concluido).
+
     // 2. Buscar comissões configuradas para os serviços do agendamento
     const appointmentServices = appointmentData.appointment_services || [];
     let totalCommission = 0;

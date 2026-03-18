@@ -614,33 +614,6 @@ serve(async (req) => {
       });
     }
 
-    // 5. Agendar mensagens WhatsApp (lembrete e agradecimento) se configurado
-    // IMPORTANTE: Só agendar se a empresa tiver acesso ao menu WhatsApp no plano
-    try {
-      // Verificar se a empresa tem acesso ao menu WhatsApp
-      const hasWhatsAppAccess = await checkWhatsAppMenuAccess(supabaseAdmin, companyId);
-      
-      if (hasWhatsAppAccess) {
-        console.log('book-appointment: Agendando mensagens WhatsApp para appointment:', appointment.id);
-        const { data: scheduleResult, error: scheduleError } = await supabaseAdmin.rpc(
-          'schedule_whatsapp_messages_for_appointment',
-          { p_appointment_id: appointment.id }
-        );
-
-        if (scheduleError) {
-          console.warn('book-appointment: Erro ao agendar mensagens WhatsApp (não crítico):', scheduleError);
-          // Não falha o processo, apenas loga o aviso
-        } else {
-          console.log('book-appointment: Mensagens WhatsApp agendadas:', scheduleResult);
-        }
-      } else {
-        console.log('book-appointment: ⚠️ Empresa não tem acesso ao menu WhatsApp no plano. Mensagens não serão agendadas.');
-      }
-    } catch (scheduleErr: any) {
-      console.warn('book-appointment: Exceção ao verificar acesso ou agendar mensagens WhatsApp (não crítico):', scheduleErr);
-      // Não falha o processo, apenas loga o aviso
-    }
-
     return new Response(JSON.stringify({ message: 'Appointment booked successfully', appointmentId: appointment.id }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
