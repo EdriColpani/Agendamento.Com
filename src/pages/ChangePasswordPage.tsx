@@ -104,6 +104,7 @@ const ChangePasswordPage: React.FC = () => {
         .from('collaborators')
         .select('company_id')
         .eq('user_id', session.user.id)
+        .eq('is_arena_system_placeholder', false)
         .limit(1)
         .maybeSingle();
 
@@ -160,6 +161,7 @@ const ChangePasswordPage: React.FC = () => {
             .from('collaborators')
             .select('role_type_id, company_id')
             .eq('user_id', session.user.id)
+            .eq('is_arena_system_placeholder', false)
             .limit(1)
             .maybeSingle();
           

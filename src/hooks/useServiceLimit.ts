@@ -68,7 +68,8 @@ export function useServiceLimit(): ServiceLimitInfo {
         .from('services')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', primaryCompanyId)
-        .eq('status', 'Ativo');
+        .eq('status', 'Ativo')
+        .eq('is_arena_system_service_placeholder', false);
 
       if (countError) {
         console.warn('useServiceLimit: Erro ao contar serviços:', countError);

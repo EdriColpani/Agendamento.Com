@@ -68,7 +68,8 @@ export function useCollaboratorLimit(): CollaboratorLimitInfo {
         .from('collaborators')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', primaryCompanyId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_arena_system_placeholder', false);
 
       if (countError) {
         console.warn('useCollaboratorLimit: Erro ao contar colaboradores:', countError);

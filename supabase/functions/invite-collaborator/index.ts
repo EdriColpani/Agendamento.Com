@@ -536,7 +536,8 @@ serve(async (req) => {
             .from('collaborators')
             .select('*', { count: 'exact', head: true })
             .eq('company_id', companyId)
-            .eq('is_active', true);
+            .eq('is_active', true)
+            .eq('is_arena_system_placeholder', false);
 
           if (countError) {
             console.warn('Edge Function Warning (invite-collaborator): Erro ao contar colaboradores (continuando):', countError);

@@ -14,10 +14,16 @@ import { useSession } from '@/components/SessionContextProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const SCHEDULING_MODES = ['service', 'court'] as const;
+type SchedulingMode = (typeof SCHEDULING_MODES)[number];
+
 // Zod schema for segment type
 const segmentTypeSchema = z.object({
   name: z.string().min(1, "O nome do segmento é obrigatório."),
-  area_de_atuacao_id: z.string().min(1, "A Área de Atuação é obrigatória."), // Novo campo
+  area_de_atuacao_id: z.string().min(1, "A Área de Atuação é obrigatória."),
+  scheduling_mode: z.enum(SCHEDULING_MODES, {
+    errorMap: () => ({ message: "Selecione o modo de agendamento." }),
+  }),
 });
 
 type SegmentTypeFormValues = z.infer<typeof segmentTypeSchema>;
@@ -32,6 +38,7 @@ interface SegmentType {
   name: string;
   area_de_atuacao_id: string | null;
   area_de_atuacao: { name: string } | null;
+  scheduling_mode: SchedulingMode;
   created_at: string;
 }
 
@@ -59,10 +66,12 @@ const SegmentManagementPage: React.FC = () => {
     defaultValues: {
       name: '',
       area_de_atuacao_id: '',
+      scheduling_mode: 'service',
     },
   });
 
   const areaDeAtuacaoIdValue = watch('area_de_atuacao_id');
+  const schedulingModeValue = watch('scheduling_mode');
 
   const fetchAreas = useCallback(async () => {
     setLoadingAreas(true);
@@ -94,6 +103,7 @@ const SegmentManagementPage: React.FC = () => {
         name, 
         created_at, 
         area_de_atuacao_id,
+        scheduling_mode,
         area_de_atuacao(name)
       `)
       .order('name', { ascending: true });
@@ -102,7 +112,12 @@ const SegmentManagementPage: React.FC = () => {
       showError('Erro ao carregar segmentos: ' + error.message);
       console.error('Error fetching segments:', error);
     } else if (data) {
-      setSegments(data as SegmentType[]);
+      const normalized = (data as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        scheduling_mode:
+          row.scheduling_mode === 'court' ? 'court' : 'service',
+      })) as SegmentType[];
+      setSegments(normalized);
     }
     setLoading(false);
   }, [session]);
@@ -114,15 +129,16 @@ const SegmentManagementPage: React.FC = () => {
 
   const handleAddSegment = () => {
     setEditingSegment(null);
-    reset({ name: '', area_de_atuacao_id: '' });
+    reset({ name: '', area_de_atuacao_id: '', scheduling_mode: 'service' });
     setIsFormModalOpen(true);
   };
 
   const handleEditSegment = (segment: SegmentType) => {
     setEditingSegment(segment);
-    reset({ 
-      name: segment.name, 
-      area_de_atuacao_id: segment.area_de_atuacao_id || '' 
+    reset({
+      name: segment.name,
+      area_de_atuacao_id: segment.area_de_atuacao_id || '',
+      scheduling_mode: segment.scheduling_mode === 'court' ? 'court' : 'service',
     });
     setIsFormModalOpen(true);
   };
@@ -166,6 +182,7 @@ const SegmentManagementPage: React.FC = () => {
     const payload = {
       name: data.name,
       area_de_atuacao_id: data.area_de_atuacao_id,
+      scheduling_mode: data.scheduling_mode,
       user_id: session.user.id,
     };
 
@@ -239,9 +256,20 @@ const SegmentManagementPage: React.FC = () => {
               <div className="space-y-3">
                 {segments.map((segment) => (
                   <div key={segment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex flex-col items-start">
+                    <div className="flex flex-col items-start gap-1">
                         <span className="font-medium text-gray-900">{segment.name}</span>
                         <span className="text-xs text-gray-600">Área: {segment.area_de_atuacao?.name || 'N/A'}</span>
+                        <span
+                          className={`text-xs font-medium rounded px-2 py-0.5 ${
+                            segment.scheduling_mode === 'court'
+                              ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100'
+                              : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
+                          }`}
+                        >
+                          {segment.scheduling_mode === 'court'
+                            ? 'Modo: Arena / quadras'
+                            : 'Modo: Serviços (atendimento)'}
+                        </span>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -275,7 +303,9 @@ const SegmentManagementPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>{editingSegment ? 'Editar Segmento' : 'Novo Segmento'}</DialogTitle>
             <DialogDescription>
-              {editingSegment ? 'Altere o nome e a área de atuação do segmento.' : 'Adicione um novo tipo de segmento e associe-o a uma área de atuação.'}
+              {editingSegment
+                ? 'Altere o nome, a área de atuação e o modo de agendamento. O modo define qual experiência o sistema usará para empresas deste segmento.'
+                : 'Adicione um tipo de segmento, associe à área de atuação e defina o modo de agendamento (serviços ou arena/quadras).'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
@@ -307,6 +337,33 @@ const SegmentManagementPage: React.FC = () => {
                 className="col-span-3"
               />
               {errors.name && <p className="col-span-4 text-red-500 text-xs text-right">{errors.name.message}</p>}
+            </div>
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="scheduling_mode" className="text-right pt-2">
+                Modo de agenda *
+              </Label>
+              <div className="col-span-3 space-y-1">
+                <Select
+                  onValueChange={(value: SchedulingMode) =>
+                    setValue('scheduling_mode', value, { shouldValidate: true })
+                  }
+                  value={schedulingModeValue}
+                >
+                  <SelectTrigger id="scheduling_mode">
+                    <SelectValue placeholder="Selecione o modo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="service">Serviços (barbearia, clínica, etc.)</SelectItem>
+                    <SelectItem value="court">Arena / quadras (horário por recurso)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Este valor orienta o sistema após o login do proprietário (em etapas futuras: dashboard e fluxos).
+                </p>
+                {errors.scheduling_mode && (
+                  <p className="text-red-500 text-xs">{errors.scheduling_mode.message}</p>
+                )}
+              </div>
             </div>
             <DialogFooter className="flex justify-between items-center">
               <Button

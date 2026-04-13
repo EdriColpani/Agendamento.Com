@@ -56,6 +56,7 @@ export function useMenuItems() {
             .from('collaborators')
             .select('company_id, role_type_id')
             .eq('user_id', session.user.id)
+            .eq('is_arena_system_placeholder', false)
             .limit(1)
             .maybeSingle();
           
@@ -154,6 +155,7 @@ export function useMenuItems() {
           .select('role_type_id')
           .eq('user_id', session.user.id)
           .eq('company_id', companyId)
+          .eq('is_arena_system_placeholder', false)
           .maybeSingle();
 
         if (collaboratorError && collaboratorError.code !== 'PGRST116') {

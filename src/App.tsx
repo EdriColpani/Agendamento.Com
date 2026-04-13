@@ -26,6 +26,12 @@ import FecharCaixaPage from "./pages/FecharCaixaPage";
 import ContractRegistrationPage from "./pages/ContractRegistrationPage";
 import SegmentManagementPage from "./pages/SegmentManagementPage";
 import ServicesPage from "./pages/ServicesPage";
+import CourtsManagementPage from "./pages/CourtsManagementPage";
+import CourtWorkingHoursPage from "./pages/CourtWorkingHoursPage";
+import CourtAgendaPage from "./pages/CourtAgendaPage";
+import CourtSlotPriceBandsPage from "./pages/CourtSlotPriceBandsPage";
+import CourtReservationsListPage from "./pages/CourtReservationsListPage";
+import PublicCourtBookingPage from "./pages/PublicCourtBookingPage";
 import ServiceFormPage from "./pages/ServiceFormPage";
 import EditClientPage from "./pages/EditClientPage";
 import CollaboratorFormPage from "./pages/CollaboratorFormPage";
@@ -194,6 +200,7 @@ const App = () => (
 
             {/* NOVAS ROTAS: Agendamento para Convidados */}
             <Route path="/guest-appointment/:companyId" element={<GuestAppointmentPage />} />
+            <Route path="/reservar-quadra/:companyId" element={<PublicCourtBookingPage />} />
             <Route path="/agendamento-confirmado/:appointmentId" element={<GuestAppointmentConfirmationPage />} />
 
             {/* Rota do Admin Global (sem layout MainApplication) */}
@@ -252,6 +259,11 @@ const App = () => (
               <Route path="dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="agendamentos/:companyId" element={<ProtectedRoute><AgendamentosPage /></ProtectedRoute>} />
               <Route path="agendamentos/edit/:appointmentId" element={<ProtectedRoute><EditAgendamentoPage /></ProtectedRoute>} />
+              <Route path="quadras" element={<ProtectedRoute><CourtsManagementPage /></ProtectedRoute>} />
+              <Route path="quadras/horarios" element={<ProtectedRoute><CourtWorkingHoursPage /></ProtectedRoute>} />
+              <Route path="quadras/agenda" element={<ProtectedRoute><CourtAgendaPage /></ProtectedRoute>} />
+              <Route path="quadras/precos" element={<ProtectedRoute><CourtSlotPriceBandsPage /></ProtectedRoute>} />
+              <Route path="quadras/reservas" element={<ProtectedRoute><CourtReservationsListPage /></ProtectedRoute>} />
               <Route path="servicos" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
               <Route path="servicos/new" element={<ProtectedRoute><ServiceFormPage /></ProtectedRoute>} />
               <Route path="servicos/edit/:serviceId" element={<ProtectedRoute><ServiceFormPage /></ProtectedRoute>} />

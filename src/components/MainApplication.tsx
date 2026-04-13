@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Link, Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useSession } from './SessionContextProvider';
@@ -14,7 +14,8 @@ import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { useIsCollaborator } from '@/hooks/useIsCollaborator';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
-import { useCompanyDetails } from '@/hooks/useCompanyDetails'; // Importar o novo hook
+import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
+import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import SubscriptionExpiredPage from '@/pages/SubscriptionExpiredPage';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Zap, Menu, Bell } from 'lucide-react';
@@ -25,6 +26,20 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import NotificationList from './NotificationList'; // Importar novo componente
 import { useIsMobile } from '@/hooks/use-mobile';
 
+/** Mesmas rotas/ícones dos registros em `menus` (migration arena); usado se o plano ainda não tiver menu_plans. */
+const ARENA_SIDEBAR_FALLBACK_ITEMS: Array<{
+  id: string;
+  label: string;
+  icon: string;
+  path: string;
+}> = [
+  { id: 'arena-quadras', label: 'Quadras', icon: 'fas fa-border-all', path: '/quadras' },
+  { id: 'arena-horarios', label: 'Horários', icon: 'fas fa-clock', path: '/quadras/horarios' },
+  { id: 'arena-agenda', label: 'Agenda', icon: 'fas fa-th', path: '/quadras/agenda' },
+  { id: 'arena-reservas', label: 'Reservas', icon: 'fas fa-list', path: '/quadras/reservas' },
+  { id: 'arena-precos', label: 'Preços por horário', icon: 'fas fa-tags', path: '/quadras/precos' },
+];
+
 const MainApplication: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { session, loading: sessionLoading } = useSession();
@@ -34,7 +49,12 @@ const MainApplication: React.FC = () => {
   const { isClient, loadingClientCheck } = useIsClient();
   const { isCollaborator, loading: loadingCollaboratorCheck } = useIsCollaborator();
   const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
-  const { companyDetails, loading: loadingCompanyDetails } = useCompanyDetails(primaryCompanyId); // Usar o novo hook
+  const { isCourtMode } = useCompanySchedulingMode(primaryCompanyId);
+  const {
+    canUseArenaManagement,
+    loading: loadingArenaModule,
+    companyDetails,
+  } = useCourtBookingModule(primaryCompanyId);
   const isMobile = useIsMobile();
   
   // Novo: Status da Assinatura
@@ -53,12 +73,24 @@ const MainApplication: React.FC = () => {
   
   // Buscar menus dinamicamente baseado no plano e permissões
   const { menuItems: dynamicMenuItems, loading: loadingMenus } = useMenuItems();
-  
+
+  const dynamicMenusFilteredByArena = useMemo(
+    () =>
+      dynamicMenuItems.filter(
+        (m) => !m.menu_key.startsWith('arena-') || canUseArenaManagement
+      ),
+    [dynamicMenuItems, canUseArenaManagement]
+  );
+
   // Define se estamos em uma rota de aplicação que deve ter sidebar
   // Sidebar aparece para: 
   // - Proprietários/Admins (sempre)
   // - Colaboradores (se tiver menus dinâmicos OU ainda está carregando menus)
-  const hasMenusForCollaborator = isCollaborator && (dynamicMenuItems.length > 0 || loadingMenus);
+  const hasMenusForCollaborator =
+    isCollaborator &&
+    (dynamicMenuItems.length > 0 ||
+      loadingMenus ||
+      (isCourtMode && (loadingArenaModule || canUseArenaManagement)));
   const isAppPath = (isProprietarioOrCompanyAdmin || hasMenusForCollaborator) && 
     !excludedPaths.some(path => location.pathname.startsWith(path) && location.pathname.length === path.length);
   
@@ -88,14 +120,15 @@ const MainApplication: React.FC = () => {
   };
 
   // Usar menus dinâmicos se disponíveis, caso contrário usar estáticos (fallback)
-  const menuItemsToUse = dynamicMenuItems.length > 0 
-    ? dynamicMenuItems.map(menu => ({
-        id: menu.menu_key,
-        label: menu.label,
-        icon: menu.icon,
-        path: menu.path,
-      }))
-    : staticMenuItems;
+  const menuItemsToUse =
+    dynamicMenuItems.length > 0
+      ? dynamicMenusFilteredByArena.map((menu) => ({
+          id: menu.menu_key,
+          label: menu.label,
+          icon: menu.icon,
+          path: menu.path,
+        }))
+      : staticMenuItems;
 
   console.log('[MainApplication] Menus para renderizar:', {
     dynamicMenuItemsCount: dynamicMenuItems.length,
@@ -154,6 +187,16 @@ const MainApplication: React.FC = () => {
       return item;
     });
 
+  const hasArenaInSidebar = finalMenuItems.some((item) => String(item.id).startsWith('arena-'));
+  const shouldInjectArenaFallback =
+    canUseArenaManagement &&
+    (isProprietarioOrCompanyAdmin || isCollaborator) &&
+    !hasArenaInSidebar;
+
+  const sidebarMenuItems = shouldInjectArenaFallback
+    ? [...finalMenuItems, ...ARENA_SIDEBAR_FALLBACK_ITEMS]
+    : finalMenuItems;
+
   // Se o usuário é Proprietário/Admin e a assinatura expirou ou não existe, bloqueia o acesso a todas as rotas de gerenciamento
   if (isProprietarioOrCompanyAdmin && (subscriptionStatus === 'expired' || subscriptionStatus === 'no_subscription')) {
     // Permite apenas acesso a rotas públicas, perfil, e a página de planos
@@ -163,7 +206,7 @@ const MainApplication: React.FC = () => {
   }
 
   // Se o usuário está carregando a sessão ou os status, exibe loading
-  if (sessionLoading || loadingProprietarioCheck || loadingCompanyAdminCheck || loadingGlobalAdminCheck || loadingClientCheck || loadingCollaboratorCheck || loadingSubscription || loadingCompanyDetails || loadingMenus) {
+  if (sessionLoading || loadingPrimaryCompany || loadingProprietarioCheck || loadingCompanyAdminCheck || loadingGlobalAdminCheck || loadingClientCheck || loadingCollaboratorCheck || loadingSubscription || loadingMenus || loadingArenaModule) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-700">Carregando aplicação...</p>
@@ -190,7 +233,14 @@ const MainApplication: React.FC = () => {
               <div className="w-10 h-10 bg-yellow-600 rounded-lg flex items-center justify-center">
                 <i className="fas fa-calendar-alt text-white"></i>
               </div>
-              <h1 className="text-xl font-bold text-gray-900">TipoAgenda</h1>
+              <div className="flex flex-col items-start">
+                <h1 className="text-xl font-bold text-gray-900 leading-tight">TipoAgenda</h1>
+                {session && isCourtMode && canUseArenaManagement && (
+                  <span className="mt-0.5 rounded bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+                    Modo arena / quadras
+                  </span>
+                )}
+              </div>
             </Link>
           </div>
 
@@ -256,18 +306,28 @@ const MainApplication: React.FC = () => {
             <nav className="p-4">
               <ul className="space-y-2">
                 {(() => {
-                  console.log('[MainApplication] Renderizando sidebar com', finalMenuItems.length, 'menus:', finalMenuItems.map(m => ({ id: m.id, label: m.label, path: m.path })));
+                  console.log('[MainApplication] Renderizando sidebar com', sidebarMenuItems.length, 'menus:', sidebarMenuItems.map(m => ({ id: m.id, label: m.label, path: m.path })));
                   return null;
                 })()}
-                {finalMenuItems.length === 0 && !loadingMenus && (
+                {sidebarMenuItems.length === 0 && !loadingMenus && (
                   <li className="text-gray-400 text-sm p-3">
                     Nenhum menu disponível
                   </li>
                 )}
-                {finalMenuItems.map((item) => {
-                  // Verificar se o pathname corresponde ao item (considerando sub-rotas)
-                  const isActive = location.pathname === item.path || 
-                                   location.pathname.startsWith(item.path + '/');
+                {sidebarMenuItems.map((item) => {
+                  const isActive =
+                    item.id === 'arena-quadras'
+                      ? location.pathname === '/quadras'
+                      : item.id === 'arena-horarios'
+                        ? location.pathname.startsWith('/quadras/horarios')
+                        : item.id === 'arena-agenda'
+                          ? location.pathname.startsWith('/quadras/agenda')
+                          : item.id === 'arena-reservas'
+                            ? location.pathname.startsWith('/quadras/reservas')
+                          : item.id === 'arena-precos'
+                            ? location.pathname.startsWith('/quadras/precos')
+                            : location.pathname === item.path ||
+                              location.pathname.startsWith(item.path + '/');
                   
                   return (
                   <li key={item.id}>
@@ -290,7 +350,7 @@ const MainApplication: React.FC = () => {
                 })}
                 
                 {/* Separador visual antes do item de Ajuda */}
-                {finalMenuItems.length > 0 && (
+                {sidebarMenuItems.length > 0 && (
                   <li className="my-2">
                     <div className="h-px bg-gray-700"></div>
                   </li>

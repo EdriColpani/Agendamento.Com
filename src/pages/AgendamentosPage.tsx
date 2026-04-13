@@ -227,6 +227,7 @@ const AgendamentosPage: React.FC = () => {
       .from('collaborators')
       .select('id, first_name, last_name')
       .eq('company_id', currentCompanyId)
+      .eq('is_arena_system_placeholder', false)
       .order('first_name', { ascending: true });
 
     if (error) {

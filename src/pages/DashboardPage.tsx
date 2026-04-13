@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getStatusColor, createButton, createCard } from '@/lib/dashboard-utils';
@@ -8,9 +9,10 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useSession } from '@/components/SessionContextProvider';
 import { useMenuItems } from '@/hooks/useMenuItems';
-import { showError } from '@/utils/toast';
+import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import MonthlyRevenueChart from '@/components/MonthlyRevenueChart';
 import CriticalStockReport from '@/components/CriticalStockReport';
+import ArenaDashboardPanel from '@/components/ArenaDashboardPanel';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,8 +20,9 @@ const DashboardPage: React.FC = () => {
   const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
   const { data, loading } = useDashboardData();
   const { menuItems: dynamicMenuItems, loading: loadingMenus } = useMenuItems();
+  const { isCourtMode, canUseArenaManagement, loading: loadingArenaModule } = useCourtBookingModule(primaryCompanyId);
 
-  if (sessionLoading || loadingPrimaryCompany || loading || loadingMenus) {
+  if (sessionLoading || loadingPrimaryCompany || loading || loadingMenus || loadingArenaModule) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-700">Carregando Dashboard...</p>
@@ -64,6 +67,18 @@ const DashboardPage: React.FC = () => {
     return key === 'estoque' || path.includes('estoque');
   });
 
+  if (isCourtMode && canUseArenaManagement) {
+    return (
+      <ArenaDashboardPanel
+        primaryCompanyId={primaryCompanyId}
+        data={data}
+        navigate={navigate}
+        hasCashRegisterPermission={hasCashRegisterPermission}
+        hasStockPermission={hasStockPermission}
+      />
+    );
+  }
+
   const kpis = [
     { 
       title: 'Faturamento do Mês', 
@@ -97,6 +112,15 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {isCourtMode && !canUseArenaManagement ? (
+        <Alert className="border-amber-400 bg-amber-50 text-amber-950 dark:bg-amber-950/30 dark:text-amber-50">
+          <AlertTitle>Reserva de quadras não ativa</AlertTitle>
+          <AlertDescription>
+            Seu segmento está em modo arena, mas o módulo de quadras não está habilitado para esta empresa (plano ou
+            sincronização de assinatura). Entre em contato com o suporte ou atualize o plano.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <div className="flex flex-wrap gap-3 md:justify-end">

@@ -177,6 +177,7 @@ const ClientAppointmentForm: React.FC<ClientAppointmentFormProps> = ({ companyId
         `)
         .eq('company_id', companyId)
         .eq('status', 'Ativo')
+        .eq('is_arena_system_placeholder', false)
         .order('first_name', { ascending: true });
 
       if (collaboratorsError) throw collaboratorsError;
@@ -263,6 +264,7 @@ const ClientAppointmentForm: React.FC<ClientAppointmentFormProps> = ({ companyId
           .select('id, name, price, duration_minutes')
           .eq('company_id', companyId)
           .eq('status', 'Ativo')
+          .eq('is_arena_system_service_placeholder', false)
           .in('id', allowedServiceIds)
           .order('name', { ascending: true });
 

@@ -411,7 +411,8 @@ const CollaboratorFormPage: React.FC = () => {
           const { count, error: countError } = await supabase
             .from('collaborators')
             .select('*', { count: 'exact', head: true })
-            .eq('company_id', primaryCompanyId);
+            .eq('company_id', primaryCompanyId)
+            .eq('is_arena_system_placeholder', false);
 
           if (!countError) {
             isFirstCollaborator = (count || 0) === 0;

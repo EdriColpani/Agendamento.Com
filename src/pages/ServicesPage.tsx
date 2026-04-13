@@ -55,6 +55,7 @@ const ServicesPage: React.FC = () => {
       .from('services')
       .select('id, name, price, duration_minutes, category, status')
       .eq('company_id', primaryCompanyId)
+      .eq('is_arena_system_service_placeholder', false)
       .order('name', { ascending: true });
 
     if (error) {

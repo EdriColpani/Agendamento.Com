@@ -33,7 +33,7 @@ interface CriticalProduct {
   min_stock: number;
 }
 
-interface DashboardData {
+export interface DashboardData {
   revenue: number;
   revenueChange: number;
   appointmentsTodayCount: number;
