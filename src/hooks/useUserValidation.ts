@@ -111,6 +111,7 @@ export function useUserValidation() {
           .from('collaborators')
           .select('company_id, role_type_id')
           .eq('user_id', userId)
+          .eq('is_arena_system_placeholder', false)
           .limit(1)
           .maybeSingle();
 

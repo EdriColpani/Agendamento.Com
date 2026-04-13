@@ -22,6 +22,7 @@ export const getStatusColor = (status: string) => {
 
 export const createButton = (onClick: () => void, icon: string, text: string, variant: 'primary' | 'outline' = 'primary') => (
   <Button
+    type="button"
     className={`!rounded-button whitespace-nowrap cursor-pointer ${
       variant === 'primary' ? 'bg-yellow-600 hover:bg-yellow-700 text-black' : ''
     }`}

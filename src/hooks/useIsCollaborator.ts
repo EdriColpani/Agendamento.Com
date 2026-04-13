@@ -41,6 +41,7 @@ export function useIsCollaborator() {
             .from('collaborators')
             .select('id')
             .eq('user_id', session.user.id)
+            .eq('is_arena_system_placeholder', false)
             .limit(1)
             .maybeSingle();
 

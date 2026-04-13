@@ -19,6 +19,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO, addMinutes, parse } from 'date-fns'; // Adicionado addMinutes e parse
 import { ptBR } from 'date-fns/locale';
 import { getAvailableTimeSlots } from '@/utils/appointment-scheduling';
+import {
+  CourtReservationEditForm,
+  type CourtAppointmentRow,
+} from '@/components/CourtReservationEditForm';
 
 // Zod schema for appointment editing
 const editAppointmentSchema = z.object({
@@ -70,6 +74,8 @@ const EditAgendamentoPage: React.FC = () => {
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [totalDurationMinutes, setTotalDurationMinutes] = useState(0);
   const [totalPriceCalculated, setTotalPriceCalculated] = useState(0);
+  const [isCourtBooking, setIsCourtBooking] = useState(false);
+  const [courtAppointment, setCourtAppointment] = useState<CourtAppointmentRow | null>(null);
 
   const {
     register,
@@ -106,7 +112,38 @@ const EditAgendamentoPage: React.FC = () => {
 
     setLoadingData(true);
     try {
-      // Fetch Clients
+      setIsCourtBooking(false);
+      setCourtAppointment(null);
+
+      if (!appointmentId) {
+        setLoadingData(false);
+        return;
+      }
+
+      const { data: appointmentData, error: appointmentError } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          booking_kind,
+          court_id,
+          client_id,
+          client_nickname,
+          collaborator_id,
+          appointment_date,
+          appointment_time,
+          total_duration_minutes,
+          total_price,
+          observations,
+          status,
+          appointment_services(service_id),
+          courts(name)
+        `)
+        .eq('id', appointmentId)
+        .eq('company_id', primaryCompanyId)
+        .single();
+
+      if (appointmentError) throw appointmentError;
+
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('id, name')
@@ -114,70 +151,58 @@ const EditAgendamentoPage: React.FC = () => {
         .order('name', { ascending: true });
 
       if (clientsError) throw clientsError;
-      setClients(clientsData);
+      setClients(clientsData || []);
 
-      // Fetch Collaborators
+      if (appointmentData.booking_kind === 'court') {
+        const rel = (appointmentData as { courts?: { name: string } | { name: string }[] | null }).courts;
+        const courtObj = Array.isArray(rel) ? rel[0] ?? null : rel ?? null;
+        setIsCourtBooking(true);
+        setCourtAppointment({ ...appointmentData, courts: courtObj } as CourtAppointmentRow);
+        setLoadingData(false);
+        return;
+      }
+
+      setIsCourtBooking(false);
+      setCourtAppointment(null);
+
       const { data: collaboratorsData, error: collaboratorsError } = await supabase
         .from('collaborators')
         .select('id, first_name, last_name')
         .eq('company_id', primaryCompanyId)
+        .eq('is_arena_system_placeholder', false)
         .order('first_name', { ascending: true });
 
       if (collaboratorsError) throw collaboratorsError;
       setCollaborators(collaboratorsData);
 
-      // Fetch Services
       const { data: servicesData, error: servicesError } = await supabase
         .from('services')
         .select('id, name, price, duration_minutes')
         .eq('company_id', primaryCompanyId)
-        .eq('status', 'Ativo') // Only active services
+        .eq('status', 'Ativo')
+        .eq('is_arena_system_service_placeholder', false)
         .order('name', { ascending: true });
 
       if (servicesError) throw servicesError;
       setServices(servicesData);
 
-      // Fetch existing appointment data if editing
-      if (appointmentId) {
-        const { data: appointmentData, error: appointmentError } = await supabase
-          .from('appointments')
-          .select(`
-            id,
-            client_id,
-            client_nickname,
-            collaborator_id,
-            appointment_date,
-            appointment_time,
-            total_duration_minutes,
-            total_price,
-            observations,
-            status,
-            appointment_services(service_id)
-          `)
-          .eq('id', appointmentId)
-          .eq('company_id', primaryCompanyId)
-          .single();
+      const parsedDate = parseISO(appointmentData.appointment_date);
+      setSelectedDate(parsedDate);
 
-        if (appointmentError) throw appointmentError;
+      const currentServiceIds = (appointmentData.appointment_services || []).map((as: any) => as.service_id);
 
-        const parsedDate = parseISO(appointmentData.appointment_date);
-        setSelectedDate(parsedDate);
-
-        const currentServiceIds = appointmentData.appointment_services.map((as: any) => as.service_id);
-
-        reset({
-          clientId: appointmentData.client_id,
-          clientNickname: appointmentData.client_nickname || '', // Load the new nickname field
-          collaboratorId: appointmentData.collaborator_id,
-          serviceIds: currentServiceIds,
-          appointmentDate: appointmentData.appointment_date,
-          appointmentTime: `${appointmentData.appointment_time.substring(0, 5)} às ${format(addMinutes(parse(appointmentData.appointment_time.substring(0,5), 'HH:mm', parsedDate), appointmentData.total_duration_minutes), 'HH:mm')}`,
-          observations: appointmentData.observations || '',
-          status: appointmentData.status as 'pendente' | 'confirmado' | 'cancelado' | 'concluido',
-        });
-        setTotalDurationMinutes(appointmentData.total_duration_minutes);
-        setTotalPriceCalculated(appointmentData.total_price);
-      }
+      reset({
+        clientId: appointmentData.client_id,
+        clientNickname: appointmentData.client_nickname || '',
+        collaboratorId: appointmentData.collaborator_id,
+        serviceIds: currentServiceIds,
+        appointmentDate: appointmentData.appointment_date,
+        appointmentTime: `${appointmentData.appointment_time.substring(0, 5)} às ${format(addMinutes(parse(appointmentData.appointment_time.substring(0, 5), 'HH:mm', parsedDate), appointmentData.total_duration_minutes), 'HH:mm')}`,
+        observations: appointmentData.observations || '',
+        status: appointmentData.status as 'pendente' | 'confirmado' | 'cancelado' | 'concluido',
+      });
+      setTotalDurationMinutes(appointmentData.total_duration_minutes);
+      setTotalPriceCalculated(appointmentData.total_price);
 
     } catch (error: any) {
       console.error('Erro ao carregar dados iniciais ou agendamento:', error);
@@ -202,6 +227,7 @@ const EditAgendamentoPage: React.FC = () => {
   // Carrega serviços permitidos para o colaborador selecionado.
   // Para não quebrar agendamentos antigos, mantemos serviços já selecionados mesmo que não estejam mais permitidos.
   useEffect(() => {
+    if (isCourtBooking) return;
     const loadAllowed = async () => {
       if (!selectedCollaboratorId || !primaryCompanyId) {
         setAllowedServiceIds([]);
@@ -235,19 +261,21 @@ const EditAgendamentoPage: React.FC = () => {
       );
     };
     loadAllowed();
-  }, [selectedCollaboratorId, primaryCompanyId, selectedServiceIds, setValue]);
+  }, [isCourtBooking, selectedCollaboratorId, primaryCompanyId, selectedServiceIds, setValue]);
 
   // Effect to calculate total duration and price when services change
   useEffect(() => {
+    if (isCourtBooking) return;
     const selected = services.filter(s => selectedServiceIds.includes(s.id));
     const duration = selected.reduce((sum, service) => sum + service.duration_minutes, 0);
     const price = selected.reduce((sum, service) => sum + service.price, 0);
     setTotalDurationMinutes(duration);
     setTotalPriceCalculated(price);
-  }, [selectedServiceIds, services]);
+  }, [isCourtBooking, selectedServiceIds, services]);
 
   // Effect to fetch available time slots
   useEffect(() => {
+    if (isCourtBooking) return;
     const fetchSlots = async () => {
       if (selectedCollaboratorId && selectedDate && totalDurationMinutes > 0 && primaryCompanyId) {
         setLoading(true);
@@ -285,7 +313,7 @@ const EditAgendamentoPage: React.FC = () => {
       }
     };
     fetchSlots();
-  }, [selectedCollaboratorId, selectedDate, totalDurationMinutes, primaryCompanyId, setValue, appointmentId]);
+  }, [isCourtBooking, selectedCollaboratorId, selectedDate, totalDurationMinutes, primaryCompanyId, setValue, appointmentId]);
 
 
   const handleServiceChange = (serviceId: string, checked: boolean) => {
@@ -383,6 +411,18 @@ const EditAgendamentoPage: React.FC = () => {
           Cadastrar Empresa
         </Button>
       </div>
+    );
+  }
+
+  if (isCourtBooking && courtAppointment) {
+    return (
+      <CourtReservationEditForm
+        appointment={courtAppointment}
+        clients={clients}
+        primaryCompanyId={primaryCompanyId}
+        onSuccess={() => navigate(`/agendamentos/${primaryCompanyId}`)}
+        onBack={() => navigate(-1)}
+      />
     );
   }
 

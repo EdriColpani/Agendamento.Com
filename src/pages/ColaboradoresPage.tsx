@@ -72,6 +72,7 @@ const ColaboradoresPage: React.FC = () => {
         role_types(description)
       `)
       .eq('company_id', primaryCompanyId)
+      .eq('is_arena_system_placeholder', false)
       .order('first_name', { ascending: true });
 
     if (error) {

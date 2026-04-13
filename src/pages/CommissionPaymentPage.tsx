@@ -46,6 +46,7 @@ const CommissionPaymentPage: React.FC = () => {
           .from('collaborators')
           .select('id, first_name, last_name')
           .eq('company_id', primaryCompanyId)
+          .eq('is_arena_system_placeholder', false)
           .order('first_name');
 
         if (error) throw error;

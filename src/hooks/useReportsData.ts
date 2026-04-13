@@ -348,6 +348,7 @@ export function useReportsData(dateRangeKey: DateRangeKey = 'current_month') {
           .from('collaborators')
           .select('id')
           .eq('user_id', session.user.id)
+          .eq('is_arena_system_placeholder', false)
           .limit(1)
           .maybeSingle();
 
@@ -408,7 +409,8 @@ export function useReportsData(dateRangeKey: DateRangeKey = 'current_month') {
         const { data: collabNames, error: collabNamesError } = await supabase
           .from('collaborators')
           .select('id, first_name, last_name, commission_percentage')
-          .eq('company_id', primaryCompanyId);
+          .eq('company_id', primaryCompanyId)
+          .eq('is_arena_system_placeholder', false);
 
         if (collabNamesError) throw collabNamesError;
 

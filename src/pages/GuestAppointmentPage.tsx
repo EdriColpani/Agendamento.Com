@@ -101,7 +101,8 @@ const GuestAppointmentPage: React.FC = () => {
         .from('services')
         .select('id, name, duration_minutes, price')
         .eq('company_id', companyId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_arena_system_service_placeholder', false);
 
       if (servicesError) {
         console.error('fetchServicesAndCollaborators: Error fetching services:', servicesError); // ADDED LOG
@@ -122,7 +123,8 @@ const GuestAppointmentPage: React.FC = () => {
           role_types(description)
         `)
         .eq('company_id', companyId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .eq('is_arena_system_placeholder', false);
 
       if (collaboratorsError) {
         console.error('fetchServicesAndCollaborators: Error fetching collaborators:', collaboratorsError); // ADDED LOG

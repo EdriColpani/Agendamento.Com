@@ -124,6 +124,7 @@ const NovoAgendamentoPage: React.FC = () => {
           role_types(description)
         `)
         .eq('company_id', currentCompanyId)
+        .eq('is_arena_system_placeholder', false)
         .order('first_name', { ascending: true });
 
       if (collaboratorsError) throw collaboratorsError;
@@ -147,6 +148,7 @@ const NovoAgendamentoPage: React.FC = () => {
         .select('id, name, price, duration_minutes')
         .eq('company_id', currentCompanyId)
         .eq('status', 'Ativo') // Only active services
+        .eq('is_arena_system_service_placeholder', false)
         .order('name', { ascending: true });
 
       if (servicesError) throw servicesError;
