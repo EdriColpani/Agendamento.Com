@@ -26,6 +26,7 @@ import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import { ArrowLeft, Trash2 } from 'lucide-react';
+import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 
 const WEEKDAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -206,15 +207,17 @@ const CourtSlotPriceBandsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <Button variant="ghost" className="!rounded-button" asChild>
-          <Link to="/quadras">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Quadras
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Preços por horário</h1>
-      </div>
+      <ArenaPageHeader
+        title="Preços por horário"
+        actions={
+          <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
+            <Link to="/quadras">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Quadras
+            </Link>
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -222,7 +225,7 @@ const CourtSlotPriceBandsPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Select value={courtId} onValueChange={setCourtId}>
-            <SelectTrigger className="max-w-md">
+            <SelectTrigger className="w-full sm:max-w-md">
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
@@ -305,40 +308,42 @@ const CourtSlotPriceBandsPage: React.FC = () => {
           ) : bands.length === 0 ? (
             <p className="text-gray-600">Nenhuma faixa; o preço padrão da quadra será usado em todo o dia.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Dia</TableHead>
-                  <TableHead>Início</TableHead>
-                  <TableHead>Fim</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Ordem</TableHead>
-                  <TableHead className="w-[80px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bands.map((b) => (
-                  <TableRow key={b.id}>
-                    <TableCell>{WEEKDAY_LABELS[b.day_of_week] ?? b.day_of_week}</TableCell>
-                    <TableCell>{formatTimeLabel(String(b.start_time))}</TableCell>
-                    <TableCell>{formatTimeLabel(String(b.end_time))}</TableCell>
-                    <TableCell>R$ {Number(b.slot_price).toFixed(2).replace('.', ',')}</TableCell>
-                    <TableCell>{b.sort_order}</TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={saving}
-                        onClick={() => handleDelete(b.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Dia</TableHead>
+                    <TableHead>Início</TableHead>
+                    <TableHead>Fim</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>Ordem</TableHead>
+                    <TableHead className="w-[80px]" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {bands.map((b) => (
+                    <TableRow key={b.id}>
+                      <TableCell>{WEEKDAY_LABELS[b.day_of_week] ?? b.day_of_week}</TableCell>
+                      <TableCell>{formatTimeLabel(String(b.start_time))}</TableCell>
+                      <TableCell>{formatTimeLabel(String(b.end_time))}</TableCell>
+                      <TableCell>R$ {Number(b.slot_price).toFixed(2).replace('.', ',')}</TableCell>
+                      <TableCell>{b.sort_order}</TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={saving}
+                          onClick={() => handleDelete(b.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -19,6 +19,7 @@ import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import { ArrowLeft } from 'lucide-react';
+import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 
 const DAY_LABELS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
@@ -225,19 +226,22 @@ const CourtWorkingHoursPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <Button variant="ghost" className="!rounded-button" asChild>
-          <Link to="/quadras">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar às quadras
-          </Link>
-        </Button>
-        <Button variant="outline" className="!rounded-button" asChild>
-          <Link to="/quadras/agenda">Ver agenda do dia</Link>
-        </Button>
-      </div>
-
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Horários de funcionamento</h1>
+      <ArenaPageHeader
+        title="Horários de funcionamento"
+        actions={
+          <>
+            <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
+              <Link to="/quadras">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar às quadras
+              </Link>
+            </Button>
+            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
+              <Link to="/quadras/agenda">Ver agenda do dia</Link>
+            </Button>
+          </>
+        }
+      />
 
       {courts.length === 0 ? (
         <Card>
@@ -302,12 +306,12 @@ const CourtWorkingHoursPage: React.FC = () => {
                       />
                       <span className="font-medium text-gray-900 dark:text-white">{label}</span>
                     </div>
-                    <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex flex-wrap items-end gap-3 w-full md:w-auto">
                       <div>
                         <Label className="text-xs">Abertura</Label>
                         <Input
                           type="time"
-                          className="mt-1 w-36"
+                          className="mt-1 w-full sm:w-36"
                           disabled={!days[d].active}
                           value={days[d].start}
                           onChange={(e) => updateDay(d, { start: e.target.value })}
@@ -317,7 +321,7 @@ const CourtWorkingHoursPage: React.FC = () => {
                         <Label className="text-xs">Encerramento</Label>
                         <Input
                           type="time"
-                          className="mt-1 w-36"
+                          className="mt-1 w-full sm:w-36"
                           disabled={!days[d].active}
                           value={days[d].end}
                           onChange={(e) => updateDay(d, { end: e.target.value })}
