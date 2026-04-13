@@ -1,7 +1,7 @@
 # Plano: agendamento em quadras / arena (reuso do motor atual)
 
 **Última atualização do documento:** 2026-04-13  
-**Status geral da implementação:** em andamento — segmento `court`, RPCs públicas, preços por faixa, feature/plano, menus arena em `menus`/`menu_plans`, índices de lista e de conflito parcial, RLS `anon` em `courts`; pendentes: triggers/WhatsApp, `plan_limits`, hardening cliente/pagamento e QA de rollout.
+**Status geral da implementação:** em andamento — segmento `court`, RPCs públicas, preços por faixa, feature/plano, menus arena em `menus`/`menu_plans`, índices de lista e de conflito parcial, RLS `anon` em `courts`, liberação de slot ao concluir (`20260423`) e pacote UX mobile nas telas arena; pendentes: triggers/WhatsApp, `plan_limits`, hardening cliente/pagamento e QA de rollout.
 
 ---
 
@@ -35,19 +35,20 @@
 - **Lista reservas + performance:** `20260420` — índice lista; front com janela máxima, paginação e clamp de datas (`CourtReservationsListPage` + util).
 - **Conflito + leitura pública `courts`:** `20260421` — índice parcial por quadra/dia (excl. cancelados) + RLS `anon` em `courts`.
 - **Menus por plano (arena):** `20260422` — registros em `menus` / `menu_plans` para planos com `court_booking`; `MainApplication` filtra `arena-*` por `canUseArenaManagement` + fallback de sidebar.
+- **Finalização libera slot + consistência de conflito:** `20260423` — `concluido` passa a não bloquear slot (UI + RPCs + índice parcial alinhado via `is_court_slot_blocking_status`).
+- **UX mobile padronizada (arena):** header reutilizável `ArenaPageHeader` + ajustes de responsividade nas telas `Quadras`, `Horários`, `Agenda`, `Reservas`, `Preços por horário`.
 
 ### Próximas fases (prioridade sugerida para “amanhã”)
 
-1. **Decisão de negócio + eventual correção:** após **finalizar** agendamento (`concluido`), o slot **continua ocupado** nas RPCs (só `cancelado` libera). Ver **nota em §6.1** — definir regra desejada e, se for “liberar ao concluir” (ou só horários passados), ajustar `get_court_public_day_view` / `create_court_booking*` + índice parcial `20260421` alinhado aos status.
-2. **§6.1 — Triggers / WhatsApp** em `appointments` com `booking_kind = court`: validar ou adaptar (não iniciado de ponta a ponta).
-3. **§6.6 — Cliente:** fechar fluxo público (UX, edge cases) e **integração com confirmação/pagamento** existente.
-4. **§5 item 4 — `plan_limits`** (ex.: máx. quadras / reservas mês), se for escopo desta entrega.
-5. **§6.7 — QA e rollout:** empresa teste `court`, regressão `service`, ordem das migrations no deploy; doc interna de flags/deploy (item 6.3 ainda aberto).
-6. **Dados / cadastro (§6.2):** seed de segmento “Esportes / Arena”; UX opcional no cadastro de empresa.
+1. **§6.1 — Triggers / WhatsApp** em `appointments` com `booking_kind = court`: validar ou adaptar (não iniciado de ponta a ponta).
+2. **§6.6 — Cliente:** fechar fluxo público (UX, edge cases) e **integração com confirmação/pagamento** existente.
+3. **§5 item 4 — `plan_limits`** (ex.: máx. quadras / reservas mês), se for escopo desta entrega.
+4. **§6.7 — QA e rollout:** empresa teste `court`, regressão `service`, ordem das migrations no deploy; doc interna de flags/deploy (item 6.3 ainda aberto).
+5. **Dados / cadastro (§6.2):** seed de segmento “Esportes / Arena”; UX opcional no cadastro de empresa.
 
 ### Lembrete operacional
 
-Aplicar no Supabase, em ordem, as migrations **`20260420` → `20260421` → `20260422`** se o ambiente ainda não as tiver rodado.
+Aplicar no Supabase, em ordem, as migrations **`20260420` → `20260421` → `20260422` → `20260423`** se o ambiente ainda não as tiver rodado.
 
 ---
 
@@ -113,10 +114,10 @@ Marque `[x]` conforme for concluindo no repositório / banco.
 
 - [x] Migration **Fase 1:** `20260412_phase1_courts_and_appointments_booking.sql` (`courts`, `booking_kind`, `court_id`, RLS autenticado).
 - [x] Políticas **RLS** leitura pública (`anon`) em `courts` quando `company_public_court_booking_allowed` — migration `20260421_court_booking_conflict_index_and_anon_courts_read.sql` (fluxo ainda usa RPCs; leitura direta na tabela fica disponível).
-- [x] Índices para conflito/lista em `appointments` (**parcial**): índice `(court_id, appointment_date)` excl. cancelados + `court` em `20260421`; lista por empresa/período em `20260420_appointments_court_list_index.sql`. **Pendente (opcional):** constraint `EXCLUDE` / `tstzrange` se quiser garantia no banco além da lógica nas RPCs.
+- [x] Índices para conflito/lista em `appointments` (**parcial**): lista por empresa/período em `20260420_appointments_court_list_index.sql`; conflito por quadra/dia em `20260421`, ajustado em `20260423` para ignorar `cancelado` e `concluido`. **Pendente (opcional):** constraint `EXCLUDE` / `tstzrange` se quiser garantia no banco além da lógica nas RPCs.
 - [ ] Triggers existentes em `appointments` (WhatsApp, etc.): validar comportamento com `booking_kind = court`.
 
-**Nota salva (ocupação vs. finalização — 2026-04-13):** nas RPCs `get_court_public_day_view` e `create_court_booking*`, um agendamento de quadra **só deixa de bloquear o slot** se o status for `cancelado`. Status **`concluido`** (ex.: após finalizar pelo fluxo do colaborador) **continua contando como ocupado** na grade e na checagem de conflito. Definir depois se `concluido` (e eventualmente outros status “encerrados”) devem ser ignorados na ocupação, e se isso vale só para o passado ou também para reabrir slot no mesmo dia.
+**Nota salva (ocupação vs. finalização — 2026-04-13, atualizada):** o ajuste foi implementado em `20260423_court_release_slot_on_concluded.sql`: status **`concluido`** e `cancelado` **não bloqueiam** slot na agenda/conflito (UI + RPCs + índice parcial alinhados pela função `is_court_slot_blocking_status`). Próxima revisão de negócio: decidir se outros status “encerrados” também devem ser não-bloqueantes.
 
 ### 6.2 Segmentos e cadastro
 

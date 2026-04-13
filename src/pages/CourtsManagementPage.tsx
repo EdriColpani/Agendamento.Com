@@ -25,6 +25,7 @@ import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import { ArrowLeft, Edit, PlusCircle, Trash2 } from 'lucide-react';
+import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 
 const courtFormSchema = z.object({
   name: z.string().min(1, 'Nome da quadra é obrigatório.'),
@@ -248,27 +249,31 @@ const CourtsManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <Button variant="ghost" className="!rounded-button" onClick={() => navigate('/dashboard')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Quadras</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="!rounded-button" asChild>
-            <Link to="/quadras/horarios">Horários de funcionamento</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="!rounded-button" asChild>
-            <Link to="/quadras/agenda">Agenda do dia</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="!rounded-button" asChild>
-            <Link to="/quadras/reservas">Lista de reservas</Link>
-          </Button>
-          <Button variant="outline" size="sm" className="!rounded-button" asChild>
-            <Link to="/quadras/precos">Preços por horário</Link>
-          </Button>
-        </div>
-      </div>
+      <ArenaPageHeader
+        title="Quadras"
+        actions={
+          <>
+            <Button variant="ghost" className="!rounded-button w-full sm:w-auto" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
+                <Link to="/quadras/horarios">Horários de funcionamento</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
+                <Link to="/quadras/agenda">Agenda do dia</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
+                <Link to="/quadras/reservas">Lista de reservas</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
+                <Link to="/quadras/precos">Preços por horário</Link>
+              </Button>
+            </div>
+          </>
+        }
+      />
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
@@ -342,7 +347,7 @@ const CourtsManagementPage: React.FC = () => {
       </Card>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingCourt ? 'Editar quadra' : 'Nova quadra'}</DialogTitle>
             <DialogDescription>

@@ -36,6 +36,7 @@ import {
   type CourtPriceBand,
 } from '@/utils/courtSlots';
 import { ArrowLeft, Info } from 'lucide-react';
+import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 
 interface CourtOption {
   id: string;
@@ -172,7 +173,7 @@ const CourtAgendaPage: React.FC = () => {
         .eq('company_id', primaryCompanyId)
         .eq('court_id', courtId)
         .eq('appointment_date', dateStr)
-        .neq('status', 'cancelado');
+        .or('status.is.null,status.not.in.(cancelado,concluido)');
 
       if (apErr) throw apErr;
 
@@ -271,7 +272,7 @@ const CourtAgendaPage: React.FC = () => {
     const client = clients.find((c) => c.id === bookingClientId);
     setBookingSubmitting(true);
     try {
-      const newAppointmentId = await createCourtBooking({
+      await createCourtBooking({
         companyId: primaryCompanyId,
         courtId,
         clientId: bookingClientId,
@@ -285,7 +286,6 @@ const CourtAgendaPage: React.FC = () => {
       setBookModalOpen(false);
       setSlotToBook(null);
       await refreshAgenda();
-      navigate(`/agendamentos/edit/${newAppointmentId}`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       showError(msg);
@@ -296,25 +296,28 @@ const CourtAgendaPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <Button variant="ghost" className="!rounded-button" asChild>
-          <Link to="/quadras">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Quadras
-          </Link>
-        </Button>
-        <Button variant="outline" className="!rounded-button" asChild>
-          <Link to="/quadras/horarios">Horários de funcionamento</Link>
-        </Button>
-        <Button variant="outline" className="!rounded-button" asChild>
-          <Link to="/quadras/precos">Preços por horário</Link>
-        </Button>
-        <Button variant="outline" className="!rounded-button" asChild>
-          <Link to="/quadras/reservas">Lista de reservas</Link>
-        </Button>
-      </div>
-
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Agenda das quadras</h1>
+      <ArenaPageHeader
+        title="Agenda das quadras"
+        actions={
+          <>
+            <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
+              <Link to="/quadras">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Quadras
+              </Link>
+            </Button>
+            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
+              <Link to="/quadras/horarios">Horários de funcionamento</Link>
+            </Button>
+            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
+              <Link to="/quadras/precos">Preços por horário</Link>
+            </Button>
+            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
+              <Link to="/quadras/reservas">Lista de reservas</Link>
+            </Button>
+          </>
+        }
+      />
 
       {courts.length === 0 ? (
         <Card>
@@ -326,19 +329,21 @@ const CourtAgendaPage: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Data</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => d && setSelectedDate(d)}
-                locale={ptBR}
-                className="rounded-md border"
-              />
+            <CardContent className="space-y-3">
+              <div className="w-full rounded-md border bg-background p-3">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  locale={ptBR}
+                  className="mx-auto w-full max-w-[310px]"
+                />
+              </div>
               <p className="text-sm text-muted-foreground mt-3">
                 {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </p>
@@ -411,7 +416,7 @@ const CourtAgendaPage: React.FC = () => {
       )}
 
       <Dialog open={bookModalOpen} onOpenChange={setBookModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nova reserva de quadra</DialogTitle>
             <DialogDescription>

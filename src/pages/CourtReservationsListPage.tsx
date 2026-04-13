@@ -35,6 +35,7 @@ import {
   COURT_RESERVATIONS_PAGE_SIZE,
 } from '@/utils/courtReservationListQuery';
 import { ArrowLeft, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 
 interface CourtOption {
   id: string;
@@ -229,15 +230,17 @@ const CourtReservationsListPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <Button variant="ghost" className="!rounded-button" asChild>
-          <Link to="/quadras">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Quadras
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reservas por quadra</h1>
-      </div>
+      <ArenaPageHeader
+        title="Reservas por quadra"
+        actions={
+          <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
+            <Link to="/quadras">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Quadras
+            </Link>
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -351,7 +354,7 @@ const CourtReservationsListPage: React.FC = () => {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[760px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
