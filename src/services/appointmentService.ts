@@ -18,38 +18,47 @@ export async function findOrCreateClient(
   name: string,
   phone: string,
 ): Promise<{ clientId: string; clientNickname: string }> {
-  // Remover formatação do telefone (apenas dígitos)
-  const phoneDigits = phone.replace(/\D/g, '');
-  
-  // Se o telefone tem 10 ou 11 dígitos, adicionar DDI 55 se não tiver
-  let formattedPhone = phoneDigits;
-  if (phoneDigits.length === 10 || phoneDigits.length === 11) {
-    if (!phoneDigits.startsWith('55')) {
-      formattedPhone = '55' + phoneDigits;
+  const onlyDigits = (value: string) => value.replace(/\D/g, '');
+  const toCompanyScopedCanonical = (digits: string) => {
+    if ((digits.length === 10 || digits.length === 11) && !digits.startsWith('55')) {
+      return `55${digits}`;
     }
-  } else if (phoneDigits.length >= 12 && phoneDigits.startsWith('55')) {
-    formattedPhone = phoneDigits;
-  } else {
-    // Se não tiver formato válido, usar como está
-    formattedPhone = phoneDigits;
-  }
+    return digits;
+  };
 
-  // Buscar cliente existente pelo telefone (tentar vários formatos)
+  const buildPhoneVariants = (canonical: string, rawDigits: string) => {
+    const variants = new Set<string>();
+    if (canonical) variants.add(canonical);
+    if (rawDigits) variants.add(rawDigits);
+    if (canonical.startsWith('55')) {
+      variants.add(`+${canonical}`);
+      variants.add(canonical.slice(2));
+    }
+    return Array.from(variants).filter(Boolean);
+  };
+
+  // Normalizar para reduzir colisões entre formatos (com/sem DDI).
+  const phoneDigits = onlyDigits(phone);
+  const canonicalPhone = toCompanyScopedCanonical(phoneDigits);
+  const phoneVariants = buildPhoneVariants(canonicalPhone, phoneDigits);
+
+  // IMPORTANTE: sempre buscar no escopo da empresa atual.
   const { data: existingClients, error: searchError } = await supabase
     .from('clients')
-    .select('id, name, phone')
-    .or(`phone.eq.${formattedPhone},phone.eq.${phoneDigits},phone.eq.+${formattedPhone},phone.like.%${phoneDigits.slice(-9)}%`)
-    .limit(5);
+    .select('id, name, phone, company_id')
+    .eq('company_id', companyId)
+    .in('phone', phoneVariants)
+    .limit(10);
 
   if (searchError) {
     console.error('Erro ao buscar cliente:', searchError);
     // Continuar para criar novo cliente mesmo com erro na busca
   }
 
-  // Se encontrou cliente com telefone exato, usar ele
+  // Se encontrou cliente na mesma empresa com telefone equivalente, reutiliza.
   const exactMatch = existingClients?.find(c => {
-    const clientPhone = c.phone?.replace(/\D/g, '') || '';
-    return clientPhone === formattedPhone || clientPhone === phoneDigits;
+    const clientPhone = onlyDigits(c.phone || '');
+    return clientPhone === canonicalPhone || clientPhone === phoneDigits;
   });
 
   if (exactMatch) {
@@ -64,7 +73,7 @@ export async function findOrCreateClient(
     .from('clients')
     .insert({
       name: name,
-      phone: formattedPhone,
+      phone: canonicalPhone,
       email: `convidado_${Date.now()}@temp.com`,
       birth_date: '1900-01-01',
       zip_code: '00000000',

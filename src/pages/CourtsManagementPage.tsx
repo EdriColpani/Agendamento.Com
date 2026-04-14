@@ -24,7 +24,7 @@ import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
-import { ArrowLeft, Edit, PlusCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Edit, PlusCircle, Trash2 } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 
 const courtFormSchema = z.object({
@@ -197,6 +197,41 @@ const CourtsManagementPage: React.FC = () => {
     setSaving(false);
   };
 
+  const publicBookingLink =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/reservar-quadra/${primaryCompanyId}`
+      : `/reservar-quadra/${primaryCompanyId}`;
+
+  const handleCopyPublicLink = async () => {
+    const fallbackCopy = (text: string) => {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      textArea.setSelectionRange(0, text.length);
+      const copied = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return copied;
+    };
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(publicBookingLink);
+      } else {
+        const copied = fallbackCopy(publicBookingLink);
+        if (!copied) {
+          throw new Error('Fallback de cópia falhou');
+        }
+      }
+      showSuccess('Link copiado para a área de transferência.');
+    } catch {
+      showError('Não foi possível copiar o link automaticamente.');
+    }
+  };
+
   if (loadingPrimaryCompany || loadingSchedulingMode || loadingArenaModule) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -338,11 +373,15 @@ const CourtsManagementPage: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
           <p>Compartilhe com clientes para reservarem sem login (empresa em modo arena).</p>
-          <code className="block break-all rounded bg-white dark:bg-gray-900 px-2 py-1 text-xs border">
-            {typeof window !== 'undefined'
-              ? `${window.location.origin}/reservar-quadra/${primaryCompanyId}`
-              : `/reservar-quadra/${primaryCompanyId}`}
-          </code>
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <code className="block flex-1 break-all rounded bg-white dark:bg-gray-900 px-2 py-1 text-xs border">
+              {publicBookingLink}
+            </code>
+            <Button type="button" variant="outline" size="sm" onClick={handleCopyPublicLink} className="w-full sm:w-auto">
+              <Copy className="h-4 w-4 mr-2" />
+              Copiar link
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

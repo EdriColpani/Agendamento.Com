@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { format, parseISO, startOfDay, isBefore } from 'date-fns';
+import { format, parseISO, startOfDay, isBefore, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,13 @@ function formatPhoneBR(value: string) {
   return `(${ddd}) ${part1}-${part2}`;
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  pix: 'PIX',
+  cartao_credito: 'Cartão de crédito',
+  cartao_debito: 'Cartão de débito',
+};
+
 const PublicCourtBookingPage: React.FC = () => {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
@@ -84,12 +91,14 @@ const PublicCourtBookingPage: React.FC = () => {
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [bookingObservations, setBookingObservations] = useState('');
+  const [bookingPaymentMethod, setBookingPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito'>('pix');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [slotPriceDisplay, setSlotPriceDisplay] = useState(0);
   const [dayPriceBands, setDayPriceBands] = useState<CourtPriceBand[]>([]);
   const [dayDefaultPrice, setDayDefaultPrice] = useState(0);
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
+  const isSelectedDateToday = useMemo(() => isSameDay(selectedDate, new Date()), [selectedDate]);
 
   const loadCourts = useCallback(async () => {
     if (!companyId) return;
@@ -146,6 +155,7 @@ const PublicCourtBookingPage: React.FC = () => {
         if (view.message) setMetaMessage(view.message);
         return;
       }
+      setMetaMessage(null);
       if (!view.day_open || !view.working_start || !view.working_end) {
         setSlots([]);
         const bandsClosed = (view.price_bands || []) as CourtPriceBand[];
@@ -190,7 +200,16 @@ const PublicCourtBookingPage: React.FC = () => {
     setGuestName('');
     setGuestPhone('');
     setBookingObservations('');
+    setBookingPaymentMethod('pix');
     setBookModalOpen(true);
+  };
+
+  const isPastSlot = (startTime: string) => {
+    if (!isSelectedDateToday) return false;
+    const [hh, mm] = startTime.split(':').map(Number);
+    const slotDate = new Date(selectedDate);
+    slotDate.setHours(hh, mm, 0, 0);
+    return slotDate <= new Date();
   };
 
   const handleConfirmBooking = async () => {
@@ -202,6 +221,10 @@ const PublicCourtBookingPage: React.FC = () => {
     }
     if (!guestName.trim()) {
       showError('Informe seu nome.');
+      return;
+    }
+    if (!bookingPaymentMethod) {
+      showError('Selecione a forma de pagamento.');
       return;
     }
     setBookingSubmitting(true);
@@ -216,12 +239,23 @@ const PublicCourtBookingPage: React.FC = () => {
         appointmentTime: slotToBook,
         durationMinutes: courts.find((c) => c.id === courtId)?.slot_duration_minutes ?? 60,
         observations: bookingObservations.trim() || null,
+        paymentMethod: bookingPaymentMethod,
       });
       showSuccess('Reserva registrada!');
       setBookModalOpen(false);
       setSlotToBook(null);
       await refreshSlots();
-      navigate(`/agendamento-confirmado/${newId}`);
+      const selectedCourtName = courts.find((c) => c.id === courtId)?.name || '';
+      const params = new URLSearchParams({
+        flow: 'court',
+        companyName: companyName || '',
+        courtName: selectedCourtName,
+        appointmentDate: dateStr,
+        appointmentTime: slotToBook,
+        slotPrice: String(slotPriceDisplay || 0),
+        paymentMethod: bookingPaymentMethod,
+      });
+      navigate(`/agendamento-confirmado/${newId}?${params.toString()}`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       showError(msg);
@@ -338,25 +372,33 @@ const PublicCourtBookingPage: React.FC = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {slots.map((s) => (
+                (() => {
+                  const past = isPastSlot(s.startTime);
+                  const disabled = s.occupied || past;
+                  const statusLabel = s.occupied ? 'Ocupado' : past ? 'Encerrado' : 'Livre';
+                  return (
                 <Button
                   key={s.startTime}
                   type="button"
-                  variant={s.occupied ? 'secondary' : 'outline'}
-                  disabled={s.occupied}
+                  variant={disabled ? 'secondary' : 'outline'}
+                  disabled={disabled}
                   className={
-                    s.occupied
+                    disabled
                       ? 'opacity-50 cursor-not-allowed'
                       : 'border-amber-400 hover:bg-amber-50 text-gray-900'
                   }
-                  onClick={() => !s.occupied && openBookModal(s.startTime)}
+                  onClick={() => !disabled && openBookModal(s.startTime)}
                 >
                   <span className="block font-medium">{s.startTime}</span>
-                  {!s.occupied && s.slotPrice > 0 ? (
+                  {!disabled && s.slotPrice > 0 ? (
                     <span className="block text-xs font-normal opacity-90">
                       R$ {s.slotPrice.toFixed(2).replace('.', ',')}
                     </span>
                   ) : null}
+                  <span className="block text-[11px] font-normal opacity-80">{statusLabel}</span>
                 </Button>
+                  );
+                })()
               ))}
             </div>
           )}
@@ -416,6 +458,23 @@ const PublicCourtBookingPage: React.FC = () => {
                 className="mt-1"
                 rows={3}
               />
+            </div>
+            <div>
+              <Label>Forma de pagamento</Label>
+              <Select value={bookingPaymentMethod} onValueChange={(v) => setBookingPaymentMethod(v as typeof bookingPaymentMethod)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="cartao_credito">Cartão de crédito</SelectItem>
+                  <SelectItem value="cartao_debito">Cartão de débito</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Selecionado: {PAYMENT_METHOD_LABELS[bookingPaymentMethod]}.
+              </p>
             </div>
           </div>
           <DialogFooter className="gap-2">
