@@ -1,7 +1,7 @@
 # Plano: agendamento em quadras / arena (reuso do motor atual)
 
 **Última atualização do documento:** 2026-04-13  
-**Status geral da implementação:** em andamento — segmento `court`, RPCs públicas, preços por faixa, feature/plano, menus arena em `menus`/`menu_plans`, índices de lista e de conflito parcial, RLS `anon` em `courts`, liberação de slot ao concluir (`20260423`) e pacote UX mobile nas telas arena; pendentes: triggers/WhatsApp, `plan_limits`, hardening cliente/pagamento e QA de rollout.
+**Status geral da implementação:** em andamento — segmento `court`, RPCs públicas, preços por faixa, feature/plano, menus arena em `menus`/`menu_plans`, índices de lista e de conflito parcial, RLS `anon` em `courts`, liberação de slot ao concluir (`20260423`), pacote UX mobile, ajuste de WhatsApp para ignorar `booking_kind = court` (`20260424`) e confirmação/pagamento público inicial para quadras (`20260425`); pendentes: `plan_limits`, fechamento final de pagamentos e QA de rollout.
 
 ---
 
@@ -37,18 +37,30 @@
 - **Menus por plano (arena):** `20260422` — registros em `menus` / `menu_plans` para planos com `court_booking`; `MainApplication` filtra `arena-*` por `canUseArenaManagement` + fallback de sidebar.
 - **Finalização libera slot + consistência de conflito:** `20260423` — `concluido` passa a não bloquear slot (UI + RPCs + índice parcial alinhado via `is_court_slot_blocking_status`).
 - **UX mobile padronizada (arena):** header reutilizável `ArenaPageHeader` + ajustes de responsividade nas telas `Quadras`, `Horários`, `Agenda`, `Reservas`, `Preços por horário`.
+- **WhatsApp x quadra (triggers/funções):** `20260424` — pipeline de mensagens ignora `booking_kind = court` em criação/finalização.
+- **Fluxo público cliente (confirmação/pagamento inicial):** `20260425` — reserva pública de quadra passa a capturar `payment_method`, confirmação exibe resumo (empresa/quadra/data/valor/pagamento) e agenda pública trata edge cases de slot passado.
 
 ### Próximas fases (prioridade sugerida para “amanhã”)
 
-1. **§6.1 — Triggers / WhatsApp** em `appointments` com `booking_kind = court`: validar ou adaptar (não iniciado de ponta a ponta).
-2. **§6.6 — Cliente:** fechar fluxo público (UX, edge cases) e **integração com confirmação/pagamento** existente.
+1. **Fase 0 Pagamentos (iniciar daqui na próxima sessão):** credenciais por empresa com segurança server-side (sem chave secreta no frontend). Criar base para checkout no ato da reserva.
+2. **§6.6 — Cliente:** fechar etapa final de pagamentos (gateway/checkout online), política de reembolso/cancelamento e mensagens finais de UX.
 3. **§5 item 4 — `plan_limits`** (ex.: máx. quadras / reservas mês), se for escopo desta entrega.
 4. **§6.7 — QA e rollout:** empresa teste `court`, regressão `service`, ordem das migrations no deploy; doc interna de flags/deploy (item 6.3 ainda aberto).
 5. **Dados / cadastro (§6.2):** seed de segmento “Esportes / Arena”; UX opcional no cadastro de empresa.
+6. **Homologação WhatsApp (§6.1):** validar em ambiente de teste que criação/finalização de `court` não gera `message_send_log` novo.
+
+### Checkpoint salvo — arquitetura da fase de pagamentos
+
+- **Modelo aprovado:** credenciais de pagamento por empresa, com operações apenas via backend (Edge Functions).
+- **Regra de segurança:** **nunca** expor `secret_key` no frontend; nada de chave em código cliente.
+- **Armazenamento:** tabela segura por empresa (ex.: `company_payment_credentials`) com segredo criptografado, status de validação e rotação.
+- **Fluxo de ativação:** proprietário cadastra credenciais -> Edge Function valida no gateway -> salva criptografado -> habilita cobrança no ato.
+- **Uso operacional:** criação de cobrança e webhook sempre no server-side; frontend só consome estado da cobrança.
+- **Nota de escopo da próxima sessão:** começar por schema + RLS + Edge Functions de `upsert/validate credentials` antes do checkout PIX/cartão.
 
 ### Lembrete operacional
 
-Aplicar no Supabase, em ordem, as migrations **`20260420` → `20260421` → `20260422` → `20260423`** se o ambiente ainda não as tiver rodado.
+Aplicar no Supabase, em ordem, as migrations **`20260420` → `20260421` → `20260422` → `20260423` → `20260424` → `20260425`** se o ambiente ainda não as tiver rodado.
 
 ---
 
@@ -115,7 +127,7 @@ Marque `[x]` conforme for concluindo no repositório / banco.
 - [x] Migration **Fase 1:** `20260412_phase1_courts_and_appointments_booking.sql` (`courts`, `booking_kind`, `court_id`, RLS autenticado).
 - [x] Políticas **RLS** leitura pública (`anon`) em `courts` quando `company_public_court_booking_allowed` — migration `20260421_court_booking_conflict_index_and_anon_courts_read.sql` (fluxo ainda usa RPCs; leitura direta na tabela fica disponível).
 - [x] Índices para conflito/lista em `appointments` (**parcial**): lista por empresa/período em `20260420_appointments_court_list_index.sql`; conflito por quadra/dia em `20260421`, ajustado em `20260423` para ignorar `cancelado` e `concluido`. **Pendente (opcional):** constraint `EXCLUDE` / `tstzrange` se quiser garantia no banco além da lógica nas RPCs.
-- [ ] Triggers existentes em `appointments` (WhatsApp, etc.): validar comportamento com `booking_kind = court`.
+- [x] Triggers / função de WhatsApp ajustados para `booking_kind = court` — migration `20260424_whatsapp_skip_court_bookings.sql` (criação/finalização de quadra não agenda mensagens). **Pendente:** homologação end-to-end em ambiente de teste.
 
 **Nota salva (ocupação vs. finalização — 2026-04-13, atualizada):** o ajuste foi implementado em `20260423_court_release_slot_on_concluded.sql`: status **`concluido`** e `cancelado` **não bloqueiam** slot na agenda/conflito (UI + RPCs + índice parcial alinhados pela função `is_court_slot_blocking_status`). Próxima revisão de negócio: decidir se outros status “encerrados” também devem ser não-bloqueantes.
 
