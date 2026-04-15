@@ -6,8 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
-import { Loader2, Copy, Image as ImageIcon, Edit, Trash2 } from "lucide-react";
+import { Loader2, Copy, Image as ImageIcon, Edit, Trash2, CreditCard } from "lucide-react";
 import { toast } from 'sonner';
+import { useSession } from '@/components/SessionContextProvider';
+import { useIsProprietario } from '@/hooks/useIsProprietario';
+import { useIsCompanyAdmin } from '@/hooks/useIsCompanyAdmin';
+import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { BannerFormModal } from '@/components/BannerFormModal';
 import { getBannerByCompanyId, deleteBanner, type Banner } from '@/services/bannerService';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,9 +28,44 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+type MpCredentialRow = {
+  provider: string;
+  is_active: boolean;
+  last_validated_at: string | null;
+  validation_error: string | null;
+  provider_account_id: string | null;
+  updated_at: string | null;
+};
+
+function parseEdgeInvokeError(response: { error?: { message?: string; context?: { data?: unknown } }; data?: unknown }): string {
+  if (response.error) {
+    const ctx = response.error.context?.data;
+    if (typeof ctx === 'string') {
+      try {
+        const parsed = JSON.parse(ctx) as { error?: string };
+        return parsed.error || response.error.message || 'Erro na Edge Function.';
+      } catch {
+        return ctx || response.error.message || 'Erro na Edge Function.';
+      }
+    }
+    if (ctx && typeof ctx === 'object' && ctx !== null && 'error' in ctx) {
+      return String((ctx as { error?: string }).error || response.error.message || 'Erro na Edge Function.');
+    }
+    return response.error.message || 'Erro na Edge Function.';
+  }
+  if (response.data && typeof response.data === 'object' && response.data !== null && 'error' in response.data) {
+    return String((response.data as { error?: string }).error || 'Erro na Edge Function.');
+  }
+  return 'Erro na Edge Function.';
+}
+
 const ConfigPage: React.FC = () => {
+  const { session } = useSession();
+  const { isProprietario, loadingProprietarioCheck } = useIsProprietario();
+  const { isCompanyAdmin, loadingCompanyAdminCheck } = useIsCompanyAdmin();
   const { settings, loading, isSaving, updateSettings } = useCompanySettings();
   const { primaryCompanyId } = usePrimaryCompany();
+  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
   const [requireClientRegistration, setRequireClientRegistration] = useState(false);
   const [guestAppointmentLink, setGuestAppointmentLink] = useState("");
   
@@ -36,6 +75,85 @@ const ConfigPage: React.FC = () => {
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
   const [companyName, setCompanyName] = useState<string>('');
   const [bannerToDelete, setBannerToDelete] = useState<string | null>(null);
+
+  const canManageCompanyPayments =
+    !loadingProprietarioCheck && !loadingCompanyAdminCheck && (isProprietario || isCompanyAdmin);
+
+  const [mpAccessToken, setMpAccessToken] = useState('');
+  const [mpRows, setMpRows] = useState<MpCredentialRow[]>([]);
+  const [mpLoadingStatus, setMpLoadingStatus] = useState(false);
+  const [mpSaving, setMpSaving] = useState(false);
+
+  const fetchPaymentCredentialsStatus = useCallback(async () => {
+    if (!primaryCompanyId || !session?.access_token) return;
+    setMpLoadingStatus(true);
+    try {
+      const response = await supabase.functions.invoke('upsert-company-payment-credentials', {
+        body: JSON.stringify({
+          action: 'status',
+          company_id: primaryCompanyId,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      if (response.error || (response.data && typeof response.data === 'object' && 'error' in response.data)) {
+        throw new Error(parseEdgeInvokeError(response));
+      }
+      const payload = response.data as { data?: MpCredentialRow[] };
+      setMpRows(Array.isArray(payload?.data) ? payload.data : []);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro ao carregar status de pagamentos.';
+      showError(msg);
+    } finally {
+      setMpLoadingStatus(false);
+    }
+  }, [primaryCompanyId, session?.access_token]);
+
+  useEffect(() => {
+    if (canManageCompanyPayments && primaryCompanyId && session?.access_token) {
+      fetchPaymentCredentialsStatus();
+    }
+  }, [canManageCompanyPayments, primaryCompanyId, session?.access_token, fetchPaymentCredentialsStatus]);
+
+  const handleSaveMercadoPagoToken = async () => {
+    if (!primaryCompanyId || !session?.access_token) {
+      showError('Sessão ou empresa não disponível.');
+      return;
+    }
+    const trimmed = mpAccessToken.trim();
+    if (!trimmed) {
+      showError('Informe o access token do Mercado Pago.');
+      return;
+    }
+    setMpSaving(true);
+    try {
+      const response = await supabase.functions.invoke('upsert-company-payment-credentials', {
+        body: JSON.stringify({
+          action: 'upsert',
+          company_id: primaryCompanyId,
+          provider: 'mercadopago',
+          credentials: { access_token: trimmed },
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      if (response.error || (response.data && typeof response.data === 'object' && 'error' in response.data)) {
+        throw new Error(parseEdgeInvokeError(response));
+      }
+      showSuccess('Credenciais validadas e salvas com segurança no servidor.');
+      setMpAccessToken('');
+      await fetchPaymentCredentialsStatus();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro ao salvar credenciais.';
+      showError(msg);
+    } finally {
+      setMpSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (settings) {
@@ -64,29 +182,37 @@ const ConfigPage: React.FC = () => {
   }, [primaryCompanyId]);
 
   useEffect(() => {
-    if (primaryCompanyId) {
-      const baseUrl = window.location.origin;
-      const generatedLink = `${baseUrl}/guest-appointment/${primaryCompanyId}`;
-      if (guestAppointmentLink === "" || (settings && settings.guest_appointment_link !== generatedLink)) {
-          setGuestAppointmentLink(generatedLink);
-      }
-      
-      // Buscar nome da empresa
-      supabase
-        .from('companies')
-        .select('name')
-        .eq('id', primaryCompanyId)
-        .single()
-        .then(({ data, error }) => {
-          if (!error && data) {
-            setCompanyName(data.name);
-          }
-        });
-      
-      // Buscar banner atual
-      fetchCurrentBanner();
+    if (!primaryCompanyId) return;
+    supabase
+      .from('companies')
+      .select('name')
+      .eq('id', primaryCompanyId)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setCompanyName(data.name);
+        }
+      });
+  }, [primaryCompanyId]);
+
+  useEffect(() => {
+    if (!primaryCompanyId || loadingSchedulingMode || isCourtMode) return;
+
+    const baseUrl = window.location.origin;
+    const generatedLink = `${baseUrl}/guest-appointment/${primaryCompanyId}`;
+    if (guestAppointmentLink === "" || (settings && settings.guest_appointment_link !== generatedLink)) {
+      setGuestAppointmentLink(generatedLink);
     }
-  }, [primaryCompanyId, settings, guestAppointmentLink, fetchCurrentBanner]);
+
+    fetchCurrentBanner();
+  }, [
+    primaryCompanyId,
+    settings,
+    guestAppointmentLink,
+    fetchCurrentBanner,
+    isCourtMode,
+    loadingSchedulingMode,
+  ]);
 
   // Função para excluir banner
   const handleDeleteBanner = async () => {
@@ -150,7 +276,7 @@ const ConfigPage: React.FC = () => {
     document.body.removeChild(textArea);
   };
 
-  if (loading) {
+  if (loading || (primaryCompanyId != null && loadingSchedulingMode)) {
     return (
       <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-yellow-600" />
@@ -159,11 +285,102 @@ const ConfigPage: React.FC = () => {
     );
   }
 
+  const pageTitle = isCourtMode ? 'Configurações — Arena' : 'Configurações da Empresa';
+  const pageSubtitle = isCourtMode
+    ? 'Pagamentos online (Mercado Pago) para recebimentos do módulo de quadras.'
+    : 'Banner, link de convidados e opções gerais da empresa.';
+
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Configurações da Empresa</h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">{pageTitle}</h1>
+        <p className="text-sm text-gray-600 mt-2">{pageSubtitle}</p>
+      </div>
 
       <div className="space-y-6">
+        {isCourtMode ? (
+          <>
+            {primaryCompanyId && canManageCompanyPayments ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Pagamentos online (Mercado Pago)
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    O token é enviado apenas para o servidor, validado no Mercado Pago e armazenado cifrado.
+                    Ele não fica salvo no navegador após salvar.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {mpLoadingStatus ? (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2 text-yellow-600" />
+                      Carregando status…
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-700 space-y-1">
+                      {mpRows.length === 0 ? (
+                        <p>Nenhuma credencial de recebimento configurada para esta empresa.</p>
+                      ) : (
+                        mpRows.map((row) => (
+                          <p key={row.provider}>
+                            <strong>{row.provider}</strong>
+                            {': '}
+                            {row.is_active ? 'ativo' : 'inativo'}
+                            {row.last_validated_at
+                              ? ` — validado em ${new Date(row.last_validated_at).toLocaleString('pt-BR')}`
+                              : ''}
+                            {row.provider_account_id ? ` — conta MP #${row.provider_account_id}` : ''}
+                          </p>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  <div className="grid w-full max-w-lg items-center gap-1.5">
+                    <Label htmlFor="mpAccessToken">Access token (OAuth vendedor)</Label>
+                    <Input
+                      id="mpAccessToken"
+                      type="password"
+                      autoComplete="off"
+                      placeholder="Cole o token uma vez para gravar no servidor"
+                      value={mpAccessToken}
+                      onChange={(e) => setMpAccessToken(e.target.value)}
+                      disabled={mpSaving}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleSaveMercadoPagoToken}
+                    disabled={mpSaving || mpLoadingStatus}
+                    variant="outline"
+                    className="border-yellow-600 text-yellow-900 hover:bg-yellow-50"
+                  >
+                    {mpSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Validar e salvar no servidor
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : primaryCompanyId ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Acesso restrito</CardTitle>
+                  <CardDescription>
+                    Somente Proprietário ou Admin da empresa pode configurar pagamentos online da arena.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Empresa não selecionada</CardTitle>
+                  <CardDescription>Selecione uma empresa para configurar os pagamentos da arena.</CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </>
+        ) : (
+          <>
         {/* Seção de Banner */}
         <Card>
           <CardHeader>
@@ -322,10 +539,12 @@ const ConfigPage: React.FC = () => {
             </Button>
           </CardContent>
         </Card>
+          </>
+        )}
       </div>
 
-      {/* Modal de Formulário de Banner */}
-      {primaryCompanyId && (
+      {/* Modal de Formulário de Banner (somente fluxo não-arena) */}
+      {primaryCompanyId && !isCourtMode && (
         <BannerFormModal
           open={isBannerModalOpen}
           onClose={() => {

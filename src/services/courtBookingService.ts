@@ -10,7 +10,7 @@ export interface CreateCourtBookingParams {
   appointmentTime: string;
   durationMinutes: number;
   observations?: string | null;
-  paymentMethod?: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | null;
+  paymentMethod?: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'mercado_pago' | null;
 }
 
 function normalizeTime(t: string): string {
@@ -120,7 +120,8 @@ export async function createCourtBookingPublic(params: CreateCourtBookingParams)
     p_appointment_time: normalizeTime(params.appointmentTime),
     p_duration_minutes: params.durationMinutes,
     p_observations: params.observations ?? null,
-    p_payment_method: params.paymentMethod ?? null,
+    /** Reserva pública: servidor exige sempre Mercado Pago (migration 20260428). */
+    p_payment_method: 'mercado_pago',
   });
 
   if (error) {

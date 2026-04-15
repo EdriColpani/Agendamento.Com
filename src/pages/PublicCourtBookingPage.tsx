@@ -66,12 +66,30 @@ function formatPhoneBR(value: string) {
   return `(${ddd}) ${part1}-${part2}`;
 }
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  dinheiro: 'Dinheiro',
-  pix: 'PIX',
-  cartao_credito: 'Cartão de crédito',
-  cartao_debito: 'Cartão de débito',
-};
+function parseEdgeInvokeError(response: {
+  error?: { message?: string; context?: { data?: unknown } };
+  data?: unknown;
+}): string {
+  if (response.error) {
+    const ctx = response.error.context?.data;
+    if (typeof ctx === 'string') {
+      try {
+        const parsed = JSON.parse(ctx) as { error?: string };
+        return parsed.error || response.error.message || 'Erro na Edge Function.';
+      } catch {
+        return ctx || response.error.message || 'Erro na Edge Function.';
+      }
+    }
+    if (ctx && typeof ctx === 'object' && ctx !== null && 'error' in ctx) {
+      return String((ctx as { error?: string }).error || response.error.message || 'Erro na Edge Function.');
+    }
+    return response.error.message || 'Erro na Edge Function.';
+  }
+  if (response.data && typeof response.data === 'object' && response.data !== null && 'error' in response.data) {
+    return String((response.data as { error?: string }).error || 'Erro na Edge Function.');
+  }
+  return 'Erro na Edge Function.';
+}
 
 const PublicCourtBookingPage: React.FC = () => {
   const { companyId } = useParams<{ companyId: string }>();
@@ -91,7 +109,6 @@ const PublicCourtBookingPage: React.FC = () => {
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [bookingObservations, setBookingObservations] = useState('');
-  const [bookingPaymentMethod, setBookingPaymentMethod] = useState<'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito'>('pix');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [slotPriceDisplay, setSlotPriceDisplay] = useState(0);
   const [dayPriceBands, setDayPriceBands] = useState<CourtPriceBand[]>([]);
@@ -119,6 +136,19 @@ const PublicCourtBookingPage: React.FC = () => {
         setMetaMessage(res.message || 'Reserva pública não disponível.');
         return;
       }
+
+      const { data: mpReady, error: mpReadyErr } = await supabase.rpc('company_public_court_mercadopago_ready', {
+        p_company_id: companyId,
+      });
+      if (mpReadyErr || mpReady !== true) {
+        setCourts([]);
+        setMetaMessage(
+          mpReadyErr?.message ||
+            'Reserva pelo link exige pagamento online (Mercado Pago). Esta empresa ainda não está configurada para receber por aqui — fale com a arena.',
+        );
+        return;
+      }
+
       setCourts(res.courts);
       setCourtId((prev) => {
         if (prev && res.courts.some((r) => r.id === prev)) return prev;
@@ -200,7 +230,6 @@ const PublicCourtBookingPage: React.FC = () => {
     setGuestName('');
     setGuestPhone('');
     setBookingObservations('');
-    setBookingPaymentMethod('pix');
     setBookModalOpen(true);
   };
 
@@ -223,8 +252,8 @@ const PublicCourtBookingPage: React.FC = () => {
       showError('Informe seu nome.');
       return;
     }
-    if (!bookingPaymentMethod) {
-      showError('Selecione a forma de pagamento.');
+    if (slotPriceDisplay < 0.5) {
+      showError('Este horário não atinge o valor mínimo (R$ 0,50) para pagamento online.');
       return;
     }
     setBookingSubmitting(true);
@@ -239,23 +268,22 @@ const PublicCourtBookingPage: React.FC = () => {
         appointmentTime: slotToBook,
         durationMinutes: courts.find((c) => c.id === courtId)?.slot_duration_minutes ?? 60,
         observations: bookingObservations.trim() || null,
-        paymentMethod: bookingPaymentMethod,
       });
-      showSuccess('Reserva registrada!');
+
+      const checkoutRes = await supabase.functions.invoke('create-court-booking-checkout', {
+        body: JSON.stringify({ appointment_id: newId }),
+      });
+      if (checkoutRes.error || (checkoutRes.data && typeof checkoutRes.data === 'object' && 'error' in checkoutRes.data)) {
+        throw new Error(parseEdgeInvokeError(checkoutRes));
+      }
+      const payload = checkoutRes.data as { init_point?: string };
+      if (!payload?.init_point) {
+        throw new Error('Não foi possível abrir o checkout do Mercado Pago.');
+      }
       setBookModalOpen(false);
       setSlotToBook(null);
       await refreshSlots();
-      const selectedCourtName = courts.find((c) => c.id === courtId)?.name || '';
-      const params = new URLSearchParams({
-        flow: 'court',
-        companyName: companyName || '',
-        courtName: selectedCourtName,
-        appointmentDate: dateStr,
-        appointmentTime: slotToBook,
-        slotPrice: String(slotPriceDisplay || 0),
-        paymentMethod: bookingPaymentMethod,
-      });
-      navigate(`/agendamento-confirmado/${newId}?${params.toString()}`);
+      window.location.href = payload.init_point;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       showError(msg);
@@ -319,6 +347,12 @@ const PublicCourtBookingPage: React.FC = () => {
         <p className="text-center text-sm text-gray-500 mb-6">Empresa {companyId.slice(0, 8)}…</p>
       )}
 
+      <p className="text-sm text-center text-gray-700 mb-6 max-w-xl mx-auto bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        Pelo link público a reserva é <strong>só com pagamento online</strong> (Mercado Pago: PIX, cartão e outros meios
+        oferecidos pelo checkout). A vaga fica pendente até o pagamento ser aprovado; o valor mínimo é{' '}
+        <strong>R$ 0,50</strong>.
+      </p>
+
       <Card className="mb-6">
         <CardContent className="p-4 space-y-4">
           <div>
@@ -374,8 +408,15 @@ const PublicCourtBookingPage: React.FC = () => {
               {slots.map((s) => (
                 (() => {
                   const past = isPastSlot(s.startTime);
-                  const disabled = s.occupied || past;
-                  const statusLabel = s.occupied ? 'Ocupado' : past ? 'Encerrado' : 'Livre';
+                  const belowMin = !s.occupied && !past && s.slotPrice < 0.5;
+                  const disabled = s.occupied || past || belowMin;
+                  const statusLabel = s.occupied
+                    ? 'Ocupado'
+                    : past
+                      ? 'Encerrado'
+                      : belowMin
+                        ? 'Mín. R$ 0,50'
+                        : 'Livre';
                   return (
                 <Button
                   key={s.startTime}
@@ -459,23 +500,11 @@ const PublicCourtBookingPage: React.FC = () => {
                 rows={3}
               />
             </div>
-            <div>
-              <Label>Forma de pagamento</Label>
-              <Select value={bookingPaymentMethod} onValueChange={(v) => setBookingPaymentMethod(v as typeof bookingPaymentMethod)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="cartao_credito">Cartão de crédito</SelectItem>
-                  <SelectItem value="cartao_debito">Cartão de débito</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Selecionado: {PAYMENT_METHOD_LABELS[bookingPaymentMethod]}.
-              </p>
-            </div>
+            <p className="text-sm text-gray-600 rounded-md border bg-muted/40 px-3 py-2">
+              Ao confirmar, abriremos o <strong>checkout do Mercado Pago</strong>. Lá você pode pagar com as opções
+              disponíveis na sua conta (ex.: PIX ou cartão). A reserva só é confirmada no sistema após a aprovação do
+              pagamento.
+            </p>
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => setBookModalOpen(false)}>
@@ -487,7 +516,7 @@ const PublicCourtBookingPage: React.FC = () => {
               disabled={bookingSubmitting}
               onClick={handleConfirmBooking}
             >
-              {bookingSubmitting ? 'Enviando…' : 'Confirmar'}
+              {bookingSubmitting ? 'Abrindo pagamento…' : 'Confirmar e pagar'}
             </Button>
           </DialogFooter>
         </DialogContent>

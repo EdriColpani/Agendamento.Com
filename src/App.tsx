@@ -58,6 +58,7 @@ import UnifiedRegistrationPage from "./pages/UnifiedRegistrationPage"; // Import
 import EmailConfirmationPendingPage from "./pages/EmailConfirmationPendingPage"; // Importar página de aviso de confirmação de email
 import AreaDeAtuacaoPage from "./pages/AreaDeAtuacaoPage"; // Importar nova página
 import PaymentAttemptsPage from "./pages/PaymentAttemptsPage"; // Importar nova página
+import CourtBookingTimeoutHealthPage from "./pages/CourtBookingTimeoutHealthPage";
 import ConfigPage from "./pages/ConfigPage"; // Importar nova página de configurações
 import GuestAppointmentPage from "./pages/GuestAppointmentPage"; // Importar nova página de agendamento para convidados
 import GuestAppointmentConfirmationPage from "./pages/GuestAppointmentConfirmationPage";
@@ -230,6 +231,7 @@ const App = () => (
             <Route path="/admin-dashboard/coupon-usage-report" element={<GlobalAdminProtectedRoute><CouponUsageReportPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Relatório de Tentativas de Pagamento */}
             <Route path="/admin-dashboard/payment-attempts" element={<GlobalAdminProtectedRoute><PaymentAttemptsPage /></GlobalAdminProtectedRoute>} />
+            <Route path="/admin-dashboard/court-booking-timeout-health" element={<GlobalAdminProtectedRoute><CourtBookingTimeoutHealthPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gerenciamento de Banners Globais */}
             <Route path="/admin-dashboard/global-banners" element={<GlobalAdminProtectedRoute><BannerManagementPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gerenciamento de Provedores WhatsApp */}
