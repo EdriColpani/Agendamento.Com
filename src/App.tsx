@@ -59,6 +59,7 @@ import EmailConfirmationPendingPage from "./pages/EmailConfirmationPendingPage";
 import AreaDeAtuacaoPage from "./pages/AreaDeAtuacaoPage"; // Importar nova página
 import PaymentAttemptsPage from "./pages/PaymentAttemptsPage"; // Importar nova página
 import CourtBookingTimeoutHealthPage from "./pages/CourtBookingTimeoutHealthPage";
+import CourtBookingRefundHealthPage from "./pages/CourtBookingRefundHealthPage";
 import ConfigPage from "./pages/ConfigPage"; // Importar nova página de configurações
 import GuestAppointmentPage from "./pages/GuestAppointmentPage"; // Importar nova página de agendamento para convidados
 import GuestAppointmentConfirmationPage from "./pages/GuestAppointmentConfirmationPage";
@@ -283,6 +284,10 @@ const App = () => (
               <Route path="estoque/new" element={<ProtectedRoute><ProductFormPage /></ProtectedRoute>} />
               <Route path="estoque/edit/:productId" element={<ProtectedRoute><ProductFormPage /></ProtectedRoute>} />
               <Route path="relatorios" element={<ProtectedRoute><RelatoriosPage /></ProtectedRoute>} />
+              <Route
+                path="relatorios/arena-cancelamentos-estornos"
+                element={<ProtectedRoute><CourtBookingRefundHealthPage /></ProtectedRoute>}
+              />
               <Route path="fidelidade" element={<ProtectedRoute><FidelidadePage /></ProtectedRoute>} />
               <Route path="planos" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
               <Route path="config" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} /> {/* NOVA ROTA DE CONFIGURAÇÃO */}

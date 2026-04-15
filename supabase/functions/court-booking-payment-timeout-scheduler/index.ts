@@ -176,6 +176,8 @@ serve(async (req) => {
     .update({
       status: "cancelado",
       mp_payment_status: "payment_timeout_cancelled",
+      cancellation_reason: "Timeout automático por ausência de pagamento.",
+      cancelled_at: new Date().toISOString(),
     })
     .in("id", ids)
     .eq("status", "pendente")

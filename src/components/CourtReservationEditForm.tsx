@@ -24,6 +24,7 @@ const courtEditSchema = z.object({
   clientId: z.string().min(1, 'Cliente é obrigatório.'),
   clientNickname: z.string().max(200).optional(),
   observations: z.string().max(500, 'Máximo de 500 caracteres.').optional(),
+  cancellationReason: z.string().max(250, 'Máximo de 250 caracteres.').optional(),
   status: z.enum(['pendente', 'confirmado', 'cancelado', 'concluido'], {
     errorMap: () => ({ message: 'O status é obrigatório.' }),
   }),
@@ -42,6 +43,9 @@ export interface CourtAppointmentRow {
   observations: string | null;
   status: string;
   court_id: string | null;
+  payment_method: string | null;
+  mp_payment_id: string | null;
+  mp_payment_status: string | null;
   courts: { name: string } | null;
 }
 
@@ -95,6 +99,7 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
       clientId: appointment.client_id,
       clientNickname: appointment.client_nickname || '',
       observations: appointment.observations || '',
+      cancellationReason: '',
       status: (appointment.status as CourtEditFormValues['status']) || 'pendente',
     },
   });
@@ -104,16 +109,55 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
       clientId: appointment.client_id,
       clientNickname: appointment.client_nickname || '',
       observations: appointment.observations || '',
+      cancellationReason: '',
       status: (appointment.status as CourtEditFormValues['status']) || 'pendente',
     });
   }, [appointment, reset]);
 
   const selectedClientId = watch('clientId');
   const selectedStatus = watch('status');
+  const hasMercadoPagoPayment = appointment.payment_method === 'mercado_pago' && !!appointment.mp_payment_id;
+  const hasPaidMercadoPago = hasMercadoPagoPayment && appointment.mp_payment_status === 'approved';
 
   const onSubmit = async (data: CourtEditFormValues) => {
     setSaving(true);
     try {
+      const isTransitionToCancelled = data.status === 'cancelado' && appointment.status !== 'cancelado';
+      if (isTransitionToCancelled) {
+        const functionName = hasMercadoPagoPayment
+          ? 'refund-court-booking-payment'
+          : 'cancel-court-booking-with-policy';
+        const { data: cancelData, error } = await supabase.functions.invoke(functionName, {
+          body: {
+            appointment_id: appointment.id,
+            company_id: primaryCompanyId,
+            client_id: data.clientId,
+            client_nickname: data.clientNickname?.trim() || null,
+            observations: data.observations?.trim() || null,
+            cancellation_reason: data.cancellationReason?.trim() || null,
+          },
+        });
+
+        if (error) throw error;
+        const payload = cancelData as {
+          error?: string;
+          refund_required?: boolean;
+          refund_auto?: boolean;
+          manual_required?: boolean;
+        } | null;
+        if (payload?.error) throw new Error(payload.error);
+
+        if (payload?.manual_required || payload?.refund_required) {
+          showSuccess('Reserva cancelada. Reembolso marcado para tratamento manual no financeiro.');
+        } else if (payload?.refund_auto) {
+          showSuccess('Reserva cancelada com estorno automático no Mercado Pago.');
+        } else {
+          showSuccess('Reserva cancelada com sucesso.');
+        }
+        onSuccess();
+        return;
+      }
+
       const { error } = await supabase
         .from('appointments')
         .update({
@@ -234,7 +278,31 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
                   </SelectContent>
                 </Select>
                 {errors.status && <p className="text-red-500 text-xs mt-1">{errors.status.message}</p>}
+                {selectedStatus === 'cancelado' && hasPaidMercadoPago ? (
+                  <p className="text-xs text-amber-700 mt-2">
+                    Esta reserva foi paga online. Ao cancelar, o sistema marca o reembolso como pendente para
+                    tratamento manual.
+                  </p>
+                ) : null}
               </div>
+
+              {selectedStatus === 'cancelado' ? (
+                <div>
+                  <Label htmlFor="court-cancel-reason" className="block text-sm font-medium text-gray-700 mb-2">
+                    Motivo do cancelamento
+                  </Label>
+                  <Textarea
+                    id="court-cancel-reason"
+                    maxLength={250}
+                    {...register('cancellationReason')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm h-20 resize-none"
+                    placeholder="Ex.: cliente desistiu, clima, manutenção da quadra..."
+                  />
+                  {errors.cancellationReason && (
+                    <p className="text-red-500 text-xs mt-1">{errors.cancellationReason.message}</p>
+                  )}
+                </div>
+              ) : null}
 
               <div>
                 <Label htmlFor="court-obs" className="block text-sm font-medium text-gray-700 mb-2">
