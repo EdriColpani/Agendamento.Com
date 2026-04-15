@@ -2,6 +2,59 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 import { format, addMonths, parseISO, startOfDay, isPast } from 'https://esm.sh/date-fns@3.6.0';
 
+/** Decifra credenciais MP por empresa (envelope AES-GCM v1). */
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function getCompanyPaymentMasterKey(): Uint8Array | null {
+  const raw = Deno.env.get("COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY")?.trim();
+  if (!raw) return null;
+  try {
+    const keyBytes = base64ToBytes(raw);
+    if (keyBytes.length !== 32) return null;
+    return keyBytes;
+  } catch {
+    return null;
+  }
+}
+
+async function decryptCredentialsPayload(
+  envelopeStr: string,
+  rawKey: Uint8Array,
+): Promise<Record<string, unknown> | null> {
+  let envelope: { v?: number; iv?: string; d?: string };
+  try {
+    envelope = JSON.parse(envelopeStr) as { v?: number; iv?: string; d?: string };
+  } catch {
+    return null;
+  }
+  if (envelope.v !== 1 || !envelope.iv || !envelope.d) return null;
+  const iv = base64ToBytes(envelope.iv);
+  const ct = base64ToBytes(envelope.d);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    rawKey,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"],
+  );
+  try {
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      ct,
+    );
+    const text = new TextDecoder().decode(plain);
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -211,6 +264,157 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
   }
 }
 
+const COURTBOOK_PREFIX = "courtbook:";
+
+async function tryFetchCourtPaymentWithSellerTokens(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  paymentId: string,
+): Promise<Record<string, unknown> | null> {
+  const master = getCompanyPaymentMasterKey();
+  if (!master) return null;
+
+  const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+  const { data: rows, error } = await supabaseAdmin
+    .from("appointments")
+    .select("id, company_id")
+    .eq("booking_kind", "court")
+    .eq("payment_method", "mercado_pago")
+    .eq("status", "pendente")
+    .is("mp_payment_id", null)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(45);
+
+  if (error || !rows?.length) {
+    if (error) console.error("[mercadopago-webhook] scan appointments:", error);
+    return null;
+  }
+
+  for (const row of rows) {
+    const { data: cred } = await supabaseAdmin
+      .from("company_payment_credentials")
+      .select("encrypted_payload")
+      .eq("company_id", row.company_id)
+      .eq("provider", "mercadopago")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!cred?.encrypted_payload) continue;
+
+    const plain = await decryptCredentialsPayload(cred.encrypted_payload, master);
+    const token = plain?.access_token;
+    if (typeof token !== "string" || !token.trim()) continue;
+
+    const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token.trim()}` },
+    });
+    if (!res.ok) continue;
+    try {
+      const p = await res.json() as { external_reference?: string };
+      const ext = String(p.external_reference || "");
+      if (ext === `${COURTBOOK_PREFIX}${row.id}`) return p as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function processCourtBookingPayment(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payment: Record<string, unknown>,
+  paymentId: string,
+): Promise<Response> {
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+  const externalReference = String(payment.external_reference || "");
+  if (!externalReference.startsWith(COURTBOOK_PREFIX)) {
+    return new Response(JSON.stringify({ error: "Referência de quadra inválida." }), {
+      status: 400,
+      headers: jsonHeaders,
+    });
+  }
+
+  const appointmentId = externalReference.slice(COURTBOOK_PREFIX.length).trim();
+  if (!appointmentId) {
+    return new Response(JSON.stringify({ error: "appointment id ausente." }), {
+      status: 400,
+      headers: jsonHeaders,
+    });
+  }
+
+  const { data: appt, error: apptErr } = await supabaseAdmin
+    .from("appointments")
+    .select("id, total_price, status, payment_method, booking_kind, mp_payment_id")
+    .eq("id", appointmentId)
+    .maybeSingle();
+
+  if (apptErr || !appt) {
+    console.error("[mercadopago-webhook] court appointment not found:", appointmentId, apptErr);
+    return new Response(JSON.stringify({ received: true, message: "Appointment not found for courtbook." }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  if (appt.booking_kind !== "court" || appt.payment_method !== "mercado_pago") {
+    return new Response(JSON.stringify({ received: true, message: "Not a court MP booking." }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  if (appt.status === "confirmado") {
+    return new Response(JSON.stringify({ received: true, court: true, alreadyConfirmed: true }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  const mpStatus = String(payment.status || "");
+  const txAmount = Number(
+    (payment as { transaction_amount?: unknown }).transaction_amount ??
+      (payment as { transaction_details?: { total_paid_amount?: unknown } }).transaction_details
+        ?.total_paid_amount,
+  );
+  const expected = Number(appt.total_price);
+  const amountOk = !Number.isNaN(txAmount) && !Number.isNaN(expected) && Math.abs(txAmount - expected) < 0.02;
+
+  const patch: Record<string, unknown> = {
+    mp_payment_status: mpStatus,
+  };
+
+  if (mpStatus === "approved" && amountOk) {
+    patch.status = "confirmado";
+    patch.mp_payment_id = String(paymentId);
+  } else if (mpStatus === "approved" && !amountOk) {
+    console.warn("[mercadopago-webhook] court payment amount mismatch", {
+      appointmentId,
+      txAmount,
+      expected,
+    });
+    patch.mp_payment_status = "approved_amount_mismatch";
+  }
+
+  const { error: updErr } = await supabaseAdmin.from("appointments").update(patch).eq("id", appointmentId);
+  if (updErr) {
+    console.error("[mercadopago-webhook] court appointment update:", updErr);
+    return new Response(JSON.stringify({ error: updErr.message }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      court: true,
+      appointmentId,
+      paymentStatus: mpStatus,
+    }),
+    { status: 200, headers: jsonHeaders },
+  );
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -243,7 +447,8 @@ serve(async (req) => {
 
     const paymentId = data.id;
 
-    // 1. Fetch Payment Details from Mercado Pago directly via API
+    let payment: Record<string, unknown> | null = null;
+
     const mpPaymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       method: 'GET',
       headers: {
@@ -251,22 +456,35 @@ serve(async (req) => {
       },
     });
 
-    if (!mpPaymentResponse.ok) {
-      const errorData = await mpPaymentResponse.json();
-      console.error('Mercado Pago Payment API Error:', mpPaymentResponse.status, errorData);
-      throw new Error(`Mercado Pago Payment API error: ${errorData.message || mpPaymentResponse.statusText}`);
+    if (mpPaymentResponse.ok) {
+      payment = await mpPaymentResponse.json() as Record<string, unknown>;
+    } else {
+      const errBody = await mpPaymentResponse.text().catch(() => '');
+      console.warn('[mercadopago-webhook] platform GET payment failed, trying court seller tokens', mpPaymentResponse.status, errBody.slice(0, 300));
+      payment = await tryFetchCourtPaymentWithSellerTokens(supabaseAdmin, String(paymentId));
     }
 
-    const payment = await mpPaymentResponse.json();
+    if (!payment) {
+      // Mesmo comportamento esperado de antes: falha ao obter o pagamento → erro HTTP para o MP reenviar.
+      // (Só chegamos aqui se o GET com PAYMENT_API_KEY_SECRET falhou E o scan com token da arena não resolveu.)
+      throw new Error(
+        `Não foi possível obter o pagamento ${paymentId} na API do Mercado Pago (assinatura ou arena).`,
+      );
+    }
 
     console.log('Payment Status:', payment.status);
     console.log('External Reference:', payment.external_reference);
 
-    // 2. Extract Metadata (companyId, planId, finalDurationMonths, couponId, paymentAttemptId)
-    const externalReference = payment.external_reference;
+    const externalReference = String(payment.external_reference || '');
+
+    if (externalReference.startsWith(COURTBOOK_PREFIX)) {
+      return await processCourtBookingPayment(supabaseAdmin, payment, String(paymentId));
+    }
+
+    // Assinaturas TipoAgenda (external_reference com underscores)
     if (!externalReference) {
         console.error('Missing external_reference in payment data.');
-        return new Response(JSON.stringify({ error: 'Missing external reference' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'Missing external reference' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
     const parts = externalReference.split('_');
@@ -299,7 +517,7 @@ serve(async (req) => {
 
     const { error: paUpdateError } = await supabaseAdmin
         .from('payment_attempts')
-        .update({ status: newPaymentAttemptStatus, payment_gateway_reference: payment.id }) // Update with actual payment ID
+        .update({ status: newPaymentAttemptStatus, payment_gateway_reference: String(paymentId) }) // ID do pagamento no MP
         .eq('id', paymentAttemptId);
 
     if (paUpdateError) {

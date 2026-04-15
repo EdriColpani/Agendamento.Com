@@ -1,13 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { markExplicitLogout } from '@/utils/auth-state';
-import { Users, Building, DollarSign, FileText, Tags, LogOut, Key, MailCheck, Tag, BarChart, Zap, CreditCard, Image as ImageIcon, MessageSquare, UserCog, Menu, Database } from 'lucide-react'; // Importando CreditCard, ImageIcon, MessageSquare, UserCog, Menu e Database
+import { Users, Building, DollarSign, FileText, Tags, LogOut, Key, MailCheck, Tag, BarChart, Zap, CreditCard, Image as ImageIcon, MessageSquare, UserCog, Menu, Database, AlertTriangle } from 'lucide-react'; // Importando ícones do dashboard
 import RecentAuditLogs from '@/components/RecentAuditLogs';
 
 // Componente auxiliar para padronizar os cards de gerenciamento
@@ -39,7 +39,6 @@ const ManagementCard: React.FC<ManagementCardProps> = ({ title, description, ico
     </CardContent>
   </Card>
 );
-
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -251,6 +250,15 @@ const AdminDashboard: React.FC = () => {
             buttonText="Gerenciar Perfis"
             buttonColor="bg-blue-600 hover:bg-blue-700"
             onClick={() => navigate('/admin-dashboard/role-types')}
+          />
+
+          <ManagementCard
+            title="Saúde Arena — Timeout de Pagamento"
+            description="Acompanhe execuções do timeout automático de reservas públicas e veja erros/cancelamentos."
+            icon={<AlertTriangle className="h-6 w-6 text-amber-600" />}
+            buttonText="Abrir Saúde Arena"
+            buttonColor="bg-amber-600 hover:bg-amber-700"
+            onClick={() => navigate('/admin-dashboard/court-booking-timeout-health')}
           />
 
         </div>

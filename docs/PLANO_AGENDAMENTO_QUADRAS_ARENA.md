@@ -1,7 +1,7 @@
 # Plano: agendamento em quadras / arena (reuso do motor atual)
 
-**Última atualização do documento:** 2026-04-13  
-**Status geral da implementação:** em andamento — segmento `court`, RPCs públicas, preços por faixa, feature/plano, menus arena em `menus`/`menu_plans`, índices de lista e de conflito parcial, RLS `anon` em `courts`, liberação de slot ao concluir (`20260423`), pacote UX mobile, ajuste de WhatsApp para ignorar `booking_kind = court` (`20260424`) e confirmação/pagamento público inicial para quadras (`20260425`); pendentes: `plan_limits`, fechamento final de pagamentos e QA de rollout.
+**Última atualização do documento:** 2026-04-15  
+**Status geral da implementação:** em andamento — além do já listado até `20260425`, segue **Fase pagamentos arena**: credenciais MP por empresa (`20260426` + Edge `upsert-company-payment-credentials`), checkout no ato da reserva (`20260427` + Edge `create-court-booking-checkout`), extensão da Edge **`mercadopago-webhook`** para `courtbook:` (reserva pública), UI de credenciais só em **Config — modo arena** (`ConfigPage`), reserva pública **obrigatoriamente** via Mercado Pago (`20260428` + RPC `company_public_court_mercadopago_ready`), **retry checkout no cliente**, **cancelamento automático por timeout** com scheduler (`20260429`), **log operacional de execuções de timeout** (`20260430`) e card no **Admin Dashboard** via Edge `get-court-booking-timeout-runs` com filtro **24h / 7 dias** e alerta visual de erro. **Pendentes:** `plan_limits`, reembolso, QA rollout e homologação WhatsApp.
 
 ---
 
@@ -15,8 +15,8 @@
 | Dashboard proprietário (arena) | **Parcial:** `useCompanySchedulingMode`, painel arena em `/dashboard`, selo no header (`MainApplication`) |
 | Horários + grade (Fase 2) | **Parcial:** migration `20260413_court_working_hours.sql`, `/quadras/horarios`, `/quadras/agenda`, utilitário `courtSlots.ts` |
 | Preço por faixa de horário | **Feito:** migration `20260418_court_slot_price_bands.sql`, tela `/quadras/precos`, cálculo em RPCs `create_court_booking*` e `get_court_public_day_view` |
-| Fluxo cliente (nova tela) | **Parcial:** rota pública `/reservar-quadra/:companyId` (grade + reserva + preço por faixa) |
-| Edge functions / RLS | **Parcial:** RPCs públicas + `company_public_court_booking_allowed` (`20260417`–`20260419`); leitura `anon` em `courts` quando reserva pública permitida (`20260421`); edge functions genéricas não revisadas item a item |
+| Fluxo cliente (nova tela) | **Avançado:** rota `/reservar-quadra/:companyId` com **pagamento online obrigatório** (MP Checkout); sem credencial MP ativa a grade não abre |
+| Edge functions / RLS | **Parcial:** RPCs públicas + `company_public_court_booking_allowed`; **pagamentos:** `upsert-company-payment-credentials`, `create-court-booking-checkout`, `mercadopago-webhook` (assinatura + arena); credenciais em tabela com RLS sem política JWT |
 
 **Como pedir atualização:** solicite *“atualize o plano de quadras”* ou *“onde paramos no plano de quadras”* — a resposta deve citar este arquivo e a tabela acima, além de checklist com itens marcados quando houver progresso real.
 
@@ -24,7 +24,7 @@
 
 ## Checkpoint para retomada (salvo)
 
-**Data deste checkpoint:** 2026-04-13 — use esta seção na próxima sessão como ponto de partida (“onde paramos” + o que vem na sequência).
+**Data deste checkpoint:** 2026-04-14 — retomar por aqui (“onde paramos” + o que falta).
 
 ### Fases já avançadas (não recomeçar daqui)
 
@@ -39,28 +39,33 @@
 - **UX mobile padronizada (arena):** header reutilizável `ArenaPageHeader` + ajustes de responsividade nas telas `Quadras`, `Horários`, `Agenda`, `Reservas`, `Preços por horário`.
 - **WhatsApp x quadra (triggers/funções):** `20260424` — pipeline de mensagens ignora `booking_kind = court` em criação/finalização.
 - **Fluxo público cliente (confirmação/pagamento inicial):** `20260425` — reserva pública de quadra passa a capturar `payment_method`, confirmação exibe resumo (empresa/quadra/data/valor/pagamento) e agenda pública trata edge cases de slot passado.
+- **Fase pagamentos — credenciais (Fase 0):** migration `20260426_company_payment_credentials.sql`; Edge `upsert-company-payment-credentials` (status + upsert cifrado); secret `COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY`; `ConfigPage` só em **modo arena** para colar access token MP.
+- **Fase pagamentos — checkout + webhook:** `20260427_court_mercado_pago_checkout.sql` (colunas `mp_*` em `appointments`, `mercado_pago` em `payment_method`); Edge `create-court-booking-checkout` (preferência MP, `external_reference` `courtbook:{appointment_id}`); **`mercadopago-webhook`** estendida (ramo `courtbook:` + fallback token vendedor; assinaturas mantidas no fluxo com `external_reference` por underscore).
+- **Regra produto link público:** `20260428_public_court_mercadopago_required.sql` — RPC `company_public_court_mercadopago_ready`; **`create_court_booking_public` obriga `mercado_pago`**, credencial ativa e valor ≥ R$ 0,50; front `PublicCourtBookingPage` sem dropdown “dinheiro/pix local”; só checkout MP.
 
-### Próximas fases (prioridade sugerida para “amanhã”)
+### Próximas fases (checkpoint salvo para hoje à tarde)
 
-1. **Fase 0 Pagamentos (iniciar daqui na próxima sessão):** credenciais por empresa com segurança server-side (sem chave secreta no frontend). Criar base para checkout no ato da reserva.
-2. **§6.6 — Cliente:** fechar etapa final de pagamentos (gateway/checkout online), política de reembolso/cancelamento e mensagens finais de UX.
-3. **§5 item 4 — `plan_limits`** (ex.: máx. quadras / reservas mês), se for escopo desta entrega.
-4. **§6.7 — QA e rollout:** empresa teste `court`, regressão `service`, ordem das migrations no deploy; doc interna de flags/deploy (item 6.3 ainda aberto).
-5. **Dados / cadastro (§6.2):** seed de segmento “Esportes / Arena”; UX opcional no cadastro de empresa.
-6. **Homologação WhatsApp (§6.1):** validar em ambiente de teste que criação/finalização de `court` não gera `message_send_log` novo.
+1. **QA obrigatório:** retestar assinatura/planos (`mercadopago-webhook` legado) + reserva pública completa (sandbox/prod), incluindo falha + retry + timeout; checar logs das Edges.
+2. **§6.6 — Cliente / operação (iniciar à tarde):** implementar política de cancelamento/reembolso e mensagens finais de UX.
+3. **Hardening operacional:** alerta/rotina de suporte quando houver erro recorrente em `court-booking-payment-timeout-scheduler`.
+4. **§5 item 4 — `plan_limits`** (ex.: máx. quadras / reservas mês), se couber nesta entrega.
+4. **§6.7 — Rollout:** ordem completa de migrations no deploy incluindo **`20260426` → `20260427` → `20260428` → `20260429` → `20260430`**; empresa teste `court` + regressão `service`.
+5. **§6.2 — Dados:** seed segmento arena; opcional flag “permitir reserva pública sem MP” se produto voltar atrás na regra obrigatória.
+6. **§6.1 — Homologação WhatsApp** end-to-end em teste.
 
-### Checkpoint salvo — arquitetura da fase de pagamentos
+### Checkpoint salvo — arquitetura da fase de pagamentos (implementado)
 
-- **Modelo aprovado:** credenciais de pagamento por empresa, com operações apenas via backend (Edge Functions).
-- **Regra de segurança:** **nunca** expor `secret_key` no frontend; nada de chave em código cliente.
-- **Armazenamento:** tabela segura por empresa (ex.: `company_payment_credentials`) com segredo criptografado, status de validação e rotação.
-- **Fluxo de ativação:** proprietário cadastra credenciais -> Edge Function valida no gateway -> salva criptografado -> habilita cobrança no ato.
-- **Uso operacional:** criação de cobrança e webhook sempre no server-side; frontend só consome estado da cobrança.
-- **Nota de escopo da próxima sessão:** começar por schema + RLS + Edge Functions de `upsert/validate credentials` antes do checkout PIX/cartão.
+- **Credenciais:** `company_payment_credentials` + RLS sem política para JWT; cifrado AES-GCM com chave mestra `COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY` nas Edges.
+- **Checkout:** `create-court-booking-checkout` usa access token da empresa; colunas `mp_preference_id` / `mp_payment_status` na reserva.
+- **Webhook único:** `mercadopago-webhook` — `courtbook:` vs assinatura por formato de `external_reference`.
+- **Link público:** sem credencial MP ativa a página não oferece grade; com credencial, fluxo só redireciona ao MP após criar agendamento `pendente`.
+- **Admin Global:** monitoramento movido para rota dedicada `/admin-dashboard/court-booking-timeout-health`, mantendo `AdminDashboard` no padrão visual por cards.
 
-### Lembrete operacional
+### Lembrete operacional (migrations — ordem sugerida)
 
-Aplicar no Supabase, em ordem, as migrations **`20260420` → `20260421` → `20260422` → `20260423` → `20260424` → `20260425`** se o ambiente ainda não as tiver rodado.
+Incluir na sequência já existente: **`20260426` → `20260427` → `20260428` → `20260429` → `20260430`** (além de `20260420` … `20260425` se ainda não aplicadas).
+
+**Edge Functions a manter deployadas:** `upsert-company-payment-credentials`, `create-court-booking-checkout`, `mercadopago-webhook`, `court-booking-payment-timeout-scheduler`, `get-court-booking-timeout-runs` (código com helpers de decifragem **inlinados** em `index.ts` — sem `../_shared/`).
 
 ---
 
@@ -149,6 +154,7 @@ Marque `[x]` conforme for concluindo no repositório / banco.
 
 - [x] RPCs de reserva por quadra (`create_court_booking`, `create_court_booking_public`) com validação de conflito e **total_price** por soma de slots (`compute_court_booking_total_price`).
 - [x] Preço por horário: tabela `court_slot_price_bands` + fallback `courts.default_slot_price` (iluminação / extras: futuro).
+- [x] Pagamentos arena: `company_public_court_mercadopago_ready`; `create_court_booking_public` obrigatório MP (`20260428`); Edges `upsert-company-payment-credentials`, `create-court-booking-checkout`, extensão `mercadopago-webhook`; timeout automático com `court-booking-payment-timeout-scheduler` + cron (`20260429`); monitoramento de execução em `court_booking_payment_timeout_runs` (`20260430`); migrations `20260426`–`20260430`.
 
 ### 6.5 Frontend proprietário
 
@@ -160,11 +166,15 @@ Marque `[x]` conforme for concluindo no repositório / banco.
 - [x] Calendário de ocupação (grade do dia em `/quadras/agenda`, leitura + livre/ocupado + **dica de valor** alinhada às faixas).
 - [x] Cadastro de **faixas de preço** (`/quadras/precos`).
 - [x] Lista de reservas por quadra (`/quadras/reservas`, filtros + link para edição); criar reserva a partir do slot continua em `/quadras/agenda`.
+- [x] `ConfigPage`: bloco Mercado Pago só em **modo arena** (`useCompanySchedulingMode`); demais empresas só banner + configurações gerais.
 
 ### 6.6 Frontend cliente
 
-- [ ] Nova rota: disponibilidade por quadra.
-- [ ] Integração com fluxo de confirmação e pagamento existente.
+- [x] Rota pública `/reservar-quadra/:companyId` — grade, preço, reserva com **checkout Mercado Pago obrigatório** (`PublicCourtBookingPage` + `20260428`).
+- [x] Confirmação pós-retorno MP (`GuestAppointmentConfirmationPage` com query `mp=1|0` + `paymentMethod=mercado_pago` nas `back_urls`).
+- [x] Retry de checkout na confirmação pública quando retorno do MP falha (`mp=0`) — botão “Tentar pagar novamente”.
+- [ ] Melhorias: mensagens refinadas de erro para sem MP/timeout e disponibilidade “por quadra” como rota dedicada (se produto pedir).
+- [ ] Política cancelamento/reembolso e UX final (pós-pagamento / abandono de carrinho).
 
 ### 6.7 Testes e rollout
 
