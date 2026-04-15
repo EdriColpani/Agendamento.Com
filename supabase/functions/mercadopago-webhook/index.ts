@@ -363,14 +363,15 @@ async function processCourtBookingPayment(
     });
   }
 
-  if (appt.status === "confirmado") {
+  const mpStatus = String(payment.status || "");
+  const isRefundedStatus = mpStatus === "refunded" || mpStatus === "charged_back" || mpStatus === "chargeback";
+  if (appt.status === "confirmado" && !isRefundedStatus) {
     return new Response(JSON.stringify({ received: true, court: true, alreadyConfirmed: true }), {
       status: 200,
       headers: jsonHeaders,
     });
   }
 
-  const mpStatus = String(payment.status || "");
   const txAmount = Number(
     (payment as { transaction_amount?: unknown }).transaction_amount ??
       (payment as { transaction_details?: { total_paid_amount?: unknown } }).transaction_details
@@ -383,7 +384,14 @@ async function processCourtBookingPayment(
     mp_payment_status: mpStatus,
   };
 
-  if (mpStatus === "approved" && amountOk) {
+  if (isRefundedStatus) {
+    patch.mp_payment_status = "refund_approved";
+    if (appt.status !== "concluido") {
+      patch.status = "cancelado";
+      patch.cancelled_at = new Date().toISOString();
+      patch.cancellation_reason = "Estorno confirmado pelo Mercado Pago (webhook).";
+    }
+  } else if (mpStatus === "approved" && amountOk) {
     patch.status = "confirmado";
     patch.mp_payment_id = String(paymentId);
   } else if (mpStatus === "approved" && !amountOk) {

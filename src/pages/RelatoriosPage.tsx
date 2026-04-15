@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSession } from '@/components/SessionContextProvider';
 import { useIsCollaborator } from '@/hooks/useIsCollaborator';
 import { ServiceCommissionDetailModal } from '@/components/ServiceCommissionDetailModal'; // Importação do modal
+import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 
 // Helper component for KPI cards
 interface KpiCardProps {
@@ -53,6 +54,7 @@ const RelatoriosPage: React.FC = () => {
   const { session, loading: sessionLoading } = useSession();
   const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
   const { isCollaborator } = useIsCollaborator();
+  const { canUseArenaManagement, loading: loadingArenaModule } = useCourtBookingModule(primaryCompanyId);
   const [dateRangeKey, setDateRangeKey] = useState<DateRangeKey>('current_month');
   const { reportsData, loading, collaborators } = useReportsData(dateRangeKey);
 
@@ -63,7 +65,7 @@ const RelatoriosPage: React.FC = () => {
   const [selectedServiceCommissionsForModal, setSelectedServiceCommissionsForModal] = useState<any[]>([]);
 
 
-  if (sessionLoading || loadingPrimaryCompany || loading) {
+  if (sessionLoading || loadingPrimaryCompany || loading || loadingArenaModule) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-700">Carregando relatórios...</p>
@@ -174,6 +176,25 @@ const RelatoriosPage: React.FC = () => {
           />
         ))}
       </div>
+
+      {canUseArenaManagement ? (
+        <Card className="border-indigo-200 bg-indigo-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-gray-900 text-lg">Arena — Cancelamentos e Estornos</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-700">
+              Relatório operacional com quantidade de cancelamentos, motivos e status de estorno da arena.
+            </p>
+            <Button
+              className="!rounded-button whitespace-nowrap bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => navigate('/relatorios/arena-cancelamentos-estornos')}
+            >
+              Abrir relatório da arena
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Performance por Colaborador - Ocultar para colaboradores */}
