@@ -111,6 +111,7 @@ export async function getCourtPublicDayView(
  * Reserva pública (sem login). O cliente deve existir na empresa (ex.: findOrCreateClient).
  */
 export async function createCourtBookingPublic(params: CreateCourtBookingParams): Promise<string> {
+  const selectedPaymentMethod = params.paymentMethod ?? 'mercado_pago';
   const { data, error } = await supabase.rpc('create_court_booking_public', {
     p_company_id: params.companyId,
     p_court_id: params.courtId,
@@ -120,8 +121,7 @@ export async function createCourtBookingPublic(params: CreateCourtBookingParams)
     p_appointment_time: normalizeTime(params.appointmentTime),
     p_duration_minutes: params.durationMinutes,
     p_observations: params.observations ?? null,
-    /** Reserva pública: servidor exige sempre Mercado Pago (migration 20260428). */
-    p_payment_method: 'mercado_pago',
+    p_payment_method: selectedPaymentMethod,
   });
 
   if (error) {

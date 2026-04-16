@@ -91,6 +91,8 @@ function parseEdgeInvokeError(response: {
   return 'Erro na Edge Function.';
 }
 
+type PublicPaymentMethod = 'mercado_pago' | 'dinheiro';
+
 const PublicCourtBookingPage: React.FC = () => {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
@@ -113,6 +115,9 @@ const PublicCourtBookingPage: React.FC = () => {
   const [slotPriceDisplay, setSlotPriceDisplay] = useState(0);
   const [dayPriceBands, setDayPriceBands] = useState<CourtPriceBand[]>([]);
   const [dayDefaultPrice, setDayDefaultPrice] = useState(0);
+  const [allowOnlinePayment, setAllowOnlinePayment] = useState(false);
+  const [allowCounterPayment, setAllowCounterPayment] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PublicPaymentMethod>('mercado_pago');
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const isSelectedDateToday = useMemo(() => isSameDay(selectedDate, new Date()), [selectedDate]);
@@ -137,17 +142,48 @@ const PublicCourtBookingPage: React.FC = () => {
         return;
       }
 
-      const { data: mpReady, error: mpReadyErr } = await supabase.rpc('company_public_court_mercadopago_ready', {
+      const { data: paymentOptionsRaw, error: paymentOptionsErr } = await supabase.rpc('company_public_court_payment_options', {
         p_company_id: companyId,
       });
-      if (mpReadyErr || mpReady !== true) {
+
+      if (paymentOptionsErr) {
+        setCourts([]);
+        setMetaMessage(paymentOptionsErr.message || 'Não foi possível verificar as opções de pagamento da reserva pública.');
+        return;
+      }
+
+      const paymentOptions = paymentOptionsRaw as {
+        ok?: boolean;
+        message?: string;
+        allow_online?: boolean;
+        allow_counter?: boolean;
+      } | null;
+
+      if (!paymentOptions?.ok) {
         setCourts([]);
         setMetaMessage(
-          mpReadyErr?.message ||
-            'Reserva pelo link exige pagamento online (Mercado Pago). Esta empresa ainda não está configurada para receber por aqui — fale com a arena.',
+          paymentOptions?.message ||
+            'Reserva pública de quadras indisponível para esta empresa.',
         );
         return;
       }
+
+      const canOnline = paymentOptions.allow_online === true;
+      const canCounter = paymentOptions.allow_counter === true;
+      setAllowOnlinePayment(canOnline);
+      setAllowCounterPayment(canCounter);
+      if (!canOnline && !canCounter) {
+        setCourts([]);
+        setMetaMessage(
+          'No momento, esta arena não habilitou métodos de pagamento para reserva pública. Fale com o atendimento da arena.',
+        );
+        return;
+      }
+      setSelectedPaymentMethod((prev) => {
+        if (prev === 'dinheiro' && canCounter) return 'dinheiro';
+        if (canOnline) return 'mercado_pago';
+        return 'dinheiro';
+      });
 
       setCourts(res.courts);
       setCourtId((prev) => {
@@ -252,8 +288,16 @@ const PublicCourtBookingPage: React.FC = () => {
       showError('Informe seu nome.');
       return;
     }
-    if (slotPriceDisplay < 0.5) {
+    if (selectedPaymentMethod === 'mercado_pago' && slotPriceDisplay < 0.5) {
       showError('Este horário não atinge o valor mínimo (R$ 0,50) para pagamento online.');
+      return;
+    }
+    if (selectedPaymentMethod === 'mercado_pago' && !allowOnlinePayment) {
+      showError('Pagamento online indisponível para esta arena no momento.');
+      return;
+    }
+    if (selectedPaymentMethod === 'dinheiro' && !allowCounterPayment) {
+      showError('Pagamento no balcão não está habilitado para esta arena.');
       return;
     }
     setBookingSubmitting(true);
@@ -268,22 +312,31 @@ const PublicCourtBookingPage: React.FC = () => {
         appointmentTime: slotToBook,
         durationMinutes: courts.find((c) => c.id === courtId)?.slot_duration_minutes ?? 60,
         observations: bookingObservations.trim() || null,
+        paymentMethod: selectedPaymentMethod,
       });
 
-      const checkoutRes = await supabase.functions.invoke('create-court-booking-checkout', {
-        body: JSON.stringify({ appointment_id: newId }),
-      });
-      if (checkoutRes.error || (checkoutRes.data && typeof checkoutRes.data === 'object' && 'error' in checkoutRes.data)) {
-        throw new Error(parseEdgeInvokeError(checkoutRes));
+      if (selectedPaymentMethod === 'mercado_pago') {
+        const checkoutRes = await supabase.functions.invoke('create-court-booking-checkout', {
+          body: JSON.stringify({ appointment_id: newId }),
+        });
+        if (checkoutRes.error || (checkoutRes.data && typeof checkoutRes.data === 'object' && 'error' in checkoutRes.data)) {
+          throw new Error(parseEdgeInvokeError(checkoutRes));
+        }
+        const payload = checkoutRes.data as { init_point?: string };
+        if (!payload?.init_point) {
+          throw new Error('Não foi possível abrir o checkout do Mercado Pago.');
+        }
+        setBookModalOpen(false);
+        setSlotToBook(null);
+        await refreshSlots();
+        window.location.href = payload.init_point;
+      } else {
+        setBookModalOpen(false);
+        setSlotToBook(null);
+        await refreshSlots();
+        showSuccess('Reserva criada com sucesso! Pagamento combinado para o balcão da arena.');
+        navigate(`/agendamento-confirmado/${newId}?flow=court&mp=0&paymentMethod=dinheiro`);
       }
-      const payload = checkoutRes.data as { init_point?: string };
-      if (!payload?.init_point) {
-        throw new Error('Não foi possível abrir o checkout do Mercado Pago.');
-      }
-      setBookModalOpen(false);
-      setSlotToBook(null);
-      await refreshSlots();
-      window.location.href = payload.init_point;
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       showError(msg);
@@ -348,9 +401,9 @@ const PublicCourtBookingPage: React.FC = () => {
       )}
 
       <p className="text-sm text-center text-gray-700 mb-6 max-w-xl mx-auto bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-        Pelo link público a reserva é <strong>só com pagamento online</strong> (Mercado Pago: PIX, cartão e outros meios
-        oferecidos pelo checkout). A vaga fica pendente até o pagamento ser aprovado; o valor mínimo é{' '}
-        <strong>R$ 0,50</strong>.
+        Escolha como deseja pagar ao confirmar a reserva. <strong>Pagamento online</strong> abre o checkout Mercado Pago
+        (PIX, cartão e outras opções). <strong>Pagamento no balcão</strong> garante a reserva para acerto presencial na
+        arena.
       </p>
 
       <Card className="mb-6">
@@ -491,6 +544,30 @@ const PublicCourtBookingPage: React.FC = () => {
               />
             </div>
             <div>
+              <Label>Forma de pagamento</Label>
+              <Select
+                value={selectedPaymentMethod}
+                onValueChange={(value) => setSelectedPaymentMethod(value as PublicPaymentMethod)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowOnlinePayment ? (
+                    <SelectItem value="mercado_pago">Pagamento online (Mercado Pago)</SelectItem>
+                  ) : null}
+                  {allowCounterPayment ? (
+                    <SelectItem value="dinheiro">Pagamento no balcão</SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-600 mt-2">
+                {selectedPaymentMethod === 'mercado_pago'
+                  ? 'Pagamento online: abre checkout Mercado Pago (PIX, cartão e outras formas disponíveis na conta).'
+                  : 'Pagamento no balcão: reserva criada para pagamento presencial diretamente na arena.'}
+              </p>
+            </div>
+            <div>
               <Label htmlFor="guest-obs">Observações</Label>
               <Textarea
                 id="guest-obs"
@@ -500,11 +577,18 @@ const PublicCourtBookingPage: React.FC = () => {
                 rows={3}
               />
             </div>
-            <p className="text-sm text-gray-600 rounded-md border bg-muted/40 px-3 py-2">
-              Ao confirmar, abriremos o <strong>checkout do Mercado Pago</strong>. Lá você pode pagar com as opções
-              disponíveis na sua conta (ex.: PIX ou cartão). A reserva só é confirmada no sistema após a aprovação do
-              pagamento.
-            </p>
+            {selectedPaymentMethod === 'mercado_pago' ? (
+              <p className="text-sm text-gray-600 rounded-md border bg-muted/40 px-3 py-2">
+                Ao confirmar, abriremos o <strong>checkout do Mercado Pago</strong>. Lá você pode pagar com as opções
+                disponíveis na sua conta (ex.: PIX ou cartão). A reserva só é confirmada no sistema após a aprovação do
+                pagamento.
+              </p>
+            ) : (
+              <p className="text-sm text-gray-600 rounded-md border bg-muted/40 px-3 py-2">
+                Ao confirmar, a reserva será criada com <strong>pagamento no balcão</strong>. O valor será acertado
+                presencialmente na arena.
+              </p>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => setBookModalOpen(false)}>
@@ -516,7 +600,13 @@ const PublicCourtBookingPage: React.FC = () => {
               disabled={bookingSubmitting}
               onClick={handleConfirmBooking}
             >
-              {bookingSubmitting ? 'Abrindo pagamento…' : 'Confirmar e pagar'}
+              {bookingSubmitting
+                ? selectedPaymentMethod === 'mercado_pago'
+                  ? 'Abrindo pagamento…'
+                  : 'Confirmando reserva…'
+                : selectedPaymentMethod === 'mercado_pago'
+                  ? 'Confirmar e pagar online'
+                  : 'Confirmar reserva (pagar no balcão)'}
             </Button>
           </DialogFooter>
         </DialogContent>
