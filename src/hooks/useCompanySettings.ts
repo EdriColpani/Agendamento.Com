@@ -7,6 +7,8 @@ import { usePrimaryCompany } from './usePrimaryCompany';
 interface CompanySettings {
   require_client_registration: boolean;
   guest_appointment_link: string | null;
+  public_court_allow_counter_payment: boolean;
+  court_enable_monthly_packages: boolean;
 }
 
 export function useCompanySettings() {
@@ -25,7 +27,7 @@ export function useCompanySettings() {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('require_client_registration, guest_appointment_link')
+        .select('require_client_registration, guest_appointment_link, public_court_allow_counter_payment, court_enable_monthly_packages')
         .eq('id', primaryCompanyId)
         .single();
 

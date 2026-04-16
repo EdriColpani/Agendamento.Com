@@ -83,6 +83,8 @@ const ConfigPage: React.FC = () => {
   const [mpRows, setMpRows] = useState<MpCredentialRow[]>([]);
   const [mpLoadingStatus, setMpLoadingStatus] = useState(false);
   const [mpSaving, setMpSaving] = useState(false);
+  const [allowCounterPaymentPublic, setAllowCounterPaymentPublic] = useState(false);
+  const [enableMonthlyPackages, setEnableMonthlyPackages] = useState(false);
 
   const fetchPaymentCredentialsStatus = useCallback(async () => {
     if (!primaryCompanyId || !session?.access_token) return;
@@ -159,6 +161,8 @@ const ConfigPage: React.FC = () => {
     if (settings) {
       setRequireClientRegistration(settings.require_client_registration);
       setGuestAppointmentLink(settings.guest_appointment_link || "");
+      setAllowCounterPaymentPublic(settings.public_court_allow_counter_payment === true);
+      setEnableMonthlyPackages(settings.court_enable_monthly_packages === true);
     }
   }, [settings]);
 
@@ -301,66 +305,140 @@ const ConfigPage: React.FC = () => {
         {isCourtMode ? (
           <>
             {primaryCompanyId && canManageCompanyPayments ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Pagamentos online (Mercado Pago)
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    O token é enviado apenas para o servidor, validado no Mercado Pago e armazenado cifrado.
-                    Ele não fica salvo no navegador após salvar.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {mpLoadingStatus ? (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2 text-yellow-600" />
-                      Carregando status…
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Pagamentos online (Mercado Pago)
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      O token é enviado apenas para o servidor, validado no Mercado Pago e armazenado cifrado.
+                      Ele não fica salvo no navegador após salvar.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {mpLoadingStatus ? (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2 text-yellow-600" />
+                        Carregando status…
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-700 space-y-1">
+                        {mpRows.length === 0 ? (
+                          <p>Nenhuma credencial de recebimento configurada para esta empresa.</p>
+                        ) : (
+                          mpRows.map((row) => (
+                            <p key={row.provider}>
+                              <strong>{row.provider}</strong>
+                              {': '}
+                              {row.is_active ? 'ativo' : 'inativo'}
+                              {row.last_validated_at
+                                ? ` — validado em ${new Date(row.last_validated_at).toLocaleString('pt-BR')}`
+                                : ''}
+                              {row.provider_account_id ? ` — conta MP #${row.provider_account_id}` : ''}
+                            </p>
+                          ))
+                        )}
+                      </div>
+                    )}
+                    <div className="grid w-full max-w-lg items-center gap-1.5">
+                      <Label htmlFor="mpAccessToken">Access token (OAuth vendedor)</Label>
+                      <Input
+                        id="mpAccessToken"
+                        type="password"
+                        autoComplete="off"
+                        placeholder="Cole o token uma vez para gravar no servidor"
+                        value={mpAccessToken}
+                        onChange={(e) => setMpAccessToken(e.target.value)}
+                        disabled={mpSaving}
+                      />
                     </div>
-                  ) : (
-                    <div className="text-sm text-gray-700 space-y-1">
-                      {mpRows.length === 0 ? (
-                        <p>Nenhuma credencial de recebimento configurada para esta empresa.</p>
-                      ) : (
-                        mpRows.map((row) => (
-                          <p key={row.provider}>
-                            <strong>{row.provider}</strong>
-                            {': '}
-                            {row.is_active ? 'ativo' : 'inativo'}
-                            {row.last_validated_at
-                              ? ` — validado em ${new Date(row.last_validated_at).toLocaleString('pt-BR')}`
-                              : ''}
-                            {row.provider_account_id ? ` — conta MP #${row.provider_account_id}` : ''}
-                          </p>
-                        ))
-                      )}
+                    <Button
+                      type="button"
+                      onClick={handleSaveMercadoPagoToken}
+                      disabled={mpSaving || mpLoadingStatus}
+                      variant="outline"
+                      className="border-yellow-600 text-yellow-900 hover:bg-yellow-50"
+                    >
+                      {mpSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Validar e salvar no servidor
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pagamento no balcão no link público</CardTitle>
+                    <CardDescription>
+                      Quando habilitado, o cliente pode escolher &quot;Pagamento no balcão&quot; ao reservar pela página
+                      pública da arena.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="publicCourtAllowCounterPayment"
+                        checked={allowCounterPaymentPublic}
+                        onCheckedChange={(checked) => setAllowCounterPaymentPublic(checked as boolean)}
+                        disabled={isSaving}
+                      />
+                      <Label htmlFor="publicCourtAllowCounterPayment" className="text-base">
+                        Permitir pagamento no balcão no link público
+                      </Label>
                     </div>
-                  )}
-                  <div className="grid w-full max-w-lg items-center gap-1.5">
-                    <Label htmlFor="mpAccessToken">Access token (OAuth vendedor)</Label>
-                    <Input
-                      id="mpAccessToken"
-                      type="password"
-                      autoComplete="off"
-                      placeholder="Cole o token uma vez para gravar no servidor"
-                      value={mpAccessToken}
-                      onChange={(e) => setMpAccessToken(e.target.value)}
-                      disabled={mpSaving}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={handleSaveMercadoPagoToken}
-                    disabled={mpSaving || mpLoadingStatus}
-                    variant="outline"
-                    className="border-yellow-600 text-yellow-900 hover:bg-yellow-50"
-                  >
-                    {mpSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Validar e salvar no servidor
-                  </Button>
-                </CardContent>
-              </Card>
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        updateSettings({
+                          public_court_allow_counter_payment: allowCounterPaymentPublic,
+                        })
+                      }
+                      disabled={isSaving}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-black !rounded-button"
+                    >
+                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Salvar opção de pagamento público
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pacotes mensais de quadra (interno)</CardTitle>
+                    <CardDescription>
+                      Habilita a modalidade de pacotes mensais apenas no painel interno da arena, para negociações diretas
+                      com o cliente. Não altera o link público nesta fase.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="courtEnableMonthlyPackages"
+                        checked={enableMonthlyPackages}
+                        onCheckedChange={(checked) => setEnableMonthlyPackages(checked as boolean)}
+                        disabled={isSaving}
+                      />
+                      <Label htmlFor="courtEnableMonthlyPackages" className="text-base">
+                        Habilitar pacotes mensais de quadra (backoffice)
+                      </Label>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        updateSettings({
+                          court_enable_monthly_packages: enableMonthlyPackages,
+                        })
+                      }
+                      disabled={isSaving}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-black !rounded-button"
+                    >
+                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Salvar configuração de pacotes mensais
+                    </Button>
+                  </CardContent>
+                </Card>
+              </>
             ) : primaryCompanyId ? (
               <Card>
                 <CardHeader>
