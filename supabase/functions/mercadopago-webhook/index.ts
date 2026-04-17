@@ -265,6 +265,7 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
 }
 
 const COURTBOOK_PREFIX = "courtbook:";
+const COURTPACKAGE_PREFIX = "courtpackage:";
 
 async function tryFetchCourtPaymentWithSellerTokens(
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -273,28 +274,46 @@ async function tryFetchCourtPaymentWithSellerTokens(
   const master = getCompanyPaymentMasterKey();
   if (!master) return null;
 
-  const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-  const { data: rows, error } = await supabaseAdmin
+  const since = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
+  const { data: apptRows, error: apptError } = await supabaseAdmin
     .from("appointments")
-    .select("id, company_id")
+    .select("company_id")
     .eq("booking_kind", "court")
     .eq("payment_method", "mercado_pago")
     .eq("status", "pendente")
     .is("mp_payment_id", null)
     .gte("created_at", since)
     .order("created_at", { ascending: false })
-    .limit(45);
+    .limit(60);
 
-  if (error || !rows?.length) {
-    if (error) console.error("[mercadopago-webhook] scan appointments:", error);
-    return null;
+  if (apptError) console.error("[mercadopago-webhook] scan appointments:", apptError);
+
+  const { data: pkgRows, error: pkgError } = await supabaseAdmin
+    .from("court_monthly_packages")
+    .select("company_id")
+    .eq("payment_method", "mercado_pago")
+    .in("status", ["pending_payment", "active"])
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(60);
+
+  if (pkgError) console.error("[mercadopago-webhook] scan monthly packages:", pkgError);
+
+  const companies = new Set<string>();
+  for (const row of apptRows || []) {
+    const companyId = String((row as { company_id?: string }).company_id || "");
+    if (companyId) companies.add(companyId);
+  }
+  for (const row of pkgRows || []) {
+    const companyId = String((row as { company_id?: string }).company_id || "");
+    if (companyId) companies.add(companyId);
   }
 
-  for (const row of rows) {
+  for (const companyId of companies) {
     const { data: cred } = await supabaseAdmin
       .from("company_payment_credentials")
       .select("encrypted_payload")
-      .eq("company_id", row.company_id)
+      .eq("company_id", companyId)
       .eq("provider", "mercadopago")
       .eq("is_active", true)
       .maybeSingle();
@@ -310,9 +329,8 @@ async function tryFetchCourtPaymentWithSellerTokens(
     });
     if (!res.ok) continue;
     try {
-      const p = await res.json() as { external_reference?: string };
-      const ext = String(p.external_reference || "");
-      if (ext === `${COURTBOOK_PREFIX}${row.id}`) return p as Record<string, unknown>;
+      const p = await res.json() as Record<string, unknown>;
+      return p;
     } catch {
       continue;
     }
@@ -423,6 +441,174 @@ async function processCourtBookingPayment(
   );
 }
 
+async function processCourtMonthlyPackagePayment(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payment: Record<string, unknown>,
+  paymentId: string,
+): Promise<Response> {
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+  const externalReference = String(payment.external_reference || "");
+  if (!externalReference.startsWith(COURTPACKAGE_PREFIX)) {
+    return new Response(JSON.stringify({ error: "Referência de pacote mensal inválida." }), {
+      status: 400,
+      headers: jsonHeaders,
+    });
+  }
+
+  const packageId = externalReference.slice(COURTPACKAGE_PREFIX.length).trim();
+  if (!packageId) {
+    return new Response(JSON.stringify({ error: "package id ausente." }), {
+      status: 400,
+      headers: jsonHeaders,
+    });
+  }
+
+  const { data: pkg, error: pkgErr } = await supabaseAdmin
+    .from("court_monthly_packages")
+    .select("id, total_amount, status, payment_method, payment_status")
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (pkgErr || !pkg) {
+    console.error("[mercadopago-webhook] monthly package not found:", packageId, pkgErr);
+    return new Response(JSON.stringify({ received: true, message: "Monthly package not found." }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  if (pkg.payment_method !== "mercado_pago") {
+    return new Response(JSON.stringify({ received: true, message: "Package is not Mercado Pago." }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  const mpStatus = String(payment.status || "");
+  const isRefundedStatus = mpStatus === "refunded" || mpStatus === "charged_back" || mpStatus === "chargeback";
+
+  const txAmount = Number(
+    (payment as { transaction_amount?: unknown }).transaction_amount ??
+      (payment as { transaction_details?: { total_paid_amount?: unknown } }).transaction_details?.total_paid_amount,
+  );
+  const expected = Number(pkg.total_amount);
+  const amountOk = !Number.isNaN(txAmount) && !Number.isNaN(expected) && Math.abs(txAmount - expected) < 0.02;
+
+  const patch: Record<string, unknown> = {
+    mp_payment_status: mpStatus,
+  };
+
+  if (isRefundedStatus) {
+    patch.mp_payment_status = "refund_approved";
+    patch.payment_status = "refunded";
+    patch.status = "cancelled";
+    patch.cancelled_at = new Date().toISOString();
+  } else if (mpStatus === "approved" && amountOk) {
+    patch.mp_payment_id = String(paymentId);
+    patch.payment_status = "paid";
+    patch.status = "active";
+  } else if (mpStatus === "approved" && !amountOk) {
+    console.warn("[mercadopago-webhook] monthly package amount mismatch", {
+      packageId,
+      txAmount,
+      expected,
+    });
+    patch.mp_payment_status = "approved_amount_mismatch";
+  }
+
+  const { error: updPkgErr } = await supabaseAdmin
+    .from("court_monthly_packages")
+    .update(patch)
+    .eq("id", packageId);
+  if (updPkgErr) {
+    console.error("[mercadopago-webhook] monthly package update:", updPkgErr);
+    return new Response(JSON.stringify({ error: updPkgErr.message }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
+  }
+
+  const { data: links, error: linksErr } = await supabaseAdmin
+    .from("court_monthly_package_appointments")
+    .select("appointment_id")
+    .eq("package_id", packageId);
+  if (linksErr) {
+    console.error("[mercadopago-webhook] monthly package links:", linksErr);
+    return new Response(JSON.stringify({ error: linksErr.message }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
+  }
+
+  const appointmentIds = (links || [])
+    .map((row) => String((row as { appointment_id?: string }).appointment_id || ""))
+    .filter((id) => id.length > 0);
+
+  if (appointmentIds.length > 0) {
+    if (isRefundedStatus) {
+      const { error: updApptErr } = await supabaseAdmin
+        .from("appointments")
+        .update({
+          status: "cancelado",
+          mp_payment_status: "refund_approved",
+          cancellation_reason: "Estorno do pacote mensal confirmado pelo Mercado Pago (webhook).",
+          cancelled_at: new Date().toISOString(),
+        })
+        .in("id", appointmentIds)
+        .neq("status", "concluido");
+      if (updApptErr) {
+        console.error("[mercadopago-webhook] monthly package appointments refund update:", updApptErr);
+        return new Response(JSON.stringify({ error: updApptErr.message }), {
+          status: 500,
+          headers: jsonHeaders,
+        });
+      }
+    } else if (mpStatus === "approved" && amountOk) {
+      const { error: updApptErr } = await supabaseAdmin
+        .from("appointments")
+        .update({
+          status: "confirmado",
+          mp_payment_status: "approved",
+          mp_payment_id: String(paymentId),
+        })
+        .in("id", appointmentIds)
+        .eq("status", "pendente");
+      if (updApptErr) {
+        console.error("[mercadopago-webhook] monthly package appointments approve update:", updApptErr);
+        return new Response(JSON.stringify({ error: updApptErr.message }), {
+          status: 500,
+          headers: jsonHeaders,
+        });
+      }
+    } else {
+      const { error: updApptErr } = await supabaseAdmin
+        .from("appointments")
+        .update({
+          mp_payment_status: mpStatus,
+        })
+        .in("id", appointmentIds)
+        .eq("status", "pendente");
+      if (updApptErr) {
+        console.error("[mercadopago-webhook] monthly package appointments status update:", updApptErr);
+        return new Response(JSON.stringify({ error: updApptErr.message }), {
+          status: 500,
+          headers: jsonHeaders,
+        });
+      }
+    }
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      monthlyPackage: true,
+      packageId,
+      paymentStatus: mpStatus,
+    }),
+    { status: 200, headers: jsonHeaders },
+  );
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -487,6 +673,9 @@ serve(async (req) => {
 
     if (externalReference.startsWith(COURTBOOK_PREFIX)) {
       return await processCourtBookingPayment(supabaseAdmin, payment, String(paymentId));
+    }
+    if (externalReference.startsWith(COURTPACKAGE_PREFIX)) {
+      return await processCourtMonthlyPackagePayment(supabaseAdmin, payment, String(paymentId));
     }
 
     // Assinaturas TipoAgenda (external_reference com underscores)

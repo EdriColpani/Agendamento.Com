@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { addDays, format, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
@@ -35,18 +34,61 @@ import {
   estimateCourtBookingTotalPrice,
   type CourtPriceBand,
 } from '@/utils/courtSlots';
-import { ArrowLeft, Info } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 
 interface CourtOption {
   id: string;
   name: string;
+  description?: string | null;
   slot_duration_minutes: number;
+  default_slot_price?: number | null;
+  image_url?: string | null;
+  zip_code?: string | null;
+  address?: string | null;
+  number?: string | null;
+  neighborhood?: string | null;
+  complement?: string | null;
+  city?: string | null;
+  state?: string | null;
 }
 
 interface ClientOption {
   id: string;
   name: string;
+}
+
+interface CourtAgendaSlot {
+  startTime: string;
+  occupied: boolean;
+  slotPrice: number;
+}
+
+interface CourtAgendaData {
+  workingStart: string | null;
+  workingEnd: string | null;
+  slotMinutes: number;
+  slots: CourtAgendaSlot[];
+  error: string | null;
+}
+
+interface BookingContext {
+  courtId: string;
+  courtName: string;
+  startTime: string;
+  slotMinutes: number;
+  slotPrice: number;
+}
+
+function formatCourtAddress(court: CourtOption): string {
+  const firstLine = [court.address, court.number, court.neighborhood]
+    .filter((item) => item && String(item).trim())
+    .join(', ');
+  const secondLine = [court.city, court.state, court.zip_code]
+    .filter((item) => item && String(item).trim())
+    .join(' - ');
+  const full = [firstLine, secondLine].filter(Boolean).join(' · ');
+  return full || 'Endereço não informado';
 }
 
 const CourtAgendaPage: React.FC = () => {
@@ -56,31 +98,31 @@ const CourtAgendaPage: React.FC = () => {
   const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
   const { canUseArenaManagement, loading: loadingArenaModule } = useCourtBookingModule(primaryCompanyId);
   const [courts, setCourts] = useState<CourtOption[]>([]);
-  const [courtId, setCourtId] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-  const [workingStart, setWorkingStart] = useState<string | null>(null);
-  const [workingEnd, setWorkingEnd] = useState<string | null>(null);
-  const [slotMinutes, setSlotMinutes] = useState(60);
-  const [slots, setSlots] = useState<{ startTime: string; occupied: boolean; slotPrice: number }[]>([]);
-  const [agendaPriceBands, setAgendaPriceBands] = useState<CourtPriceBand[]>([]);
-  const [agendaDefaultPrice, setAgendaDefaultPrice] = useState(0);
-  const [bookingTotalHint, setBookingTotalHint] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
+  const [dateWindowStart, setDateWindowStart] = useState<Date>(() => startOfDay(new Date()));
+  const [courtAgendas, setCourtAgendas] = useState<Record<string, CourtAgendaData>>({});
+  const [loadingAgenda, setLoadingAgenda] = useState(false);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [bookModalOpen, setBookModalOpen] = useState(false);
-  const [slotToBook, setSlotToBook] = useState<string | null>(null);
+  const [bookingContext, setBookingContext] = useState<BookingContext | null>(null);
   const [bookingClientId, setBookingClientId] = useState('');
   const [bookingObservations, setBookingObservations] = useState('');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const dayOfWeek = selectedDate.getDay();
+  const visibleDates = useMemo(
+    () => Array.from({ length: 10 }, (_, idx) => addDays(dateWindowStart, idx)),
+    [dateWindowStart],
+  );
 
   const loadCourts = useCallback(async () => {
     if (!primaryCompanyId) return;
     const { data, error } = await supabase
       .from('courts')
-      .select('id, name, slot_duration_minutes')
+      .select(
+        'id, name, description, slot_duration_minutes, default_slot_price, image_url, zip_code, address, number, neighborhood, complement, city, state',
+      )
       .eq('company_id', primaryCompanyId)
       .eq('is_active', true)
       .order('display_order', { ascending: true });
@@ -89,12 +131,7 @@ const CourtAgendaPage: React.FC = () => {
       setCourts([]);
       return;
     }
-    const rows = (data as CourtOption[]) || [];
-    setCourts(rows);
-    setCourtId((prev) => {
-      if (prev && rows.some((r) => r.id === prev)) return prev;
-      return rows[0]?.id ?? '';
-    });
+    setCourts((data as CourtOption[]) || []);
   }, [primaryCompanyId]);
 
   const loadClients = useCallback(async () => {
@@ -113,90 +150,86 @@ const CourtAgendaPage: React.FC = () => {
   }, [primaryCompanyId]);
 
   const refreshAgenda = useCallback(async () => {
-    if (!primaryCompanyId || !courtId) {
-      setSlots([]);
-      setWorkingStart(null);
-      setWorkingEnd(null);
-      setAgendaPriceBands([]);
-      setAgendaDefaultPrice(0);
-      setLoading(false);
+    if (!primaryCompanyId || courts.length === 0) {
+      setCourtAgendas({});
       return;
     }
-    setLoading(true);
-    try {
-      const { data: courtRow } = await supabase
-        .from('courts')
-        .select('slot_duration_minutes, default_slot_price')
-        .eq('id', courtId)
-        .maybeSingle();
-      const dur = courtRow?.slot_duration_minutes ?? 60;
-      const defPrice = Number(courtRow?.default_slot_price ?? 0);
-      setSlotMinutes(dur);
-      setAgendaDefaultPrice(defPrice);
+    setLoadingAgenda(true);
+    const nextAgendas: Record<string, CourtAgendaData> = {};
+    await Promise.all(
+      courts.map(async (court) => {
+        try {
+          const dur = court.slot_duration_minutes ?? 60;
+          const defPrice = Number(court.default_slot_price ?? 0);
 
-      const { data: bandData, error: bandErr } = await supabase
-        .from('court_slot_price_bands')
-        .select('start_time, end_time, slot_price')
-        .eq('court_id', courtId)
-        .eq('day_of_week', dayOfWeek)
-        .order('sort_order', { ascending: true })
-        .order('start_time', { ascending: true });
-      if (bandErr) throw bandErr;
-      const bands = (bandData || []) as CourtPriceBand[];
-      setAgendaPriceBands(bands);
+          const { data: bandData, error: bandErr } = await supabase
+            .from('court_slot_price_bands')
+            .select('start_time, end_time, slot_price')
+            .eq('court_id', court.id)
+            .eq('day_of_week', dayOfWeek)
+            .order('sort_order', { ascending: true })
+            .order('start_time', { ascending: true });
+          if (bandErr) throw bandErr;
+          const bands = (bandData || []) as CourtPriceBand[];
 
-      const { data: whRows, error: whErr } = await supabase
-        .from('court_working_hours')
-        .select('start_time, end_time, is_active')
-        .eq('court_id', courtId)
-        .eq('day_of_week', dayOfWeek)
-        .maybeSingle();
+          const { data: whRows, error: whErr } = await supabase
+            .from('court_working_hours')
+            .select('start_time, end_time, is_active')
+            .eq('court_id', court.id)
+            .eq('day_of_week', dayOfWeek)
+            .maybeSingle();
+          if (whErr) throw whErr;
 
-      if (whErr) throw whErr;
+          if (!whRows || whRows.is_active === false) {
+            nextAgendas[court.id] = {
+              workingStart: null,
+              workingEnd: null,
+              slotMinutes: dur,
+              slots: [],
+              error: null,
+            };
+            return;
+          }
 
-      if (!whRows || whRows.is_active === false) {
-        setWorkingStart(null);
-        setWorkingEnd(null);
-        setSlots([]);
-        setLoading(false);
-        return;
-      }
+          const st = String(whRows.start_time);
+          const en = String(whRows.end_time);
 
-      const st = whRows.start_time as string;
-      const en = whRows.end_time as string;
-      setWorkingStart(st);
-      setWorkingEnd(en);
+          const { data: appts, error: apErr } = await supabase
+            .from('appointments')
+            .select('appointment_time, total_duration_minutes, status')
+            .eq('company_id', primaryCompanyId)
+            .eq('court_id', court.id)
+            .eq('appointment_date', dateStr)
+            .or('status.is.null,status.not.in.(cancelado,concluido)');
+          if (apErr) throw apErr;
 
-      const { data: appts, error: apErr } = await supabase
-        .from('appointments')
-        .select('appointment_time, total_duration_minutes, status, booking_kind, court_id')
-        .eq('company_id', primaryCompanyId)
-        .eq('court_id', courtId)
-        .eq('appointment_date', dateStr)
-        .or('status.is.null,status.not.in.(cancelado,concluido)');
-
-      if (apErr) throw apErr;
-
-      const rows = appts || [];
-
-      const computed = computeCourtSlotsForDay(st, en, dur, rows);
-      setSlots(
-        computed.map((s) => ({
-          startTime: s.startTime,
-          occupied: s.occupied,
-          slotPrice: estimateCourtBookingTotalPrice(s.startTime, dur, dur, bands, defPrice),
-        })),
-      );
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      showError('Erro ao montar agenda: ' + msg);
-      setSlots([]);
-      setAgendaPriceBands([]);
-      setAgendaDefaultPrice(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [primaryCompanyId, courtId, dateStr, dayOfWeek]);
+          const computed = computeCourtSlotsForDay(st, en, dur, appts || []);
+          nextAgendas[court.id] = {
+            workingStart: st,
+            workingEnd: en,
+            slotMinutes: dur,
+            slots: computed.map((slot) => ({
+              startTime: slot.startTime,
+              occupied: slot.occupied,
+              slotPrice: estimateCourtBookingTotalPrice(slot.startTime, dur, dur, bands, defPrice),
+            })),
+            error: null,
+          };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          nextAgendas[court.id] = {
+            workingStart: null,
+            workingEnd: null,
+            slotMinutes: court.slot_duration_minutes ?? 60,
+            slots: [],
+            error: msg,
+          };
+        }
+      }),
+    );
+    setCourtAgendas(nextAgendas);
+    setLoadingAgenda(false);
+  }, [primaryCompanyId, courts, dayOfWeek, dateStr]);
 
   useEffect(() => {
     if (primaryCompanyId && isCourtMode && canUseArenaManagement) {
@@ -256,15 +289,21 @@ const CourtAgendaPage: React.FC = () => {
     );
   }
 
-  const openBookModal = (startTime: string) => {
-    setSlotToBook(startTime);
+  const openBookModal = (court: CourtOption, slot: CourtAgendaSlot, slotMinutes: number) => {
+    setBookingContext({
+      courtId: court.id,
+      courtName: court.name,
+      startTime: slot.startTime,
+      slotMinutes,
+      slotPrice: slot.slotPrice,
+    });
     setBookingClientId('');
     setBookingObservations('');
     setBookModalOpen(true);
   };
 
   const handleConfirmBooking = async () => {
-    if (!primaryCompanyId || !courtId || !slotToBook) return;
+    if (!primaryCompanyId || !bookingContext) return;
     if (!bookingClientId) {
       showError('Selecione um cliente.');
       return;
@@ -274,17 +313,17 @@ const CourtAgendaPage: React.FC = () => {
     try {
       await createCourtBooking({
         companyId: primaryCompanyId,
-        courtId,
+        courtId: bookingContext.courtId,
         clientId: bookingClientId,
         clientNickname: client?.name ?? null,
         appointmentDate: dateStr,
-        appointmentTime: slotToBook,
-        durationMinutes: slotMinutes,
+        appointmentTime: bookingContext.startTime,
+        durationMinutes: bookingContext.slotMinutes,
         observations: bookingObservations.trim() || null,
       });
       showSuccess('Reserva criada com sucesso.');
       setBookModalOpen(false);
-      setSlotToBook(null);
+      setBookingContext(null);
       await refreshAgenda();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -329,90 +368,142 @@ const CourtAgendaPage: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+        <>
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Data</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-center">{format(selectedDate, "MMMM yyyy", { locale: ptBR })}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="w-full rounded-md border bg-background p-3">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(d) => d && setSelectedDate(d)}
-                  locale={ptBR}
-                  className="mx-auto w-full max-w-[310px]"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground mt-3">
-                {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Grade de horários</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="max-w-md">
-                <Label>Quadra</Label>
-                <Select value={courtId} onValueChange={setCourtId}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} — slots de {c.slot_duration_minutes ?? 60} min
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {!workingStart || !workingEnd ? (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>Sem horário neste dia</AlertTitle>
-                  <AlertDescription>
-                    Não há janela de funcionamento cadastrada para este dia da semana nesta quadra.
-                    Configure em Horários de funcionamento.
-                  </AlertDescription>
-                </Alert>
-              ) : loading ? (
-                <p className="text-gray-600">Carregando...</p>
-              ) : slots.length === 0 ? (
-                <p className="text-gray-600">
-                  Nenhum slot gerado (verifique se o intervalo permite ao menos um bloco de {slotMinutes}{' '}
-                  minutos).
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {slots.map((s) => (
-                    <button
-                      key={s.startTime}
-                      type="button"
-                      disabled={s.occupied}
-                      onClick={() => !s.occupied && openBookModal(s.startTime)}
-                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                        s.occupied
-                          ? 'cursor-not-allowed border-gray-300 bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                          : 'cursor-pointer border-emerald-300 bg-emerald-50 text-emerald-900 hover:opacity-90 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100'
-                      }`}
-                    >
-                      <span className="font-medium">{s.startTime}</span>
-                      {!s.occupied && s.slotPrice > 0 ? (
-                        <span className="block text-xs opacity-90">R$ {s.slotPrice.toFixed(2).replace('.', ',')}</span>
-                      ) : null}
-                      <span className="block text-xs opacity-80">{s.occupied ? 'Ocupado' : 'Livre'}</span>
-                    </button>
-                  ))}
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="!rounded-button"
+                  onClick={() => {
+                    const prevStart = addDays(dateWindowStart, -7);
+                    setDateWindowStart(prevStart);
+                    if (selectedDate < prevStart) setSelectedDate(prevStart);
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex-1 overflow-x-auto">
+                  <div className="flex gap-2 min-w-max pb-1">
+                    {visibleDates.map((date) => {
+                      const isSelected = format(date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
+                      return (
+                        <button
+                          key={format(date, 'yyyy-MM-dd')}
+                          type="button"
+                          onClick={() => setSelectedDate(date)}
+                          className={`min-w-[72px] rounded-full border px-3 py-2 text-center ${
+                            isSelected
+                              ? 'border-gray-900 bg-gray-900 text-white'
+                              : 'border-gray-200 bg-white text-gray-800 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="block text-xs uppercase">{format(date, 'EEE', { locale: ptBR })}</span>
+                          <span className="block text-sm font-semibold">{format(date, 'dd')}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="!rounded-button"
+                  onClick={() => setDateWindowStart(addDays(dateWindowStart, 7))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        </div>
+
+          <div className="space-y-4">
+            {courts.map((court) => {
+              const agenda = courtAgendas[court.id];
+              return (
+                <Card key={court.id}>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="w-full md:w-36 h-24 rounded-md overflow-hidden border bg-gray-100 shrink-0">
+                        {court.image_url ? (
+                          <img src={court.image_url} alt={court.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                            Sem imagem
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{court.name}</h3>
+                          {court.description ? (
+                            <p className="text-sm font-medium text-orange-600">{court.description}</p>
+                          ) : null}
+                          <p className="text-sm text-gray-600">{formatCourtAddress(court)}</p>
+                        </div>
+
+                        {loadingAgenda && !agenda ? (
+                          <p className="text-sm text-gray-600">Carregando horários...</p>
+                        ) : agenda?.error ? (
+                          <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Falha ao carregar</AlertTitle>
+                            <AlertDescription>{agenda.error}</AlertDescription>
+                          </Alert>
+                        ) : !agenda?.workingStart || !agenda?.workingEnd ? (
+                          <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Sem horário neste dia</AlertTitle>
+                            <AlertDescription>
+                              Não há janela de funcionamento cadastrada para este dia da semana nesta quadra.
+                            </AlertDescription>
+                          </Alert>
+                        ) : agenda.slots.length === 0 ? (
+                          <p className="text-sm text-gray-600">
+                            Nenhum slot gerado para este dia com blocos de {agenda.slotMinutes} minutos.
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {agenda.slots.map((slot) => {
+                              const end = addDays(new Date(`1970-01-01T${slot.startTime}:00`), 0);
+                              end.setMinutes(end.getMinutes() + agenda.slotMinutes);
+                              const endStr = format(end, 'HH:mm');
+                              return (
+                                <button
+                                  key={`${court.id}-${slot.startTime}`}
+                                  type="button"
+                                  disabled={slot.occupied}
+                                  onClick={() => !slot.occupied && openBookModal(court, slot, agenda.slotMinutes)}
+                                  className={`rounded-md border px-3 py-2 text-left min-w-[120px] ${
+                                    slot.occupied
+                                      ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400'
+                                      : 'border-gray-300 bg-white text-gray-900 hover:border-gray-500'
+                                  }`}
+                                >
+                                  <span className="block text-sm font-medium">{slot.startTime} às {endStr}</span>
+                                  <span className="block text-sm font-semibold">
+                                    {slot.occupied ? 'Ocupado' : `R$ ${slot.slotPrice.toFixed(2).replace('.', ',')}`}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <Dialog open={bookModalOpen} onOpenChange={setBookModalOpen}>
@@ -420,13 +511,17 @@ const CourtAgendaPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Nova reserva de quadra</DialogTitle>
             <DialogDescription>
-              {slotToBook && format(selectedDate, "dd/MM/yyyy", { locale: ptBR })} às {slotToBook} — duração{' '}
-              {slotMinutes} min.
-              {bookingTotalHint !== null && bookingTotalHint > 0 && (
-                <span className="block mt-1 font-medium text-foreground">
-                  Valor estimado: R$ {bookingTotalHint.toFixed(2).replace('.', ',')}
-                </span>
-              )}
+              {bookingContext ? (
+                <>
+                  {bookingContext.courtName} · {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })} às{' '}
+                  {bookingContext.startTime} — duração {bookingContext.slotMinutes} min.
+                  {bookingContext.slotPrice > 0 && (
+                    <span className="block mt-1 font-medium text-foreground">
+                      Valor estimado: R$ {bookingContext.slotPrice.toFixed(2).replace('.', ',')}
+                    </span>
+                  )}
+                </>
+              ) : null}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -437,16 +532,16 @@ const CourtAgendaPage: React.FC = () => {
                   <SelectValue placeholder="Selecione o cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {clients.length === 0 && (
+              {clients.length === 0 ? (
                 <p className="text-xs text-muted-foreground mt-1">Cadastre clientes em Clientes.</p>
-              )}
+              ) : null}
             </div>
             <div>
               <Label>Observações</Label>

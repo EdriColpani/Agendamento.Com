@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
+import ArenaLoginPage from "./pages/ArenaLoginPage";
 import { SessionContextProvider, useSession } from "./components/SessionContextProvider";
 import MainApplication from "./components/MainApplication";
 import ProfilePage from "./pages/ProfilePage";
@@ -31,6 +32,7 @@ import CourtWorkingHoursPage from "./pages/CourtWorkingHoursPage";
 import CourtAgendaPage from "./pages/CourtAgendaPage";
 import CourtSlotPriceBandsPage from "./pages/CourtSlotPriceBandsPage";
 import CourtReservationsListPage from "./pages/CourtReservationsListPage";
+import CourtMonthlyPackagesPage from "./pages/CourtMonthlyPackagesPage";
 import PublicCourtBookingPage from "./pages/PublicCourtBookingPage";
 import ServiceFormPage from "./pages/ServiceFormPage";
 import EditClientPage from "./pages/EditClientPage";
@@ -186,6 +188,7 @@ const App = () => (
 
             {/* Rotas de autenticação (sem layout MainApplication) */}
             <Route path="/login" element={<AuthPage />} />
+            <Route path="/arena" element={<ArenaLoginPage />} />
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/reset-password" element={<AuthPage />} />
             <Route path="/forgot-password" element={<AuthPage />} />
@@ -267,6 +270,7 @@ const App = () => (
               <Route path="quadras/agenda" element={<ProtectedRoute><CourtAgendaPage /></ProtectedRoute>} />
               <Route path="quadras/precos" element={<ProtectedRoute><CourtSlotPriceBandsPage /></ProtectedRoute>} />
               <Route path="quadras/reservas" element={<ProtectedRoute><CourtReservationsListPage /></ProtectedRoute>} />
+              <Route path="quadras/pacotes-mensais" element={<ProtectedRoute><CourtMonthlyPackagesPage /></ProtectedRoute>} />
               <Route path="servicos" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
               <Route path="servicos/new" element={<ProtectedRoute><ServiceFormPage /></ProtectedRoute>} />
               <Route path="servicos/edit/:serviceId" element={<ProtectedRoute><ServiceFormPage /></ProtectedRoute>} />
