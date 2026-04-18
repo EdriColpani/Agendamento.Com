@@ -114,7 +114,7 @@ const ContractAcceptanceModal: React.FC<ContractAcceptanceModalProps> = ({
             type="button"
             onClick={onAccept}
             disabled={!accepted || loading}
-            className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+            className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {loading ? 'Cadastrando...' : 'Aceitar e Cadastrar Empresa'}
           </Button>

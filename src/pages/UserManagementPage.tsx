@@ -126,7 +126,7 @@ const UserManagementPage: React.FC = () => {
   const getRoleColor = (cod: string) => {
     switch (cod) {
       case 'GLOBAL_ADMIN': return 'bg-red-600 text-white';
-      case 'PROPRIETARIO': return 'bg-yellow-600 text-black';
+      case 'PROPRIETARIO': return 'bg-primary text-primary-foreground';
       case 'CLIENTE': return 'bg-blue-600 text-white';
       default: return 'bg-gray-500 text-white';
     }

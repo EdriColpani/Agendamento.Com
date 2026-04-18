@@ -283,7 +283,7 @@ const ConfigPage: React.FC = () => {
   if (loading || (primaryCompanyId != null && loadingSchedulingMode)) {
     return (
       <div className="flex justify-center items-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin text-yellow-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="ml-2 text-gray-600">Carregando configurações...</p>
       </div>
     );
@@ -320,7 +320,7 @@ const ConfigPage: React.FC = () => {
                   <CardContent className="space-y-4">
                     {mpLoadingStatus ? (
                       <div className="flex items-center text-sm text-gray-600">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2 text-yellow-600" />
+                        <Loader2 className="h-4 w-4 animate-spin mr-2 text-primary" />
                         Carregando status…
                       </div>
                     ) : (
@@ -359,7 +359,7 @@ const ConfigPage: React.FC = () => {
                       onClick={handleSaveMercadoPagoToken}
                       disabled={mpSaving || mpLoadingStatus}
                       variant="outline"
-                      className="border-yellow-600 text-yellow-900 hover:bg-yellow-50"
+                      className="border-primary text-amber-900 hover:bg-primary/10"
                     >
                       {mpSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       Validar e salvar no servidor
@@ -395,7 +395,7 @@ const ConfigPage: React.FC = () => {
                         })
                       }
                       disabled={isSaving}
-                      className="bg-yellow-600 hover:bg-yellow-700 text-black !rounded-button"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 !rounded-button"
                     >
                       {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       Salvar opção de pagamento público
@@ -431,7 +431,7 @@ const ConfigPage: React.FC = () => {
                         })
                       }
                       disabled={isSaving}
-                      className="bg-yellow-600 hover:bg-yellow-700 text-black !rounded-button"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 !rounded-button"
                     >
                       {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       Salvar configuração de pacotes mensais
@@ -495,7 +495,7 @@ const ConfigPage: React.FC = () => {
           <CardContent>
             {bannerLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-yellow-600" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 <p className="ml-2 text-gray-600">Carregando banner...</p>
               </div>
             ) : currentBanner ? (
@@ -608,7 +608,7 @@ const ConfigPage: React.FC = () => {
             <Button
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-yellow-600 hover:bg-yellow-700 text-black !rounded-button"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 !rounded-button"
             >
               {isSaving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

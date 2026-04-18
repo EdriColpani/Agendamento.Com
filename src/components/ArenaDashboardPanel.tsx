@@ -74,7 +74,7 @@ const ArenaDashboardPanel: React.FC<ArenaDashboardPanelProps> = ({
           <Button
             type="button"
             asChild
-            className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black"
+            className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Link to="/quadras">
               <i className="fas fa-border-all mr-2" />
@@ -148,7 +148,7 @@ const ArenaDashboardPanel: React.FC<ArenaDashboardPanelProps> = ({
                           </p>
                         </div>
                       </div>
-                      <p className="font-semibold text-yellow-600">
+                      <p className="font-semibold text-primary">
                         R$ {agendamento.total_price.toFixed(2).replace('.', ',')}
                       </p>
                     </div>

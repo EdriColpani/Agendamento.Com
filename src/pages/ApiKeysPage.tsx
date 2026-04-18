@@ -44,7 +44,7 @@ const ApiKeysPage: React.FC = () => {
         <Card className="border-gray-200">
           <CardHeader>
             <CardTitle className="text-gray-900 flex items-center gap-2">
-              <Key className="h-6 w-6 text-yellow-600" />
+              <Key className="h-6 w-6 text-primary" />
               Instruções de Configuração Segura
             </CardTitle>
           </CardHeader>

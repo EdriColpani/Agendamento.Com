@@ -8,8 +8,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { supabase } from '@/integrations/supabase/client';
-import { showSuccess, showError } from '@/utils/toast';
 import { Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { Menu } from 'lucide-react';
@@ -17,7 +15,7 @@ import { useIsCompanyAdmin } from '@/hooks/useIsCompanyAdmin';
 import { useIsProprietario } from '@/hooks/useIsProprietario';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { useIsClient } from '@/hooks/useIsClient';
-import { markExplicitLogout } from '@/utils/auth-state';
+import { performSignOut } from '@/utils/auth-state';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 
 interface UserDropdownMenuProps {
@@ -43,51 +41,10 @@ const UserDropdownMenu: React.FC<UserDropdownMenuProps> = ({ session }) => {
 
   const handleLogout = async () => {
     try {
-      markExplicitLogout(); // Marca que o logout foi explícito
-      
-      // Tentar fazer logout normalmente
-      try {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.warn('Logout error (will clear manually):', error.message);
-        }
-      } catch (signOutError: any) {
-        console.warn('SignOut failed (will clear manually):', signOutError);
-      }
-      
-      // Limpar manualmente o localStorage do Supabase para garantir que a sessão seja removida
-      try {
-        // Limpar todas as chaves relacionadas ao Supabase Auth
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.includes('supabase') || key.includes('auth'))) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        // Limpar sessionStorage também
-        const sessionKeysToRemove: string[] = [];
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key && (key.includes('supabase') || key.includes('auth'))) {
-            sessionKeysToRemove.push(key);
-          }
-        }
-        sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
-      } catch (clearError) {
-        console.error('Error clearing storage:', clearError);
-      }
-      
-      // Forçar atualização da sessão no Supabase
-      await supabase.auth.getSession();
-      
-      // Redirecionar para a Landing Page e recarregar para garantir limpeza completa
+      await performSignOut();
       window.location.href = '/';
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Unexpected error during logout:', error);
-      // Em caso de erro, forçar redirecionamento e limpeza
       try {
         localStorage.clear();
         sessionStorage.clear();

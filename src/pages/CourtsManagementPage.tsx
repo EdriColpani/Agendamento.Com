@@ -25,8 +25,10 @@ import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Copy, Edit, PlusCircle, Trash2, Upload, X } from 'lucide-react';
+import { Copy, Edit, PlusCircle, Trash2, Upload, X } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
+import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 const courtFormSchema = z.object({
   name: z.string().min(1, 'Nome da quadra é obrigatório.'),
@@ -417,41 +419,17 @@ const CourtsManagementPage: React.FC = () => {
       <ArenaPageHeader
         title="Quadras"
         actions={
-          <>
-            <Button variant="ghost" className="!rounded-button w-full sm:w-auto" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
-                <Link to="/quadras/horarios">Horários de funcionamento</Link>
-              </Button>
-              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
-                <Link to="/quadras/agenda">Agenda do dia</Link>
-              </Button>
-              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
-                <Link to="/quadras/reservas">Lista de reservas</Link>
-              </Button>
-              <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
-                <Link to="/quadras/precos">Preços por horário</Link>
-              </Button>
-              {monthlyPackagesEnabled ? (
-                <Button variant="outline" size="sm" className="!rounded-button w-full sm:w-auto" asChild>
-                  <Link to="/quadras/pacotes-mensais">Pacotes mensais</Link>
-                </Button>
-              ) : null}
-            </div>
-          </>
+          <ArenaToolbar
+            back={{ onClick: () => navigate('/dashboard'), label: 'Voltar' }}
+            links={getArenaModuleLinks(monthlyPackagesEnabled)}
+          />
         }
       />
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
           <CardTitle className="text-gray-900 dark:text-white">Recursos (quadras)</CardTitle>
-          <Button
-            className="!rounded-button bg-yellow-600 hover:bg-yellow-700 text-black"
-            onClick={openCreate}
-          >
+          <Button className="rounded-full" onClick={openCreate}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Nova quadra
           </Button>
@@ -716,7 +694,7 @@ const CourtsManagementPage: React.FC = () => {
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving} className="bg-yellow-600 hover:bg-yellow-700 text-black">
+              <Button type="submit" disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 {saving ? 'Salvando...' : 'Salvar'}
               </Button>
             </DialogFooter>

@@ -544,7 +544,7 @@ const PlanFeaturesManagementPage: React.FC = () => {
           <Button 
             onClick={handleAddLimitClick} 
             size="sm" 
-            className="h-9 gap-2 bg-yellow-600 hover:bg-yellow-700 text-black font-medium"
+            className="h-9 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             <PlusCircle className="h-4 w-4" /> Adicionar Limite
           </Button>
@@ -564,11 +564,11 @@ const PlanFeaturesManagementPage: React.FC = () => {
                 return (
                   <div 
                     key={limit.id} 
-                    className="group relative p-4 border-2 border-gray-200 rounded-lg bg-white hover:border-yellow-500 hover:shadow-md transition-all duration-200"
+                    className="group relative p-4 border-2 border-gray-200 rounded-lg bg-white hover:border-primary hover:shadow-md transition-all duration-200"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
-                        <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600 group-hover:bg-yellow-200 transition-colors">
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-amber-200 transition-colors">
                           {limitInfo.icon}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -591,7 +591,7 @@ const PlanFeaturesManagementPage: React.FC = () => {
                           variant="outline" 
                           size="icon" 
                           onClick={() => handleEditLimitClick(limit)}
-                          className="h-8 w-8 border-gray-300 hover:border-yellow-500 hover:bg-yellow-50"
+                          className="h-8 w-8 border-gray-300 hover:border-primary hover:bg-primary/10"
                         >
                           <Edit className="h-3.5 w-3.5" />
                         </Button>
@@ -725,7 +725,7 @@ const PlanFeaturesManagementPage: React.FC = () => {
                 Tipo de Limite
               </Label>
               <Select value={limitType} onValueChange={setLimitType}>
-                <SelectTrigger className="h-11 border-gray-300 focus:border-yellow-500 focus:ring-yellow-500">
+                <SelectTrigger className="h-11 border-gray-300 focus:border-primary focus:ring-primary">
                   <SelectValue placeholder="Selecione o tipo de limite" />
                 </SelectTrigger>
                 <SelectContent>
@@ -770,7 +770,7 @@ const PlanFeaturesManagementPage: React.FC = () => {
                 type="number"
                 value={limitValue}
                 onChange={(e) => setLimitValue(e.target.value)}
-                className="h-11 text-lg border-gray-300 focus:border-yellow-500 focus:ring-yellow-500"
+                className="h-11 text-lg border-gray-300 focus:border-primary focus:ring-primary"
                 placeholder="Ex: 5"
                 min="0"
               />
@@ -796,7 +796,7 @@ const PlanFeaturesManagementPage: React.FC = () => {
             <Button 
               onClick={handleSaveLimit} 
               disabled={loading}
-              className="bg-yellow-600 hover:bg-yellow-700 text-black font-semibold"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
             >
               {loading ? (
                 <>

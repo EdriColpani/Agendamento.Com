@@ -151,14 +151,14 @@ const SignupForm: React.FC = () => {
       </div>
       <Button
         type="submit"
-        className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+        className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
         disabled={loading}
       >
         {loading ? 'Cadastrando...' : 'Cadastrar'}
       </Button>
       <div className="text-center text-sm mt-4">
         Já tem uma conta?{' '}
-        <Link to="/login" className="text-yellow-600 hover:underline">
+        <Link to="/login" className="text-primary hover:underline">
           Entrar
         </Link>
       </div>

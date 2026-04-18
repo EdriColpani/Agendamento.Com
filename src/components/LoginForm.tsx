@@ -77,19 +77,19 @@ const LoginForm: React.FC = () => {
       </div>
       <Button
         type="submit"
-        className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+        className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
         disabled={loading}
       >
         {loading ? 'Entrando...' : 'Entrar'}
       </Button>
       <div className="text-center text-sm mt-4">
-        <Link to="/forgot-password" className="text-yellow-600 hover:underline">
+        <Link to="/forgot-password" className="text-primary hover:underline">
           Esqueceu sua senha?
         </Link>
       </div>
       <div className="text-center text-sm mt-2">
         Não tem uma conta?{' '}
-        <Link to="/signup" className="text-yellow-600 hover:underline">
+        <Link to="/signup" className="text-primary hover:underline">
           Cadastrar
         </Link>
       </div>

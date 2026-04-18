@@ -150,7 +150,7 @@ const CouponUsageReportPage: React.FC = () => {
                       key={coupon.id} 
                       className={`p-3 rounded-lg border cursor-pointer transition-all ${
                         selectedCouponId === coupon.id 
-                          ? 'border-yellow-600 bg-yellow-50 shadow-md' 
+                          ? 'border-primary bg-primary/10 shadow-md' 
                           : 'border-gray-200 hover:bg-gray-50'
                       }`}
                       onClick={() => setSelectedCouponId(coupon.id)}

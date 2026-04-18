@@ -285,7 +285,7 @@ const EditMyCompanyPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para editar os dados.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -473,7 +473,7 @@ const EditMyCompanyPage: React.FC = () => {
 
             <Button
               type="submit"
-              className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base"
+              className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base"
               disabled={isSaving}
             >
               <Save className="h-4 w-4 mr-2" />

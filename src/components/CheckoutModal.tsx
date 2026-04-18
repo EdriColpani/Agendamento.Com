@@ -486,7 +486,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     )}
                   </SelectContent>
                 </Select>
-                <Button type="button" onClick={handleAddProduct} disabled={!selectedProductId} className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black">
+                <Button type="button" onClick={handleAddProduct} disabled={!selectedProductId} className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90">
                   <PlusCircle className="h-4 w-4" />
                 </Button>
               </div>
@@ -524,7 +524,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
           {/* Resumo e Pagamento */}
           <div className="space-y-4">
-            <div className="bg-yellow-50 p-3 rounded-lg flex justify-between font-extrabold text-xl text-gray-900 border border-yellow-200">
+            <div className="bg-primary/10 p-3 rounded-lg flex justify-between font-extrabold text-xl text-gray-900 border border-primary/20">
               <span>TOTAL A PAGAR:</span>
               <span>R$ {grandTotal.toFixed(2).replace('.', ',')}</span>
             </div>

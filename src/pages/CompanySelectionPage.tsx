@@ -264,7 +264,7 @@ const CompanySelectionPage: React.FC = () => {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           {/* Logo */}
           <Link to="/meus-agendamentos" className="flex items-center gap-3 cursor-pointer">
-            <div className="w-10 h-10 bg-yellow-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <CalendarDays className="text-white h-6 w-6" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">TipoAgenda</h1>
@@ -345,7 +345,7 @@ const CompanySelectionPage: React.FC = () => {
                 />
               </div>
               <Button
-                className="!rounded-button whitespace-nowrap h-10 font-semibold bg-yellow-600 hover:bg-yellow-700 text-black"
+                className="!rounded-button whitespace-nowrap h-10 font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleSearch}
               >
                 <Search className="h-5 w-5 mr-2" />
@@ -375,8 +375,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Beleza & Estética'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Beleza & Estética')}
             >
@@ -384,7 +384,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Beleza & Estética'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -406,8 +406,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Saúde & Bem-estar'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Saúde & Bem-estar')}
             >
@@ -415,7 +415,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Saúde & Bem-estar'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -437,8 +437,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Fitness & Personal'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Fitness & Personal')}
             >
@@ -446,7 +446,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Fitness & Personal'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -468,8 +468,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Educação & Coaching'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Educação & Coaching')}
             >
@@ -477,7 +477,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Educação & Coaching'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -499,8 +499,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Consultoria & Negócios'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Consultoria & Negócios')}
             >
@@ -508,7 +508,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Consultoria & Negócios'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -530,8 +530,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Casa & Manutenção'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Casa & Manutenção')}
             >
@@ -539,7 +539,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Casa & Manutenção'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -561,8 +561,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Automotivo'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Automotivo')}
             >
@@ -570,7 +570,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Automotivo'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -592,8 +592,8 @@ const CompanySelectionPage: React.FC = () => {
             <Card
               className={`border-2 transition-all cursor-pointer ${
                 selectedCategory === 'Pet Care'
-                  ? 'border-yellow-600 bg-yellow-50'
-                  : 'border-gray-200 hover:border-yellow-600'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-gray-200 hover:border-primary'
               }`}
               onClick={() => handleCategoryClick('Pet Care')}
             >
@@ -601,7 +601,7 @@ const CompanySelectionPage: React.FC = () => {
                 <div
                   className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     selectedCategory === 'Pet Care'
-                      ? 'bg-yellow-400'
+                      ? 'bg-primary/70'
                       : 'bg-gray-100'
                   }`}
                 >
@@ -668,7 +668,7 @@ const CompanySelectionPage: React.FC = () => {
                         />
                         <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-lg shadow">
                           <div className="flex items-center gap-1">
-                            <i className="fas fa-star text-yellow-500 text-sm"></i>
+                            <i className="fas fa-star text-amber-500 text-sm"></i>
                             <span className="text-sm font-semibold">
                               {company.avg_rating}
                             </span>
@@ -678,7 +678,7 @@ const CompanySelectionPage: React.FC = () => {
                       <h3 className="font-bold text-gray-900 text-lg mb-2">
                         {company.name}
                       </h3>
-                      <p className="text-yellow-600 font-semibold mb-4">
+                      <p className="text-primary font-semibold mb-4">
                         {company.min_price > 0
                           ? `A partir de R$ ${company.min_price
                               .toFixed(2)
@@ -716,7 +716,7 @@ const CompanySelectionPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Passo 1 */}
             <div className="text-center">
-              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-primary/70 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="h-8 w-8 text-black" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">
@@ -730,7 +730,7 @@ const CompanySelectionPage: React.FC = () => {
 
             {/* Passo 2 */}
             <div className="text-center">
-              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-primary/70 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CalendarDays className="h-8 w-8 text-black" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">
@@ -744,7 +744,7 @@ const CompanySelectionPage: React.FC = () => {
 
             {/* Passo 3 */}
             <div className="text-center">
-              <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-primary/70 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="h-8 w-8 text-black" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">

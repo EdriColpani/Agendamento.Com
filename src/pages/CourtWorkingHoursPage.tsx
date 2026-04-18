@@ -18,8 +18,9 @@ import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
-import { ArrowLeft } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
+import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 const DAY_LABELS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
@@ -229,17 +230,7 @@ const CourtWorkingHoursPage: React.FC = () => {
       <ArenaPageHeader
         title="Horários de funcionamento"
         actions={
-          <>
-            <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
-              <Link to="/quadras">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar às quadras
-              </Link>
-            </Button>
-            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
-              <Link to="/quadras/agenda">Ver agenda do dia</Link>
-            </Button>
-          </>
+          <ArenaToolbar back={{ to: '/quadras', label: 'Quadras' }} links={getArenaModuleLinks(true)} />
         }
       />
 
@@ -247,7 +238,7 @@ const CourtWorkingHoursPage: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <p className="text-gray-600 dark:text-gray-400">Cadastre ao menos uma quadra ativa em Quadras.</p>
-            <Button className="mt-4" asChild>
+            <Button className="mt-4 rounded-full" asChild>
               <Link to="/quadras">Ir para Quadras</Link>
             </Button>
           </CardContent>
@@ -335,7 +326,7 @@ const CourtWorkingHoursPage: React.FC = () => {
 
             <Button
               type="button"
-              className="bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={saving || !courtId}
               onClick={handleSave}
             >

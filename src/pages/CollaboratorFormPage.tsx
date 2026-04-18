@@ -615,22 +615,22 @@ const CollaboratorFormPage: React.FC = () => {
               </AlertDescription>
             </Alert>
           ) : limitInfo.nearLimit ? (
-            <Alert className="border-yellow-500 bg-yellow-50">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-yellow-900 font-semibold">Você está próximo do limite de colaboradores</AlertTitle>
-              <AlertDescription className="text-yellow-800">
+            <Alert className="border-primary bg-primary/10">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-amber-900 font-semibold">Você está próximo do limite de colaboradores</AlertTitle>
+              <AlertDescription className="text-amber-900">
                 Seu plano permite até <strong>{limitInfo.maxAllowed}</strong> colaboradores ativos.
                 Você já possui <strong>{limitInfo.currentCount}</strong> colaboradores ({limitInfo.percentage}% do limite).
                 <br />
-                <div className="mt-2 w-full bg-yellow-200 rounded-full h-2">
+                <div className="mt-2 w-full bg-amber-200 rounded-full h-2">
                   <div
-                    className="bg-yellow-600 h-2 rounded-full transition-all"
+                    className="bg-primary h-2 rounded-full transition-all"
                     style={{ width: `${limitInfo.percentage}%` }}
                   />
                 </div>
                 <Button
                   variant="link"
-                  className="p-0 h-auto text-yellow-800 underline font-semibold mt-2"
+                  className="p-0 h-auto text-amber-900 underline font-semibold mt-2"
                   onClick={() => navigate('/planos')}
                 >
                   Considere fazer upgrade do seu plano →
@@ -786,7 +786,7 @@ const CollaboratorFormPage: React.FC = () => {
                       setSelectedFileName(null);
                     }
                   }}
-                  className="mt-2 file:text-sm file:font-semibold file:bg-yellow-600 file:text-black file:border-none file:rounded-button file:px-4 file:py-2 file:mr-4 hover:file:bg-yellow-700 dark:file:bg-yellow-700 dark:file:text-black dark:text-gray-300 dark:border-gray-600"
+                  className="mt-2 file:text-sm file:font-semibold file:bg-primary file:text-black file:border-none file:rounded-button file:px-4 file:py-2 file:mr-4 hover:file:bg-primary/90 dark:file:bg-primary/90 dark:file:text-black dark:text-gray-300 dark:border-gray-600"
                 />
                 {selectedFileName && <p className="text-sm text-gray-700 mt-2">Arquivo selecionado: <span className="font-medium">{selectedFileName}</span></p>}
                 {errors.avatar_file && <p className="text-red-500 text-xs mt-1">{errors.avatar_file.message}</p>}
@@ -804,7 +804,7 @@ const CollaboratorFormPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading || sessionLoading || loadingPrimaryCompany || loadingRoleTypes || isLimitBlocked}
                   title={isLimitBlocked ? 'Limite de colaboradores atingido. Faça upgrade do seu plano.' : ''}
                 >

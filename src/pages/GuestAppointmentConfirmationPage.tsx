@@ -122,7 +122,7 @@ const GuestAppointmentConfirmationPage = () => {
         ) : null}
         <Link
           to="/"
-          className="inline-block px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-black font-medium rounded-full transition-colors"
+          className="inline-block px-6 py-2 bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-full transition-colors"
         >
           Voltar para a página inicial
         </Link>

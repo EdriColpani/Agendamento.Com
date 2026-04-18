@@ -247,7 +247,7 @@ export const CommissionPaymentModal: React.FC<CommissionPaymentModalProps> = ({
               return (
                 <div
                   key={commission.id}
-                  className={`border rounded-lg p-4 ${isSelected ? 'border-yellow-600 bg-yellow-50' : 'border-gray-200'}`}
+                  className={`border rounded-lg p-4 ${isSelected ? 'border-primary bg-primary/10' : 'border-gray-200'}`}
                 >
                   <div className="flex items-start gap-3">
                     <input
@@ -347,7 +347,7 @@ export const CommissionPaymentModal: React.FC<CommissionPaymentModalProps> = ({
             type="button"
             onClick={handleSubmit}
             disabled={loading || selectedCount === 0 || totalToPay <= 0}
-            className="!rounded-button bg-yellow-600 hover:bg-yellow-700 text-black"
+            className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {loading ? 'Processando...' : `Confirmar Pagamento (R$ ${totalToPay.toFixed(2).replace('.', ',')})`}
           </Button>

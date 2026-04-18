@@ -170,7 +170,7 @@ const PlanManagementPage: React.FC = () => {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-gray-900">Planos do Sistema</CardTitle>
             <Button
-              className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleAddPlan}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -187,7 +187,7 @@ const PlanManagementPage: React.FC = () => {
                 {plans.map((plan) => (
                   <div key={plan.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                     <div className="flex items-center gap-4">
-                      <DollarSign className="h-6 w-6 text-yellow-600" />
+                      <DollarSign className="h-6 w-6 text-primary" />
                       <div>
                         <h3 className="font-bold text-gray-900">{plan.name}</h3>
                         <p className="text-sm text-gray-600">R$ {plan.price.toFixed(2).replace('.', ',')} / {plan.duration_months} {plan.duration_months > 1 ? 'meses' : 'mês'}</p>

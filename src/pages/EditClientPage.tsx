@@ -376,14 +376,14 @@ const EditClientPage: React.FC = () => {
                       value={zipCodeValue}
                       onChange={handleZipCodeChange}
                       maxLength={9}
-                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                     />
                     {errors.zip_code && <p className="text-red-500 text-xs mt-1">{errors.zip_code.message}</p>}
                   </div>
                   <div>
                     <Label htmlFor="state" className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado *</Label>
                     <Select onValueChange={(value) => setValue('state', value, { shouldValidate: true })} value={stateValue}>
-                      <SelectTrigger id="state" className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500">
+                      <SelectTrigger id="state" className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary">
                         <SelectValue placeholder="UF" />
                       </SelectTrigger>
                       <SelectContent className="dark:bg-gray-700 dark:text-white">
@@ -403,7 +403,7 @@ const EditClientPage: React.FC = () => {
                       type="text"
                       placeholder="Sua cidade"
                       {...register('city')}
-                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                     />
                     {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
                   </div>
@@ -417,7 +417,7 @@ const EditClientPage: React.FC = () => {
                       type="text"
                       placeholder="Rua, Avenida, etc."
                       {...register('address')}
-                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                     />
                     {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
                   </div>
@@ -428,7 +428,7 @@ const EditClientPage: React.FC = () => {
                       type="text"
                       placeholder="123"
                       {...register('number')}
-                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                      className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                     />
                     {errors.number && <p className="text-red-500 text-xs mt-1">{errors.number.message}</p>}
                   </div>
@@ -441,7 +441,7 @@ const EditClientPage: React.FC = () => {
                     type="text"
                     placeholder="Seu bairro"
                     {...register('neighborhood')}
-                    className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                    className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                   />
                   {errors.neighborhood && <p className="text-red-500 text-xs mt-1">{errors.neighborhood.message}</p>}
                 </div>
@@ -453,7 +453,7 @@ const EditClientPage: React.FC = () => {
                     type="text"
                     placeholder="Apto, Sala, Bloco"
                     {...register('complement')}
-                    className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                    className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                   />
                   {errors.complement && <p className="text-red-500 text-xs mt-1">{errors.complement.message}</p>}
                 </div>
@@ -519,7 +519,7 @@ const EditClientPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black flex-1"
+                  className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                   disabled={loading}
                 >
                   {loading ? 'Salvando...' : 'Salvar Alterações'}

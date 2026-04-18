@@ -305,7 +305,7 @@ const CompanyDetailsPage: React.FC = () => {
                     type="checkbox"
                     checked={ativoValue}
                     {...register('ativo')}
-                    className="h-4 w-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                    className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
                   />
                   <Label htmlFor="ativo" className="ml-2 text-sm font-medium text-gray-700">
                     Empresa Ativa
@@ -314,7 +314,7 @@ const CompanyDetailsPage: React.FC = () => {
               </div>
               <Button
                 type="submit"
-                className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base"
+                className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base"
                 disabled={isSaving}
               >
                 <Save className="h-4 w-4 mr-2" />

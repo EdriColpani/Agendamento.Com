@@ -573,7 +573,7 @@ const CollaboratorSchedulePage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para gerenciar horários.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -695,7 +695,7 @@ const CollaboratorSchedulePage: React.FC = () => {
             <CardTitle className="text-gray-900">Exceções de Horário</CardTitle>
             <Button
               type="button"
-              className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleAddException}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -753,7 +753,7 @@ const CollaboratorSchedulePage: React.FC = () => {
           </Button>
           <Button
             type="submit"
-            className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base flex-1"
+            className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base flex-1"
             disabled={loading}
           >
             {loading ? 'Salvando...' : 'Salvar Horários Semanais'}
@@ -847,7 +847,7 @@ const CollaboratorSchedulePage: React.FC = () => {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!selectedDate || savingException} className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black">
+              <Button type="submit" disabled={!selectedDate || savingException} className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90">
                 {savingException ? 'Salvando...' : 'Salvar Exceção'}
               </Button>
             </DialogFooter>
@@ -924,7 +924,7 @@ const CollaboratorSchedulePage: React.FC = () => {
             )}
             <Button
               type="button"
-              className="!rounded-button bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={savingExceptionAfterConflicts}
               onClick={() => handleSaveExceptionAfterConflicts(false)}
             >
@@ -990,7 +990,7 @@ const CollaboratorSchedulePage: React.FC = () => {
             <Button
               onClick={handleConfirmReschedule}
               disabled={!rescheduleDate || !selectedRescheduleTime || loadingReschedule}
-              className="!rounded-button bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loadingReschedule ? 'Reagendando...' : 'Confirmar'}
             </Button>

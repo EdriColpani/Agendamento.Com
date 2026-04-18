@@ -174,7 +174,7 @@ const CompanyManagementPage: React.FC = () => {
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{company.name}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{company.cnpj}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 font-medium flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-yellow-600" />
+                          <DollarSign className="h-4 w-4 text-primary" />
                           {subInfo.planName}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{subInfo.endDate}</td>

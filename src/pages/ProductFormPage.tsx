@@ -310,7 +310,7 @@ const ProductFormPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black flex-1"
+                  className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                   disabled={loading}
                 >
                   {loading ? (isEditing ? 'Salvando...' : 'Cadastrando...') : buttonText}

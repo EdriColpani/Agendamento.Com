@@ -34,8 +34,10 @@ import {
   COURT_RESERVATIONS_MAX_RANGE_DAYS,
   COURT_RESERVATIONS_PAGE_SIZE,
 } from '@/utils/courtReservationListQuery';
-import { ArrowLeft, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
+import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 interface CourtOption {
   id: string;
@@ -232,14 +234,7 @@ const CourtReservationsListPage: React.FC = () => {
     <div className="space-y-6">
       <ArenaPageHeader
         title="Reservas por quadra"
-        actions={
-          <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
-            <Link to="/quadras">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quadras
-            </Link>
-          </Button>
-        }
+        actions={<ArenaToolbar back={{ to: '/quadras', label: 'Quadras' }} links={getArenaModuleLinks(true)} />}
       />
 
       <Card>

@@ -71,7 +71,7 @@ const ContactRequestsPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'pending': return <Badge className="bg-yellow-500 text-black flex items-center gap-1"><Clock className="h-3 w-3" /> Pendente</Badge>;
+      case 'pending': return <Badge className="bg-primary/100 text-black flex items-center gap-1"><Clock className="h-3 w-3" /> Pendente</Badge>;
       case 'contacted': return <Badge className="bg-blue-500 text-white flex items-center gap-1"><Phone className="h-3 w-3" /> Contatado</Badge>;
       case 'resolved': return <Badge className="bg-green-500 text-white flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Resolvido</Badge>;
       default: return <Badge variant="outline">Desconhecido</Badge>;
@@ -102,7 +102,7 @@ const ContactRequestsPage: React.FC = () => {
       <Card className="border-gray-200">
         <CardHeader>
           <CardTitle className="text-gray-900 flex items-center gap-2">
-            <Mail className="h-6 w-6 text-yellow-600" />
+            <Mail className="h-6 w-6 text-primary" />
             Leads de Contato Recebidos
           </CardTitle>
         </CardHeader>

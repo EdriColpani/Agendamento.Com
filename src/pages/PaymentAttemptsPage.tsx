@@ -72,7 +72,7 @@ const PaymentAttemptsPage: React.FC = () => {
       case 'initiated': return <Badge className="bg-blue-500 text-white flex items-center gap-1"><Clock className="h-3 w-3" /> Iniciado</Badge>;
       case 'approved': return <Badge className="bg-green-500 text-white flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Aprovado</Badge>;
       case 'rejected': return <Badge className="bg-red-500 text-white flex items-center gap-1"><XCircle className="h-3 w-3" /> Rejeitado</Badge>;
-      case 'pending': return <Badge className="bg-yellow-500 text-black flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Pendente</Badge>;
+      case 'pending': return <Badge className="bg-primary/100 text-black flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Pendente</Badge>;
       case 'failed': return <Badge className="bg-red-700 text-white flex items-center gap-1"><XCircle className="h-3 w-3" /> Falhou</Badge>;
       default: return <Badge variant="outline">Desconhecido</Badge>;
     }
@@ -95,7 +95,7 @@ const PaymentAttemptsPage: React.FC = () => {
       <Card className="border-gray-200">
         <CardHeader>
           <CardTitle className="text-gray-900 flex items-center gap-2">
-            <DollarSign className="h-6 w-6 text-yellow-600" />
+            <DollarSign className="h-6 w-6 text-primary" />
             Todas as Tentativas de Pagamento de Planos
           </CardTitle>
         </CardHeader>

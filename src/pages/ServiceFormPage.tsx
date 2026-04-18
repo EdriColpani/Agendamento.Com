@@ -242,22 +242,22 @@ const ServiceFormPage: React.FC = () => {
               </AlertDescription>
             </Alert>
           ) : limitInfo.nearLimit ? (
-            <Alert className="border-yellow-500 bg-yellow-50">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-yellow-900 font-semibold">Você está próximo do limite de serviços</AlertTitle>
-              <AlertDescription className="text-yellow-800">
+            <Alert className="border-primary bg-primary/10">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-amber-900 font-semibold">Você está próximo do limite de serviços</AlertTitle>
+              <AlertDescription className="text-amber-900">
                 Seu plano permite até <strong>{limitInfo.maxAllowed}</strong> serviços ativos.
                 Você já possui <strong>{limitInfo.currentCount}</strong> serviços ({limitInfo.percentage}% do limite).
                 <br />
-                <div className="mt-2 w-full bg-yellow-200 rounded-full h-2">
+                <div className="mt-2 w-full bg-amber-200 rounded-full h-2">
                   <div
-                    className="bg-yellow-600 h-2 rounded-full transition-all"
+                    className="bg-primary h-2 rounded-full transition-all"
                     style={{ width: `${limitInfo.percentage}%` }}
                   />
                 </div>
                 <Button
                   variant="link"
-                  className="p-0 h-auto text-yellow-800 underline font-semibold mt-2"
+                  className="p-0 h-auto text-amber-900 underline font-semibold mt-2"
                   onClick={() => navigate('/planos')}
                 >
                   Considere fazer upgrade do seu plano →
@@ -389,7 +389,7 @@ const ServiceFormPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading || isLimitBlocked}
                   title={isLimitBlocked ? 'Limite de serviços atingido. Faça upgrade do seu plano.' : ''}
                 >

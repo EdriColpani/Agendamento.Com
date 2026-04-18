@@ -230,10 +230,10 @@ const BackupPage: React.FC = () => {
                 <p className="ml-4">Lista das Edge Functions. O código deve ser exportado manualmente da pasta <code className="bg-gray-100 px-1 rounded">supabase/functions/</code> do projeto</p>
               </div>
             </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
-              <p className="text-xs text-yellow-800">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-4">
+              <p className="text-xs text-amber-900">
                 <strong>Nota:</strong> Para que as políticas RLS, views, functions e triggers sejam exportadas automaticamente, 
-                é necessário executar a migration <code className="bg-yellow-100 px-1 rounded">20260209_create_backup_helper_function.sql</code> no Supabase.
+                é necessário executar a migration <code className="bg-primary/10 px-1 rounded">20260209_create_backup_helper_function.sql</code> no Supabase.
               </p>
             </div>
           </div>

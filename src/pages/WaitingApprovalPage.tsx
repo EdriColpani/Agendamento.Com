@@ -11,22 +11,20 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
+import { performSignOut } from '@/utils/auth-state';
 
 const WaitingApprovalPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        showError('Erro ao fazer logout: ' + error.message);
-      } else {
-        navigate('/', { replace: true });
-      }
-    } catch (err: any) {
-      showError('Erro ao fazer logout: ' + err.message);
+      await performSignOut();
+      navigate('/', { replace: true });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao sair.';
+      showError(msg);
+      navigate('/', { replace: true });
     }
   };
 
@@ -34,8 +32,8 @@ const WaitingApprovalPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
-            <AlertCircle className="h-8 w-8 text-yellow-600" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <AlertCircle className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">Aguardando Aprovação</CardTitle>
           <CardDescription className="mt-2">
@@ -43,9 +41,9 @@ const WaitingApprovalPage: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg bg-yellow-50 p-4 text-sm text-yellow-800">
+          <div className="rounded-lg bg-primary/10 p-4 text-sm text-amber-900">
             <p className="font-medium mb-2">O que aconteceu?</p>
-            <ul className="list-disc list-inside space-y-1 text-yellow-700">
+            <ul className="list-disc list-inside space-y-1 text-primary">
               <li>Você não possui vínculo ativo com nenhuma empresa</li>
               <li>Seu acesso pode ter sido revogado temporariamente</li>
               <li>Ou sua conta ainda está sendo processada</li>

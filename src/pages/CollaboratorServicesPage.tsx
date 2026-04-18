@@ -297,7 +297,7 @@ const CollaboratorServicesPage: React.FC = () => {
               Cancelar
             </Button>
             <Button
-              className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleSave}
               disabled={saving || services.length === 0}
             >

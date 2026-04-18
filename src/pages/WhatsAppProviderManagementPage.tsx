@@ -259,7 +259,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-yellow-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -288,7 +288,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
 
         {/* Formulário de Edição/Criação */}
         {editingProvider && (
-          <Card className="border-yellow-200 dark:border-yellow-800">
+          <Card className="border-primary/20 dark:border-amber-900">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Edit className="h-5 w-5" />
@@ -461,7 +461,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
                 <Button variant="outline" onClick={handleCancelEdit}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSave} disabled={saving} className="bg-yellow-600 hover:bg-yellow-700 text-black">
+                <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   {editingProvider.id ? 'Atualizar' : 'Criar'}
                 </Button>
@@ -497,7 +497,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
                     is_active: true,
                   });
                 }}
-                className="bg-yellow-600 hover:bg-yellow-700 text-black"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Novo Provedor

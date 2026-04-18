@@ -79,8 +79,8 @@ const EmailConfirmationPendingPage: React.FC = () => {
       <Card className="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
         <CardHeader className="text-center pb-6">
           <div className="flex justify-center mb-4">
-            <div className="rounded-full bg-yellow-100 dark:bg-yellow-900 p-4">
-              <Mail className="h-12 w-12 text-yellow-600 dark:text-yellow-400" />
+            <div className="rounded-full bg-primary/10 dark:bg-slate-800 p-4">
+              <Mail className="h-12 w-12 text-primary dark:text-primary" />
             </div>
           </div>
           <CardTitle className="text-3xl font-extrabold text-gray-900 dark:text-white">
@@ -128,8 +128,8 @@ const EmailConfirmationPendingPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+          <div className="bg-primary/10 dark:bg-slate-800/80 border border-primary/20 dark:border-slate-600 rounded-lg p-4">
+            <p className="text-sm text-amber-900 dark:text-slate-200">
               <strong>⚠️ Atenção:</strong> O sistema só será habilitado após a confirmação do e-mail. 
               Isso é necessário para evitar cadastros com e-mails incorretos e garantir a segurança da sua conta.
             </p>
@@ -152,7 +152,7 @@ const EmailConfirmationPendingPage: React.FC = () => {
               <Button
                 onClick={handleResendEmail}
                 disabled={resending || !email}
-                className="!rounded-button bg-yellow-600 hover:bg-yellow-700 text-black font-semibold"
+                className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
               >
                 {resending ? (
                   <>

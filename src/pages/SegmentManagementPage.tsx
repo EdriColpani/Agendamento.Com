@@ -240,7 +240,7 @@ const SegmentManagementPage: React.FC = () => {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-gray-900">Meus Segmentos</CardTitle>
             <Button
-              className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleAddSegment}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -374,7 +374,7 @@ const SegmentManagementPage: React.FC = () => {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading} className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black">
+              <Button type="submit" disabled={loading} className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90">
                 {loading ? 'Salvando...' : 'Salvar'}
               </Button>
             </DialogFooter>

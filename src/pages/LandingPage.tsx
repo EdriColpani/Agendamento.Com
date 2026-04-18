@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from '@/integrations/supabase/client';
+import { performSignOut } from '@/utils/auth-state';
 import { showError } from '@/utils/toast';
 import { Link, useNavigate } from 'react-router-dom'; // Adicionar Link
 import { setTargetCompanyId, getTargetCompanyId } from '@/utils/storage';
@@ -152,7 +153,7 @@ const LandingPage: React.FC = () => {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-10 h-10 bg-yellow-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <CalendarDays className="text-white h-6 w-6" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">TipoAgenda</h1>
@@ -162,31 +163,31 @@ const LandingPage: React.FC = () => {
           <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
             <button
               onClick={() => scrollToSection('inicio')}
-              className="text-sm font-medium text-gray-700 hover:text-yellow-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
             >
               Início
             </button>
             <button
               onClick={() => scrollToSection('beneficios')}
-              className="text-sm font-medium text-gray-700 hover:text-yellow-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
             >
               Benefícios
             </button>
             <button
               onClick={() => scrollToSection('plans-section')}
-              className="text-sm font-medium text-gray-700 hover:text-yellow-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
             >
               Planos
             </button>
             <button
               onClick={() => scrollToSection('depoimentos')}
-              className="text-sm font-medium text-gray-700 hover:text-yellow-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
             >
               Depoimentos
             </button>
             <button
               onClick={() => scrollToSection('contact-section')}
-              className="text-sm font-medium text-gray-700 hover:text-yellow-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
             >
               Contato
             </button>
@@ -207,10 +208,12 @@ const LandingPage: React.FC = () => {
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     Meu Perfil
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    supabase.auth.signOut();
-                    navigate('/');
-                  }}>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await performSignOut();
+                      navigate('/');
+                    }}
+                  >
                     Sair
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -228,7 +231,7 @@ const LandingPage: React.FC = () => {
                     Login
                   </Button>
                   <Button
-                    className="!rounded-button bg-yellow-600 hover:bg-yellow-700 text-black font-semibold"
+                    className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                     onClick={scrollToPlans}
                   >
                     Comece Agora
@@ -300,7 +303,7 @@ const LandingPage: React.FC = () => {
             </ul>
             <div className="flex flex-wrap gap-3 items-center">
               <Button
-                className="!rounded-button px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold text-base"
+                className="!rounded-button px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base"
                 onClick={scrollToPlans}
               >
                 Começar Agora
@@ -317,7 +320,7 @@ const LandingPage: React.FC = () => {
 
           {/* Mock visual dos lembretes no WhatsApp */}
           <div className="relative">
-            <div className="rounded-3xl border border-gray-200 shadow-xl p-4 bg-gradient-to-br from-yellow-50 to-white">
+            <div className="rounded-3xl border border-gray-200 shadow-xl p-4 bg-gradient-to-br from-primary/5 to-white">
               <div className="text-sm font-semibold mb-3 text-gray-800">
                 Como seus lembretes aparecem no WhatsApp:
               </div>
@@ -381,7 +384,7 @@ const LandingPage: React.FC = () => {
 
             <Card className="border border-gray-200 rounded-2xl shadow-sm">
               <CardContent className="p-6">
-                <div className="w-10 h-10 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center mb-4 text-lg">
+                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 text-lg">
                   📅
                 </div>
                 <h3 className="font-semibold text-lg mb-2 text-gray-900">
@@ -468,7 +471,7 @@ const LandingPage: React.FC = () => {
           </div>
 
           <p className="mt-10 text-center text-base text-gray-800 font-semibold max-w-3xl mx-auto">
-            Resultado: <span className="text-yellow-600">menos faltas, mais horários preenchidos e mais dinheiro no caixa</span>, enquanto o sistema cuida dos lembretes para você.
+            Resultado: <span className="text-primary">menos faltas, mais horários preenchidos e mais dinheiro no caixa</span>, enquanto o sistema cuida dos lembretes para você.
           </p>
         </div>
       </section>
@@ -484,9 +487,9 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="text-center border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                   <CalendarDays className="h-8 w-8 text-black" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Agendamentos 24/7</h3>
@@ -496,9 +499,9 @@ const LandingPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="fas fa-money-bag text-2xl text-black"></i>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Controle Financeiro Completo</h3>
@@ -508,9 +511,9 @@ const LandingPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="fas fa-chart-bar text-2xl text-black"></i>
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Relatórios que Geram Resultados</h3>
@@ -550,14 +553,14 @@ const LandingPage: React.FC = () => {
                 <ToggleGroupItem 
                   value="monthly" 
                   aria-label="Mensal"
-                  className={`px-4 py-2 rounded-md ${billingPeriod === 'monthly' ? 'bg-yellow-600 text-black' : 'bg-transparent text-gray-600'}`}
+                  className={`px-4 py-2 rounded-md ${billingPeriod === 'monthly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-gray-600'}`}
                 >
                   Mensal
                 </ToggleGroupItem>
                 <ToggleGroupItem 
                   value="yearly" 
                   aria-label="Anual"
-                  className={`px-4 py-2 rounded-md ${billingPeriod === 'yearly' ? 'bg-yellow-600 text-black' : 'bg-transparent text-gray-600'}`}
+                  className={`px-4 py-2 rounded-md ${billingPeriod === 'yearly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-gray-600'}`}
                 >
                   Anual
                 </ToggleGroupItem>
@@ -594,8 +597,8 @@ const LandingPage: React.FC = () => {
                 // Verifica se este é o plano mais caro para destaque
                 const isFeatured = plan.id === highestPricedPlan.id;
                 const cardClasses = isFeatured 
-                  ? 'border-4 border-yellow-600 shadow-2xl scale-105' 
-                  : 'border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg';
+                  ? 'border-4 border-primary shadow-2xl scale-105' 
+                  : 'border-2 border-gray-200 hover:border-primary transition-all shadow-lg';
                 
                 // Calcular preço base baseado no período selecionado
                 const yearlyBasePrice = plan.price * 12;
@@ -617,7 +620,7 @@ const LandingPage: React.FC = () => {
                 return (
                   <Card key={plan.id} className={cardClasses}>
                     {isFeatured && (
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-yellow-600 text-black text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
                         <Zap className="h-3 w-3" /> MAIS POPULAR
                       </div>
                     )}
@@ -629,7 +632,7 @@ const LandingPage: React.FC = () => {
                             R$ {priceWithoutYearlyDiscount.toFixed(2).replace('.', ',')}
                           </p>
                         )}
-                        <p className="text-5xl font-extrabold text-yellow-600">
+                        <p className="text-5xl font-extrabold text-primary">
                           R$ {basePrice.toFixed(2).replace('.', ',')}
                         </p>
                         <p className="text-base text-gray-500">
@@ -755,7 +758,7 @@ const LandingPage: React.FC = () => {
                       })()}
                       
                       <Button
-                        className="!rounded-button whitespace-nowrap w-full font-semibold py-2.5 text-base bg-yellow-600 hover:bg-yellow-700 text-black"
+                        className="!rounded-button whitespace-nowrap w-full font-semibold py-2.5 text-base bg-primary text-primary-foreground hover:bg-primary/90"
                         onClick={handleProfessionalSignup} // Redireciona para o cadastro unificado
                       >
                         Começar Agora
@@ -780,7 +783,7 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            <Card className="border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <img 
@@ -795,19 +798,19 @@ const LandingPage: React.FC = () => {
                 </div>
                 <div className="flex gap-1 mb-3">
                   {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-600">★</span>
+                    <span key={i} className="text-primary">★</span>
                   ))}
                 </div>
                 <p className="text-gray-700 mb-4">
                   "Em 3 meses, aumentei meus agendamentos em 45%. O sistema de lembretes automáticos reduziu faltas em 80%. Não consigo mais imaginar meu negócio sem o TipoAgenda!"
                 </p>
-                <p className="text-sm font-bold text-yellow-600">
+                <p className="text-sm font-bold text-primary">
                   Resultado: +45% de agendamentos em 3 meses
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <img 
@@ -822,19 +825,19 @@ const LandingPage: React.FC = () => {
                 </div>
                 <div className="flex gap-1 mb-3">
                   {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-600">★</span>
+                    <span key={i} className="text-primary">★</span>
                   ))}
                 </div>
                 <p className="text-gray-700 mb-4">
                   "O controle financeiro mudou tudo! Agora sei exatamente quanto ganho por cliente, quais horários são mais rentáveis e consigo planejar melhor meu mês. Recomendo para qualquer profissional!"
                 </p>
-                <p className="text-sm font-bold text-yellow-600">
+                <p className="text-sm font-bold text-primary">
                   Resultado: Controle total das finanças
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <img 
@@ -849,19 +852,19 @@ const LandingPage: React.FC = () => {
                 </div>
                 <div className="flex gap-1 mb-3">
                   {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-600">★</span>
+                    <span key={i} className="text-primary">★</span>
                   ))}
                 </div>
                 <p className="text-gray-700 mb-4">
                   "O sistema de fidelidade e WhatsApp automático são incríveis! Meus clientes adoram receber lembretes e ganhar pontos. A retenção de clientes aumentou muito desde que comecei a usar."
                 </p>
-                <p className="text-sm font-bold text-yellow-600">
+                <p className="text-sm font-bold text-primary">
                   Resultado: +60% de retenção de clientes
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <img 
@@ -876,13 +879,13 @@ const LandingPage: React.FC = () => {
                 </div>
                 <div className="flex gap-1 mb-3">
                   {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-600">★</span>
+                    <span key={i} className="text-primary">★</span>
                   ))}
                 </div>
                 <p className="text-gray-700 mb-4">
                   "Antes eu perdia muito tempo ligando para confirmar horários. Agora o sistema envia os lembretes automaticamente pelo WhatsApp e meus clientes sempre aparecem no horário certo. Minha agenda está sempre cheia!"
                 </p>
-                <p className="text-sm font-bold text-yellow-600">
+                <p className="text-sm font-bold text-primary">
                   Resultado: Agenda sempre cheia e sem faltas
                 </p>
               </CardContent>
@@ -899,9 +902,9 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            <Card className="text-center border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                   <Clock className="h-8 w-8 text-black" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Setup em 24h</h3>
@@ -911,9 +914,9 @@ const LandingPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="fas fa-lock text-2xl text-black"></i>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">100% Seguro</h3>
@@ -923,9 +926,9 @@ const LandingPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="fas fa-mobile-alt text-2xl text-black"></i>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Acesse de Qualquer Lugar</h3>
@@ -935,9 +938,9 @@ const LandingPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card className="text-center border-2 border-gray-200 hover:border-yellow-600 transition-all shadow-lg">
+            <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
-                <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
                   <MessageSquare className="h-8 w-8 text-black" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Suporte Dedicado</h3>

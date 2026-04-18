@@ -421,7 +421,7 @@ const WhatsAppMessagingPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-yellow-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -460,9 +460,9 @@ const WhatsAppMessagingPage: React.FC = () => {
       </div>
 
       {!whatsappEnabled && (
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-primary/20 bg-primary/10">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-yellow-800">
+            <div className="flex items-center gap-2 text-amber-900">
               <MessageSquare className="h-5 w-5" />
               <p className="font-medium">
                 O módulo de mensagens WhatsApp está desabilitado. Habilite acima para começar a configurar.
@@ -501,7 +501,7 @@ const WhatsAppMessagingPage: React.FC = () => {
                 setIsTemplateModalOpen(true);
               }}
               disabled={!whatsappEnabled}
-              className="bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 mr-2" />
               Novo Template
@@ -586,7 +586,7 @@ const WhatsAppMessagingPage: React.FC = () => {
                 setIsScheduleModalOpen(true);
               }}
               disabled={!whatsappEnabled}
-              className="bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 mr-2" />
               Nova Regra
@@ -754,7 +754,7 @@ const WhatsAppMessagingPage: React.FC = () => {
                 }}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSaveTemplate} disabled={saving} className="bg-yellow-600 hover:bg-yellow-700 text-black">
+                <Button onClick={handleSaveTemplate} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   {editingTemplate ? 'Atualizar' : 'Criar'}
                 </Button>
@@ -851,7 +851,7 @@ const WhatsAppMessagingPage: React.FC = () => {
                 }}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSaveSchedule} disabled={saving} className="bg-yellow-600 hover:bg-yellow-700 text-black">
+                <Button onClick={handleSaveSchedule} disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   {editingSchedule ? 'Atualizar' : 'Criar'}
                 </Button>

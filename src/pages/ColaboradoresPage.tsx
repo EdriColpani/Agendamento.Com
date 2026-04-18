@@ -160,7 +160,7 @@ const ColaboradoresPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para gerenciar colaboradores.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>

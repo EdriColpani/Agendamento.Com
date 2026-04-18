@@ -34,7 +34,7 @@ const NotificationList: React.FC<NotificationListProps> = ({ notifications, unre
   const getIcon = (type: Notification['type']) => {
     switch (type) {
       case 'PENDING_APPOINTMENT':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
+        return <Clock className="h-4 w-4 text-primary" />;
       case 'CANCELLED_APPOINTMENT':
         return <XCircle className="h-4 w-4 text-red-600" />;
       default:
