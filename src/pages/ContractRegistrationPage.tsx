@@ -140,7 +140,7 @@ const ContractRegistrationPage: React.FC = () => {
                 type="text"
                 placeholder="Ex: Contrato de Prestação de Serviços"
                 {...register('contractName')}
-                className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
               />
               {errors.contractName && <p className="text-red-500 text-xs mt-1">{errors.contractName.message}</p>}
             </div>
@@ -151,13 +151,13 @@ const ContractRegistrationPage: React.FC = () => {
                 placeholder="Insira o texto completo do contrato aqui..."
                 {...register('contractContent')}
                 rows={10}
-                className="mt-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                className="mt-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
               />
               {errors.contractContent && <p className="col-span-4 text-red-500 text-xs mt-1">{errors.contractContent.message}</p>}
             </div>
             <Button
               type="submit"
-              className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base"
+              className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base"
               disabled={loading}
             >
               {loading ? (contractId ? 'Salvando...' : 'Cadastrando...') : buttonText}

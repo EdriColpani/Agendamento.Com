@@ -593,7 +593,7 @@ const SubscriptionPlansPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para gerenciar planos.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -633,7 +633,7 @@ const SubscriptionPlansPage: React.FC = () => {
     switch (status) {
       case 'active': return <Badge className="bg-green-500 text-white">Ativo</Badge>;
       case 'inactive': return <Badge className="bg-gray-500 text-white">Inativo</Badge>;
-      case 'pending': return <Badge className="bg-yellow-500 text-black">Pendente</Badge>;
+      case 'pending': return <Badge className="bg-primary/100 text-black">Pendente</Badge>;
       case 'canceled': return <Badge className="bg-red-500 text-white">Cancelado</Badge>;
       case 'expired': return <Badge className="bg-red-500 text-white">Expirado</Badge>; // Novo badge
       default: return null;
@@ -645,9 +645,9 @@ const SubscriptionPlansPage: React.FC = () => {
       <h1 className="text-3xl font-bold text-gray-900">Planos de Assinatura</h1>
 
       {/* Status da Assinatura Atual */}
-      <Card className={`border-2 shadow-lg ${isCanceled || isExpired ? 'border-red-600 bg-red-50' : 'border-yellow-600'}`}>
+      <Card className={`border-2 shadow-lg ${isCanceled || isExpired ? 'border-red-600 bg-red-50' : 'border-primary'}`}>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className={`text-xl text-gray-900 flex items-center gap-2 ${isCanceled || isExpired ? 'text-red-600' : 'text-yellow-600'}`}>
+          <CardTitle className={`text-xl text-gray-900 flex items-center gap-2 ${isCanceled || isExpired ? 'text-red-600' : 'text-primary'}`}>
             {isCanceled || isExpired ? <AlertTriangle className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
             {isExpired && !isCanceled ? 'Assinatura Expirada' : 'Sua Assinatura Atual'}
           </CardTitle>
@@ -757,14 +757,14 @@ const SubscriptionPlansPage: React.FC = () => {
               <ToggleGroupItem 
                 value="monthly" 
                 aria-label="Mensal"
-                className={`px-4 py-2 rounded-md ${billingPeriod === 'monthly' ? 'bg-yellow-600 text-black' : 'bg-transparent text-gray-600'}`}
+                className={`px-4 py-2 rounded-md ${billingPeriod === 'monthly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-gray-600'}`}
               >
                 Mensal
               </ToggleGroupItem>
               <ToggleGroupItem 
                 value="yearly" 
                 aria-label="Anual"
-                className={`px-4 py-2 rounded-md ${billingPeriod === 'yearly' ? 'bg-yellow-600 text-black' : 'bg-transparent text-gray-600'}`}
+                className={`px-4 py-2 rounded-md ${billingPeriod === 'yearly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-gray-600'}`}
               >
                 Anual
               </ToggleGroupItem>
@@ -803,7 +803,7 @@ const SubscriptionPlansPage: React.FC = () => {
           const buttonDisabled = loadingData || isCurrentAndActive;
           
           const buttonText = isCurrentPlan && displayStatus === 'active' && !isExpired ? 'Plano Atual' : 'Assinar Agora';
-          const buttonClass = isCurrentPlan && displayStatus === 'active' && !isExpired ? 'bg-gray-400 hover:bg-gray-500 text-white' : 'bg-yellow-600 hover:bg-yellow-700 text-black';
+          const buttonClass = isCurrentPlan && displayStatus === 'active' && !isExpired ? 'bg-gray-400 hover:bg-gray-500 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90';
 
           // Calcular preço base baseado no período selecionado
           // Para plano anual: aplicar desconto de 15% sobre o valor anual (12 meses)
@@ -840,7 +840,7 @@ const SubscriptionPlansPage: React.FC = () => {
             : 0;
 
           return (
-            <Card key={plan.id} className={`border-2 ${isCurrentPlan ? 'border-yellow-600 shadow-xl' : 'border-gray-200'}`}>
+            <Card key={plan.id} className={`border-2 ${isCurrentPlan ? 'border-primary shadow-xl' : 'border-gray-200'}`}>
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-bold text-gray-900">{plan.name}</CardTitle>
                 <div className="flex justify-center items-center mt-2">
@@ -868,7 +868,7 @@ const SubscriptionPlansPage: React.FC = () => {
                       R$ {basePrice.toFixed(2).replace('.', ',')}
                     </p>
                   )}
-                  <p className="text-4xl font-extrabold text-yellow-600">
+                  <p className="text-4xl font-extrabold text-primary">
                     R$ {finalPrice.toFixed(2).replace('.', ',')}
                   </p>
                   <p className="text-sm text-gray-500">

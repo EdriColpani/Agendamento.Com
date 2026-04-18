@@ -211,7 +211,7 @@ const AdminCouponManagementPage: React.FC = () => {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-gray-900">Cupons para Proprietários</CardTitle>
             <Button
-              className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleAddCoupon}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -240,7 +240,7 @@ const AdminCouponManagementPage: React.FC = () => {
                     {coupons.map((coupon) => (
                       <tr key={coupon.id}>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-mono font-bold text-gray-900 flex items-center gap-2">
-                          <Tag className="h-4 w-4 text-yellow-600" />
+                          <Tag className="h-4 w-4 text-primary" />
                           {coupon.code}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">

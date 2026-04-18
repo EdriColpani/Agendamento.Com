@@ -407,7 +407,7 @@ const EditAgendamentoPage: React.FC = () => {
           Você precisa estar logado e ter uma empresa primária para gerenciar agendamentos.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -648,7 +648,7 @@ const EditAgendamentoPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black flex-1"
+                  className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                   disabled={loading || !selectedCollaboratorId || !selectedDate || totalDurationMinutes === 0 || availableTimeSlots.length === 0}
                 >
                   {loading ? 'Salvando...' : 'Salvar Alterações'}

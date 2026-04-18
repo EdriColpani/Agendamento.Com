@@ -5,8 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, DollarSign, Clock, LogOut } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { supabase } from '@/integrations/supabase/client';
-import { markExplicitLogout } from '@/utils/auth-state';
+import { performSignOut } from '@/utils/auth-state';
 
 interface SubscriptionExpiredPageProps {
   endDate: string | null;
@@ -21,51 +20,10 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
 
   const handleLogout = async () => {
     try {
-      markExplicitLogout(); // Marca que o logout foi explícito
-      
-      // Tentar fazer logout normalmente
-      try {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.warn('Logout error (will clear manually):', error.message);
-        }
-      } catch (signOutError: any) {
-        console.warn('SignOut failed (will clear manually):', signOutError);
-      }
-      
-      // Limpar manualmente o localStorage do Supabase para garantir que a sessão seja removida
-      try {
-        // Limpar todas as chaves relacionadas ao Supabase Auth
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.includes('supabase') || key.includes('auth'))) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        // Limpar sessionStorage também
-        const sessionKeysToRemove: string[] = [];
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key && (key.includes('supabase') || key.includes('auth'))) {
-            sessionKeysToRemove.push(key);
-          }
-        }
-        sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
-      } catch (clearError) {
-        console.error('Error clearing storage:', clearError);
-      }
-      
-      // Forçar atualização da sessão no Supabase
-      await supabase.auth.getSession();
-      
-      // Redirecionar para a Landing Page e recarregar para garantir limpeza completa
+      await performSignOut();
       window.location.href = '/';
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Unexpected error during logout:', error);
-      // Mesmo com erro, tenta redirecionar
       window.location.href = '/';
     }
   };
@@ -97,7 +55,7 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
           </p>
           
           <Button
-            className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base"
+            className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base"
             onClick={() => navigate('/planos')}
           >
             <DollarSign className="h-5 w-5 mr-2" />

@@ -240,7 +240,7 @@ const ChangePasswordPage: React.FC = () => {
             </div>
             <Button
               type="submit"
-              className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={loading}
             >
               {loading ? 'Alterando...' : 'Alterar Senha'}

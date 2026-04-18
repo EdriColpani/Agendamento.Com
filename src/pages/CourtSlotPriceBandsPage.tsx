@@ -25,8 +25,10 @@ import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
+import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 const WEEKDAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -209,14 +211,7 @@ const CourtSlotPriceBandsPage: React.FC = () => {
     <div className="space-y-6">
       <ArenaPageHeader
         title="Preços por horário"
-        actions={
-          <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
-            <Link to="/quadras">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quadras
-            </Link>
-          </Button>
-        }
+        actions={<ArenaToolbar back={{ to: '/quadras', label: 'Quadras' }} links={getArenaModuleLinks(true)} />}
       />
 
       <Card>
@@ -287,7 +282,7 @@ const CourtSlotPriceBandsPage: React.FC = () => {
             <Input type="number" className="mt-1" value={newSort} onChange={(e) => setNewSort(e.target.value)} />
           </div>
           <Button
-            className="bg-yellow-600 hover:bg-yellow-700 text-black"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={saving || !courtId}
             onClick={handleAdd}
           >

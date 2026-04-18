@@ -380,7 +380,7 @@ const NovoAgendamentoPage: React.FC = () => {
           Você precisa estar logado e acessar a página com o ID da empresa na URL para criar agendamentos.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -555,7 +555,7 @@ const NovoAgendamentoPage: React.FC = () => {
                         initialFocus
                         locale={ptBR}
                         disabled={(date) => isBefore(date, startOfDay(new Date()))}
-                        className="rounded-2xl border-2 border-yellow-500 bg-white shadow-sm p-2"
+                        className="rounded-2xl border-2 border-primary bg-white shadow-sm p-2"
                       />
                     </div>
                     {errors.appointmentDate && (
@@ -585,8 +585,8 @@ const NovoAgendamentoPage: React.FC = () => {
                                 timeSlotButtonBaseClasses +
                                 " " +
                                 (selectedAppointmentTime === timeSlot
-                                  ? "bg-yellow-600 text-black border-yellow-700 shadow-[0_3px_0_0_rgba(202,138,4,1)]"
-                                  : "bg-white text-yellow-700 border-yellow-500 shadow-[0_2px_0_0_rgba(202,138,4,1)] hover:-translate-y-0.5 hover:bg-yellow-50 hover:shadow-[0_4px_0_0_rgba(202,138,4,1)]")
+                                  ? "bg-primary text-primary-foreground border-primary shadow-[0_3px_0_0_rgba(202,138,4,1)]"
+                                  : "bg-white text-primary border-primary shadow-[0_2px_0_0_rgba(202,138,4,1)] hover:-translate-y-0.5 hover:bg-primary/10 hover:shadow-[0_4px_0_0_rgba(202,138,4,1)]")
                               }
                               onClick={() =>
                                 setValue("appointmentTime", timeSlot, {
@@ -651,7 +651,7 @@ const NovoAgendamentoPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black flex-1"
+                  className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                   disabled={loading || !selectedCollaboratorId || !selectedDate || totalDurationMinutes === 0 || availableTimeSlots.length === 0}
                 >
                   {loading ? 'Agendando...' : 'Agendar'}

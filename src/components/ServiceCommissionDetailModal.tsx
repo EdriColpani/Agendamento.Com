@@ -155,7 +155,7 @@ export const ServiceCommissionDetailModal: React.FC<ServiceCommissionDetailModal
                 {/* Rodapé com soma total */}
                 <div className="border-t pt-2 mt-2 flex justify-between items-center font-bold text-gray-900">
                   <span>Total:</span>
-                  <span className="text-yellow-600">
+                  <span className="text-primary">
                     R$ {filteredCommissions.reduce((sum, detail) => sum + detail.commission, 0).toFixed(2).replace('.', ',')}
                   </span>
                 </div>

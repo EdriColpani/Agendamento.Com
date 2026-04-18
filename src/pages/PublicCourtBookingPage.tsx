@@ -365,7 +365,7 @@ const PublicCourtBookingPage: React.FC = () => {
   if (loadingMeta) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-yellow-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="ml-2 text-gray-600">Carregando...</p>
       </div>
     );
@@ -596,7 +596,7 @@ const PublicCourtBookingPage: React.FC = () => {
             </Button>
             <Button
               type="button"
-              className="bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={bookingSubmitting}
               onClick={handleConfirmBooking}
             >

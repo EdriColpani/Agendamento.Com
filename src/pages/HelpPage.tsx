@@ -198,7 +198,7 @@ const HelpPage: React.FC = () => {
               <div>
                 <Separator className="my-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-yellow-600" />
+                  <Lightbulb className="h-5 w-5 text-primary" />
                   Dicas
                 </h3>
                 <ul className="list-disc list-inside space-y-2 text-gray-700">
@@ -251,7 +251,7 @@ const HelpPage: React.FC = () => {
             Voltar para Categorias
           </Button>
           <div className="flex items-center gap-3 mb-2">
-            <i className={`${selectedCategory.icon} text-3xl text-yellow-600`}></i>
+            <i className={`${selectedCategory.icon} text-3xl text-primary`}></i>
             <h1 className="text-3xl font-bold text-gray-900">{selectedCategory.name}</h1>
           </div>
           <p className="text-gray-600">{selectedCategory.description}</p>
@@ -304,7 +304,7 @@ const HelpPage: React.FC = () => {
     <div className="container mx-auto py-8 max-w-6xl">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <HelpCircle className="h-8 w-8 text-yellow-600" />
+          <HelpCircle className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold text-gray-900">Central de Ajuda</h1>
         </div>
         <p className="text-gray-600">Encontre respostas para suas dúvidas sobre o sistema</p>
@@ -331,12 +331,12 @@ const HelpPage: React.FC = () => {
         {helpCategories.map((category) => (
           <Card
             key={category.id}
-            className="cursor-pointer hover:shadow-lg transition-all hover:border-yellow-500"
+            className="cursor-pointer hover:shadow-lg transition-all hover:border-primary"
             onClick={() => handleCategorySelect(category.id)}
           >
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
-                <i className={`${category.icon} text-2xl text-yellow-600`}></i>
+                <i className={`${category.icon} text-2xl text-primary`}></i>
                 <CardTitle className="text-xl">{category.name}</CardTitle>
               </div>
               <CardDescription>{category.description}</CardDescription>

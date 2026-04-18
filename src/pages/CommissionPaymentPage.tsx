@@ -220,7 +220,7 @@ const CommissionPaymentPage: React.FC = () => {
         <Card className="border-gray-200">
           <CardContent className="p-4">
             <p className="text-sm text-gray-600">Selecionado para Pagamento</p>
-            <p className="text-2xl font-bold text-yellow-600">
+            <p className="text-2xl font-bold text-primary">
               R$ {totalSelected.toFixed(2).replace('.', ',')}
             </p>
           </CardContent>
@@ -249,7 +249,7 @@ const CommissionPaymentPage: React.FC = () => {
         <Button
           onClick={handleOpenPaymentModal}
           disabled={selectedCommissions.length === 0}
-          className="!rounded-button bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <i className="fas fa-money-bill-wave mr-2"></i>
           Efetuar Pagamento ({selectedCommissions.length})
@@ -298,7 +298,7 @@ const CommissionPaymentPage: React.FC = () => {
                         <div
                           key={commission.id}
                           className={`flex items-center gap-3 p-3 rounded-lg border ${
-                            isSelected ? 'border-yellow-600 bg-yellow-50' : 'border-gray-200'
+                            isSelected ? 'border-primary bg-primary/10' : 'border-gray-200'
                           }`}
                         >
                           <input

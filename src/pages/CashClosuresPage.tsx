@@ -100,7 +100,7 @@ const CashClosuresPage: React.FC = () => {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">
+                        <span className="px-2 py-1 bg-primary/10 text-amber-900 text-xs font-semibold rounded">
                           {getClosureTypeLabel(closure.closure_type)}
                         </span>
                         <span className="text-sm text-gray-600">
@@ -139,7 +139,7 @@ const CashClosuresPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs text-gray-600">Saldo</p>
-                      <p className="text-sm font-bold text-yellow-600">
+                      <p className="text-sm font-bold text-primary">
                         R$ {closure.total_balance.toFixed(2).replace('.', ',')}
                       </p>
                     </div>

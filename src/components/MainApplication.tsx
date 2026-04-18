@@ -230,7 +230,7 @@ const MainApplication: React.FC = () => {
               </Button>
             )}
             <Link to="/" className="flex items-center gap-3 cursor-pointer">
-              <div className="w-10 h-10 bg-yellow-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                 <i className="fas fa-calendar-alt text-white"></i>
               </div>
               <div className="flex flex-col items-start">
@@ -293,7 +293,7 @@ const MainApplication: React.FC = () => {
       <div className="flex flex-1 pt-16">
         {isAppPath && (
           <aside
-            className={`bg-gray-900 text-white transition-all duration-300 ${
+            className={`bg-sidebar text-sidebar-foreground transition-all duration-300 ${
               isMobile
                 ? sidebarCollapsed
                   ? 'hidden'
@@ -310,7 +310,7 @@ const MainApplication: React.FC = () => {
                   return null;
                 })()}
                 {sidebarMenuItems.length === 0 && !loadingMenus && (
-                  <li className="text-gray-400 text-sm p-3">
+                  <li className="text-sidebar-foreground/50 text-sm p-3">
                     Nenhum menu disponível
                   </li>
                 )}
@@ -336,8 +336,8 @@ const MainApplication: React.FC = () => {
                       onClick={handleMenuItemClick}
                       className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors cursor-pointer ${
                           isActive
-                          ? 'bg-yellow-600 text-black'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                       }`}
                     >
                       <i className={`${item.icon} text-lg`}></i>
@@ -352,7 +352,7 @@ const MainApplication: React.FC = () => {
                 {/* Separador visual antes do item de Ajuda */}
                 {sidebarMenuItems.length > 0 && (
                   <li className="my-2">
-                    <div className="h-px bg-gray-700"></div>
+                    <div className="h-px bg-sidebar-border"></div>
                   </li>
                 )}
                 
@@ -364,8 +364,8 @@ const MainApplication: React.FC = () => {
                       onClick={handleMenuItemClick}
                       className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors cursor-pointer ${
                         location.pathname === '/help' || location.pathname.startsWith('/help')
-                          ? 'bg-yellow-600 text-black'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                       }`}
                     >
                       <i className="fas fa-question-circle text-lg"></i>
@@ -383,8 +383,8 @@ const MainApplication: React.FC = () => {
                       onClick={handleMenuItemClick}
                       className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors cursor-pointer ${
                         location.pathname === '/meus-agendamentos'
-                          ? 'bg-yellow-600 text-black'
-                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                       }`}
                     >
                       <i className="fas fa-calendar-check text-lg"></i>
@@ -401,9 +401,9 @@ const MainApplication: React.FC = () => {
         <main className="flex-1 p-6">
           {/* Aviso de Expiração */}
           {isProprietarioOrCompanyAdmin && subscriptionStatus === 'expiring_soon' && endDate && (
-            <Alert className="mb-6 border-yellow-500 bg-yellow-50 text-yellow-800">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-yellow-800">Aviso de Expiração!</AlertTitle>
+            <Alert className="mb-6 border-primary bg-primary/10 text-amber-900">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-amber-900">Aviso de Expiração!</AlertTitle>
               <AlertDescription>
                 Sua assinatura expira em breve, no dia {format(parseISO(endDate), 'dd/MM/yyyy', { locale: ptBR })}. 
                 <Link to="/planos" className="font-semibold underline ml-1">Renove agora</Link> para evitar a interrupção dos serviços.

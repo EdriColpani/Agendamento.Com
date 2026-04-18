@@ -134,7 +134,7 @@ const UserDetailsPage: React.FC = () => {
   const getRoleColor = (cod: string) => {
     switch (cod) {
       case 'GLOBAL_ADMIN': return 'bg-red-600 text-white';
-      case 'PROPRIETARIO': return 'bg-yellow-600 text-black';
+      case 'PROPRIETARIO': return 'bg-primary text-primary-foreground';
       case 'CLIENTE': return 'bg-blue-600 text-white';
       default: return 'bg-gray-500 text-white';
     }
@@ -257,11 +257,11 @@ const UserDetailsPage: React.FC = () => {
               <p className="text-gray-600 text-sm">O usuário não está associado a nenhuma empresa.</p>
             ) : (
               userDetails.companies.map((company) => (
-                <div key={company.company_id} className={`p-3 rounded-lg border ${company.is_primary ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
+                <div key={company.company_id} className={`p-3 rounded-lg border ${company.is_primary ? 'border-primary bg-primary/10' : 'border-gray-200 bg-gray-50'}`}>
                   <p className="font-semibold text-gray-900">{company.company_name}</p>
                   <div className="flex justify-between items-center text-sm mt-1">
                     <Badge variant="outline" className="bg-gray-200 text-gray-700">{company.role_type_description}</Badge>
-                    {company.is_primary && <Badge className="bg-yellow-600 text-black">Primária</Badge>}
+                    {company.is_primary && <Badge className="bg-primary text-primary-foreground">Primária</Badge>}
                   </div>
                   <Button
                     variant="link"

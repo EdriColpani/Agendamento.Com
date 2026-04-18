@@ -79,7 +79,7 @@ const getStatusLabel = (status: MessageStatus): string => {
 const getStatusBadgeVariant = (status: MessageStatus): string => {
   switch (status) {
     case 'PENDING':
-      return 'bg-yellow-500 text-black';
+      return 'bg-primary/100 text-black';
     case 'SENT':
       return 'bg-green-500 text-white';
     case 'FAILED':
@@ -343,7 +343,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   if (loadingPrimaryCompany || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-yellow-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -355,7 +355,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para gerenciar a fila de mensagens WhatsApp.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -436,8 +436,8 @@ const WhatsAppMessageQueuePage: React.FC = () => {
               <p className="text-2xl font-bold text-gray-900 mt-1">{metrics.sent}</p>
               <p className="text-xs text-gray-500 mt-1">Mensagens enviadas com sucesso</p>
             </div>
-            <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-              <MessageCircle className="h-5 w-5 text-yellow-600" />
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+              <MessageCircle className="h-5 w-5 text-primary" />
             </div>
           </CardContent>
         </Card>

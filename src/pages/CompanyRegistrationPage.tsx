@@ -566,7 +566,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="Razão Social da empresa"
                   {...register('razao_social')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.razao_social && <p className="text-red-500 text-xs mt-1">{errors.razao_social.message}</p>}
               </div>
@@ -577,7 +577,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="Nome fantasia da empresa"
                   {...register('name')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
               </div>
@@ -593,7 +593,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   value={cnpjValue}
                   onChange={handleCnpjChange}
                   maxLength={18}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.cnpj && <p className="text-red-500 text-xs mt-1">{errors.cnpj.message}</p>}
               </div>
@@ -604,7 +604,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="Opcional"
                   {...register('ie')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.ie && <p className="text-red-500 text-xs mt-1">{errors.ie.message}</p>}
               </div>
@@ -618,7 +618,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="email"
                   placeholder="contato@suaempresa.com"
                   {...register('company_email')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.company_email && <p className="text-red-500 text-xs mt-1">{errors.company_email.message}</p>}
               </div>
@@ -631,7 +631,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   value={phoneNumberValue}
                   onChange={handlePhoneNumberChange}
                   maxLength={15}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.phone_number && <p className="text-red-500 text-xs mt-1">{errors.phone_number.message}</p>}
               </div>
@@ -640,7 +640,7 @@ const CompanyRegistrationPage: React.FC = () => {
             <div>
               <Label htmlFor="segment_type" className="text-sm font-medium text-gray-700 dark:text-gray-300">Segmento *</Label>
               <Select onValueChange={(value) => setValue('segment_type', value, { shouldValidate: true })} value={segmentTypeValue}>
-                <SelectTrigger id="segment_type" className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500" disabled={loadingSegments}>
+                <SelectTrigger id="segment_type" className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" disabled={loadingSegments}>
                   <SelectValue placeholder={loadingSegments ? "Carregando segmentos..." : "Selecione o segmento da empresa"} />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-700 dark:text-white">
@@ -663,7 +663,7 @@ const CompanyRegistrationPage: React.FC = () => {
               <div>
                 <Label htmlFor="state" className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado *</Label>
                 <Select onValueChange={(value) => setValue('state', value, { shouldValidate: true })} value={stateValue}>
-                  <SelectTrigger id="state" className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500">
+                  <SelectTrigger id="state" className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary">
                     <SelectValue placeholder="UF" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-700 dark:text-white">
@@ -685,7 +685,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   value={zipCodeValue}
                   onChange={handleZipCodeChange}
                   maxLength={9}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.zip_code && <p className="text-red-500 text-xs mt-1">{errors.zip_code.message}</p>}
               </div>
@@ -696,7 +696,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="Sua cidade"
                   {...register('city')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
               </div>
@@ -710,7 +710,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="Rua, Avenida, etc."
                   {...register('address')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
               </div>
@@ -721,7 +721,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="123"
                   {...register('number')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.number && <p className="text-red-500 text-xs mt-1">{errors.number.message}</p>}
               </div>
@@ -735,7 +735,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="Seu bairro"
                   {...register('neighborhood')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.neighborhood && <p className="text-red-500 text-xs mt-1">{errors.neighborhood.message}</p>}
               </div>
@@ -746,7 +746,7 @@ const CompanyRegistrationPage: React.FC = () => {
                   type="text"
                   placeholder="Apto, Sala, Bloco"
                   {...register('complement')}
-                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-yellow-500 focus:ring-yellow-500"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
                 />
                 {errors.complement && <p className="text-red-500 text-xs mt-1">{errors.complement.message}</p>}
               </div>
@@ -759,14 +759,14 @@ const CompanyRegistrationPage: React.FC = () => {
                 type="file"
                 accept="image/*"
                 {...register('company_logo')}
-                className="mt-2 file:text-sm file:font-semibold file:bg-yellow-600 file:text-black file:border-none file:rounded-button file:px-4 file:py-2 file:mr-4 hover:file:bg-yellow-700 dark:file:bg-yellow-700 dark:file:text-black dark:text-gray-300 dark:border-gray-600"
+                className="mt-2 file:text-sm file:font-semibold file:bg-primary file:text-black file:border-none file:rounded-button file:px-4 file:py-2 file:mr-4 hover:file:bg-primary/90 dark:file:bg-primary/90 dark:file:text-black dark:text-gray-300 dark:border-gray-600"
               />
               {errors.company_logo && <p className="text-red-500 text-xs mt-1">{errors.company_logo.message}</p>}
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Qualquer formato de imagem será aceito e convertido automaticamente. Máximo 5MB.</p>
             </div>
             <Button
               type="submit"
-              className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base"
+              className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base"
               disabled={loading || loadingSegments}
             >
               {loading || loadingSegments ? 'Carregando...' : 'Cadastrar Empresa'}

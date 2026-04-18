@@ -45,7 +45,7 @@ const AuthPage: React.FC = () => {
         <CardHeader className="relative flex flex-row items-center justify-center">
           <div className="flex flex-col items-center w-full">
             <Link to="/" className="flex items-center gap-3 cursor-pointer mb-4">
-              <div className="w-10 h-10 bg-yellow-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                 <i className="fas fa-calendar-alt text-white"></i>
               </div>
               <CardTitle

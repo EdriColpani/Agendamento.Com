@@ -2,11 +2,10 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
-import { markExplicitLogout } from '@/utils/auth-state';
+import { performSignOut } from '@/utils/auth-state';
 import { Users, Building, DollarSign, FileText, Tags, LogOut, Key, MailCheck, Tag, BarChart, Zap, CreditCard, Image as ImageIcon, MessageSquare, UserCog, Menu, Database, AlertTriangle } from 'lucide-react'; // Importando ícones do dashboard
 import RecentAuditLogs from '@/components/RecentAuditLogs';
 
@@ -55,12 +54,11 @@ const AdminDashboard: React.FC = () => {
   }, [session, sessionLoading, isGlobalAdmin, loadingGlobalAdminCheck, navigate]);
 
   const handleLogout = async () => {
-    markExplicitLogout(); // Marca que o logout foi explícito
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      showError('Erro ao fazer logout: ' + error.message);
-    } else {
-      // Redirecionamento será tratado pelo SessionContextProvider
+    try {
+      await performSignOut();
+      window.location.href = '/';
+    } catch {
+      window.location.href = '/';
     }
   };
 
@@ -117,9 +115,9 @@ const AdminDashboard: React.FC = () => {
           <ManagementCard
             title="Gerenciar Planos"
             description="Defina e edite os planos de assinatura disponíveis para as empresas."
-            icon={<DollarSign className="h-6 w-6 text-yellow-600" />}
+            icon={<DollarSign className="h-6 w-6 text-primary" />}
             buttonText="Gerenciar Planos"
-            buttonColor="bg-yellow-600 hover:bg-yellow-700 text-black"
+            buttonColor="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => navigate('/admin-dashboard/plans')}
           />
 

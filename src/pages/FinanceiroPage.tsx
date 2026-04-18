@@ -96,7 +96,7 @@ const FinanceiroPage: React.FC = () => {
   const financeCards = [
     { title: 'Entradas', value: `R$ ${entradas.toFixed(2).replace('.', ',')}`, icon: 'fas fa-arrow-up', color: 'green' },
     { title: 'Saídas', value: `R$ ${saidas.toFixed(2).replace('.', ',')}`, icon: 'fas fa-arrow-down', color: 'red' },
-    { title: 'Saldo', value: `R$ ${(entradas - saidas).toFixed(2).replace('.', ',')}`, icon: 'fas fa-wallet', color: 'yellow' }
+    { title: 'Saldo', value: `R$ ${(entradas - saidas).toFixed(2).replace('.', ',')}`, icon: 'fas fa-wallet', color: 'primary' }
   ];
 
   if (sessionLoading || loadingPrimaryCompany || loadingTransactions) {
@@ -136,7 +136,7 @@ const FinanceiroPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card de Pagamento de Comissões */}
         <Card 
-          className="border-gray-200 cursor-pointer hover:border-yellow-600 hover:shadow-md transition-all"
+          className="border-gray-200 cursor-pointer hover:border-primary hover:shadow-md transition-all"
           onClick={() => navigate('/financeiro/pagamento-comissoes')}
         >
           <CardContent className="p-6">
@@ -157,14 +157,14 @@ const FinanceiroPage: React.FC = () => {
 
         {/* Card de Fechar Caixa */}
         <Card 
-          className="border-gray-200 cursor-pointer hover:border-yellow-600 hover:shadow-md transition-all"
+          className="border-gray-200 cursor-pointer hover:border-primary hover:shadow-md transition-all"
           onClick={() => navigate('/fechar-caixa')}
         >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <i className="fas fa-cash-register text-yellow-600 text-xl"></i>
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-cash-register text-primary text-xl"></i>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Fechar Caixa</h3>
@@ -178,7 +178,7 @@ const FinanceiroPage: React.FC = () => {
 
         {/* Card de Histórico de Fechamentos */}
         <Card 
-          className="border-gray-200 cursor-pointer hover:border-yellow-600 hover:shadow-md transition-all"
+          className="border-gray-200 cursor-pointer hover:border-primary hover:shadow-md transition-all"
           onClick={() => navigate('/financeiro/fechamentos')}
         >
           <CardContent className="p-6">

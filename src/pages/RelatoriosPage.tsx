@@ -80,7 +80,7 @@ const RelatoriosPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para acessar relatórios.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -231,7 +231,7 @@ const RelatoriosPage: React.FC = () => {
                               </span>
                             )}
                             {isPartiallyPaid && (
-                              <span className="px-2 py-0.5 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+                              <span className="px-2 py-0.5 text-xs font-semibold bg-primary/10 text-amber-900 rounded-full">
                                 <i className="fas fa-exclamation-circle mr-1"></i>
                                 Parcial
                               </span>
@@ -242,7 +242,7 @@ const RelatoriosPage: React.FC = () => {
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">{colaborador.appointments} atendimentos</p>
                         <div className="space-y-1">
-                          <p className="text-sm font-bold text-yellow-600">
+                          <p className="text-sm font-bold text-primary">
                             Comissão Total: R$ {colaborador.commission.toFixed(2).replace('.', ',')}
                           </p>
                           {colaborador.paid_amount > 0 && (
@@ -295,7 +295,7 @@ const RelatoriosPage: React.FC = () => {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-yellow-600 h-2 rounded-full"
+                        className="bg-primary h-2 rounded-full"
                         style={{ width: `${item.percentual}%` }}
                       ></div>
                     </div>

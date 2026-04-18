@@ -74,7 +74,7 @@ const ProfilePage: React.FC = () => {
         <CardHeader className="text-center">
           <Avatar className="w-24 h-24 mx-auto mb-4">
             <AvatarImage src={profile.avatar_url || ''} alt="User Avatar" />
-            <AvatarFallback className="bg-yellow-600 text-white text-3xl">
+            <AvatarFallback className="bg-primary text-white text-3xl">
               {userInitials.toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -112,7 +112,7 @@ const ProfilePage: React.FC = () => {
           </div>
           <Button
             onClick={() => setIsEditModalOpen(true)}
-            className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black mt-6"
+            className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 mt-6"
           >
             <i className="fas fa-edit mr-2"></i>
             Editar Perfil

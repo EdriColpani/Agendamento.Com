@@ -8,10 +8,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 export const getStatusColor = (status: string) => {
   const colors: { [key: string]: string } = {
     confirmado: 'bg-green-500',
-    pendente: 'bg-yellow-500',
+    pendente: 'bg-primary/20 text-primary',
     cancelado: 'bg-red-500',
     concluido: 'bg-blue-500', // Adicionado status concluido
-    vip: 'bg-yellow-500 text-black',
+    vip: 'bg-primary/20 text-primary',
     regular: 'bg-blue-500',
     novo: 'bg-green-500',
     ativa: 'bg-green-500',
@@ -24,7 +24,7 @@ export const createButton = (onClick: () => void, icon: string, text: string, va
   <Button
     type="button"
     className={`!rounded-button whitespace-nowrap cursor-pointer ${
-      variant === 'primary' ? 'bg-yellow-600 hover:bg-yellow-700 text-black' : ''
+      variant === 'primary' ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''
     }`}
     variant={variant === 'outline' ? 'outline' : undefined}
     onClick={onClick}
@@ -34,22 +34,39 @@ export const createButton = (onClick: () => void, icon: string, text: string, va
   </Button>
 );
 
-export const createCard = (title: string, value: string, change: string, icon: string, colorClass = 'yellow') => (
-  <Card className="border-gray-200 hover:shadow-lg transition-shadow">
-    <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
-          <p className={`text-sm text-${colorClass}-600 mt-1`}>{change}</p>
+const kpiPalette: Record<string, { change: string; box: string; icon: string }> = {
+  primary: { change: 'text-primary', box: 'bg-primary/10', icon: 'text-primary' },
+  yellow: { change: 'text-primary', box: 'bg-primary/10', icon: 'text-primary' },
+  green: { change: 'text-green-600', box: 'bg-green-100', icon: 'text-green-600' },
+  red: { change: 'text-red-600', box: 'bg-red-100', icon: 'text-red-600' },
+  blue: { change: 'text-blue-600', box: 'bg-blue-100', icon: 'text-blue-600' },
+};
+
+export const createCard = (
+  title: string,
+  value: string,
+  change: string,
+  icon: string,
+  colorKey: keyof typeof kpiPalette = 'primary',
+) => {
+  const p = kpiPalette[colorKey] ?? kpiPalette.primary;
+  return (
+    <Card className="border-gray-200 hover:shadow-lg transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+            <p className={`text-sm ${p.change} mt-1`}>{change}</p>
+          </div>
+          <div className={`w-12 h-12 ${p.box} rounded-lg flex items-center justify-center`}>
+            <i className={`${icon} ${p.icon} text-xl`}></i>
+          </div>
         </div>
-        <div className={`w-12 h-12 bg-${colorClass}-100 rounded-lg flex items-center justify-center`}>
-          <i className={`${icon} text-${colorClass}-600 text-xl`}></i>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
+};
 
 export const createFormField = (label: string, name: string, type = 'text', required = false, options: { value: string; label: string }[] = []) => (
   <div>

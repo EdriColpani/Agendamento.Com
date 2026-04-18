@@ -25,8 +25,8 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company, isSelected, onClick 
   return (
     <Card
       className={cn(
-        "cursor-pointer hover:border-yellow-600 transition-all duration-200",
-        isSelected ? "border-yellow-600 ring-2 ring-yellow-600" : "border-gray-200"
+        "cursor-pointer hover:border-primary transition-all duration-200",
+        isSelected ? "border-primary ring-2 ring-primary" : "border-gray-200"
       )}
       onClick={() => onClick(company.id)}
     >

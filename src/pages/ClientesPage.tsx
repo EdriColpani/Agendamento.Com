@@ -138,7 +138,7 @@ const ClientesPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para gerenciar clientes.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -188,7 +188,7 @@ const ClientesPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2"> {/* Adicionado flex para alinhar pontos e botões */}
                     <div className="text-center">
-                      <p className="text-sm text-yellow-600">{cliente.points} pontos</p>
+                      <p className="text-sm text-primary">{cliente.points} pontos</p>
                     </div>
                     <Badge className={`${getStatusColor(cliente.status)} text-xs`}>
                       {cliente.status.toUpperCase()}

@@ -24,7 +24,7 @@ const getIconForTable = (tableName: string) => {
     case 'contracts':
       return <FileText className="h-4 w-4 text-purple-600" />;
     case 'subscription_plans':
-      return <DollarSign className="h-4 w-4 text-yellow-600" />;
+      return <DollarSign className="h-4 w-4 text-primary" />;
     case 'products':
       return <Package className="h-4 w-4 text-blue-600" />;
     case 'profiles':

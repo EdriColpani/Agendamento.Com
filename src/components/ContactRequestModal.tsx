@@ -181,7 +181,7 @@ const ContactRequestModal: React.FC<ContactRequestModalProps> = ({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading} className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black">
+            <Button type="submit" disabled={loading} className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90">
               {loading ? 'Enviando...' : 'Salvar e Enviar'}
             </Button>
           </DialogFooter>

@@ -268,7 +268,7 @@ const ClientAppointmentsPage: React.FC = () => {
             </SelectContent>
           </Select>
           <Button
-            className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black w-full md:w-auto"
+            className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 w-full md:w-auto"
             onClick={handleNewAppointmentClick}
           >
             <i className="fas fa-plus mr-2"></i>
@@ -318,7 +318,7 @@ const ClientAppointmentsPage: React.FC = () => {
                       <p className="text-xs md:text-sm text-gray-600">{collaboratorName}</p>
                     </div>
                     <div className="text-left md:text-right flex flex-row md:flex-col items-start md:items-end gap-2 md:gap-1 md:w-1/4">
-                      <p className="font-bold text-yellow-600 text-base md:text-lg">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
+                      <p className="font-bold text-primary text-base md:text-lg">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
                       <Badge className={`${getStatusColor(agendamento.status)} text-white text-xs`}>
                         {agendamento.status}
                       </Badge>

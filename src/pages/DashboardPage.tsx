@@ -45,7 +45,7 @@ const DashboardPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para acessar o Dashboard.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -99,7 +99,7 @@ const DashboardPage: React.FC = () => {
       value: data.mostActiveCollaborator?.name || 'N/A', 
       change: `${data.mostActiveCollaborator?.count || 0} atendimentos`, 
       icon: 'fas fa-crown', 
-      color: 'yellow' 
+      color: 'primary' 
     },
     ...(hasStockPermission ? [{
       title: 'Estoque Crítico', 
@@ -163,7 +163,7 @@ const DashboardPage: React.FC = () => {
                           <p className="text-sm text-gray-600">{agendamento.time_range} - {agendamento.service_names}</p>
                         </div>
                       </div>
-                      <p className="font-semibold text-yellow-600">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
+                      <p className="font-semibold text-primary">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
                     </div>
                   ))
                 )}

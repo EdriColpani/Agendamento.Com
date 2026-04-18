@@ -277,7 +277,7 @@ const AgendamentosPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para gerenciar agendamentos.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -312,7 +312,7 @@ const AgendamentosPage: React.FC = () => {
             </TabsList>
           </Tabs>
           <select
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-800 focus:border-yellow-600 focus:ring-1 focus:ring-yellow-600"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-800 focus:border-primary focus:ring-1 focus:ring-primary"
             value={selectedCollaboratorFilter}
             onChange={(e) => setSelectedCollaboratorFilter(e.target.value)}
           >
@@ -340,7 +340,7 @@ const AgendamentosPage: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="ml-2 text-xs !rounded-button text-yellow-600 hover:text-yellow-700"
+                  className="ml-2 text-xs !rounded-button text-primary hover:text-primary"
                   onClick={() => navigateWeek('today')}
                 >
                   Hoje
@@ -375,7 +375,7 @@ const AgendamentosPage: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="ml-2 text-xs !rounded-button text-yellow-600 hover:text-yellow-700"
+                  className="ml-2 text-xs !rounded-button text-primary hover:text-primary"
                   onClick={() => navigateMonth('today')}
                 >
                   Hoje
@@ -437,7 +437,7 @@ const AgendamentosPage: React.FC = () => {
                       <p className="text-sm text-gray-600">{collaboratorName}</p>
                     </div>
                     <div className="text-right w-1/4 flex flex-col items-end gap-1">
-                      <p className="font-bold text-yellow-600">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
+                      <p className="font-bold text-primary">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
                       <Button
                         variant="outline"
                         size="sm"

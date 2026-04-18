@@ -34,8 +34,10 @@ import {
   estimateCourtBookingTotalPrice,
   type CourtPriceBand,
 } from '@/utils/courtSlots';
-import { ArrowLeft, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
+import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 interface CourtOption {
   id: string;
@@ -338,23 +340,10 @@ const CourtAgendaPage: React.FC = () => {
       <ArenaPageHeader
         title="Agenda das quadras"
         actions={
-          <>
-            <Button variant="ghost" className="!rounded-button w-full sm:w-auto" asChild>
-              <Link to="/quadras">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Quadras
-              </Link>
-            </Button>
-            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
-              <Link to="/quadras/horarios">Horários de funcionamento</Link>
-            </Button>
-            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
-              <Link to="/quadras/precos">Preços por horário</Link>
-            </Button>
-            <Button variant="outline" className="!rounded-button w-full sm:w-auto" asChild>
-              <Link to="/quadras/reservas">Lista de reservas</Link>
-            </Button>
-          </>
+          <ArenaToolbar
+            back={{ to: '/quadras', label: 'Quadras' }}
+            links={getArenaModuleLinks(true)}
+          />
         }
       />
 
@@ -362,7 +351,7 @@ const CourtAgendaPage: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <p className="text-gray-600 dark:text-gray-400">Cadastre quadras e configure os horários.</p>
-            <Button className="mt-4" asChild>
+            <Button className="mt-4 rounded-full" asChild>
               <Link to="/quadras">Ir para Quadras</Link>
             </Button>
           </CardContent>
@@ -393,19 +382,21 @@ const CourtAgendaPage: React.FC = () => {
                     {visibleDates.map((date) => {
                       const isSelected = format(date, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
                       return (
-                        <button
+                        <Button
                           key={format(date, 'yyyy-MM-dd')}
                           type="button"
+                          variant={isSelected ? 'default' : 'outline'}
+                          size="sm"
                           onClick={() => setSelectedDate(date)}
-                          className={`min-w-[72px] rounded-full border px-3 py-2 text-center ${
-                            isSelected
-                              ? 'border-gray-900 bg-gray-900 text-white'
-                              : 'border-gray-200 bg-white text-gray-800 hover:bg-gray-50'
-                          }`}
+                          className="min-h-[auto] min-w-[72px] flex-col gap-0 rounded-full px-3 py-2 font-normal"
                         >
-                          <span className="block text-xs uppercase">{format(date, 'EEE', { locale: ptBR })}</span>
-                          <span className="block text-sm font-semibold">{format(date, 'dd')}</span>
-                        </button>
+                          <span className="block text-xs uppercase leading-tight">
+                            {format(date, 'EEE', { locale: ptBR })}
+                          </span>
+                          <span className="block text-sm font-semibold leading-tight">
+                            {format(date, 'dd')}
+                          </span>
+                        </Button>
                       );
                     })}
                   </div>
@@ -560,7 +551,7 @@ const CourtAgendaPage: React.FC = () => {
             </Button>
             <Button
               type="button"
-              className="bg-yellow-600 hover:bg-yellow-700 text-black"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={bookingSubmitting || !bookingClientId}
               onClick={handleConfirmBooking}
             >

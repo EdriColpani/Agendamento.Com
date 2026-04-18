@@ -431,10 +431,10 @@ const FecharCaixaPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Saldo do Período</p>
-                  <p className="text-2xl font-bold text-yellow-600 mt-2">R$ {(Number(summary.totalBalance) || 0).toFixed(2).replace('.', ',')}</p>
+                  <p className="text-2xl font-bold text-primary mt-2">R$ {(Number(summary.totalBalance) || 0).toFixed(2).replace('.', ',')}</p>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <i className="fas fa-wallet text-yellow-600 text-xl"></i>
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-wallet text-primary text-xl"></i>
                 </div>
               </div>
             </CardContent>
@@ -696,7 +696,7 @@ const FecharCaixaPage: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black flex-1"
+                  className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                   disabled={isClosed || summary.transactions.length === 0}
                 >
                   <i className="fas fa-lock mr-2"></i>

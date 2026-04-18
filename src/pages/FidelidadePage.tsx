@@ -10,7 +10,7 @@ const FidelidadePage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Fidelidade e Promoções</h1>
-        <Button className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black">
+        <Button className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90">
           <i className="fas fa-plus mr-2"></i>
           Nova Promoção
         </Button>
@@ -21,9 +21,9 @@ const FidelidadePage: React.FC = () => {
             <CardTitle className="text-gray-900">Configuração de Pontos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h3 className="font-semibold text-yellow-800 mb-2">Regras Atuais</h3>
-              <ul className="space-y-1 text-sm text-yellow-700">
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <h3 className="font-semibold text-amber-900 mb-2">Regras Atuais</h3>
+              <ul className="space-y-1 text-sm text-primary">
                 <li>• 1 ponto para cada R$ 1,00 gasto</li>
                 <li>• 100 pontos = R$ 10,00 de desconto</li>
                 <li>• Pontos expiram em 12 meses</li>
@@ -42,7 +42,7 @@ const FidelidadePage: React.FC = () => {
                 </label>
                 <Input type="number" defaultValue="100" className="border-gray-300 text-sm" />
               </div>
-              <Button className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black w-full">
+              <Button className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 w-full">
                 Salvar Configurações
               </Button>
             </div>
@@ -80,7 +80,7 @@ const FidelidadePage: React.FC = () => {
               </label>
               <Input type="date" className="border-gray-300 text-sm" />
             </div>
-            <Button className="!rounded-button whitespace-nowrap cursor-pointer bg-yellow-600 hover:bg-yellow-700 text-black w-full">
+            <Button className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 w-full">
               Criar Cupom
             </Button>
           </CardContent>
@@ -99,8 +99,8 @@ const FidelidadePage: React.FC = () => {
             ].map((promocao, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-ticket-alt text-yellow-600"></i>
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <i className="fas fa-ticket-alt text-primary"></i>
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">{promocao.codigo}</h3>

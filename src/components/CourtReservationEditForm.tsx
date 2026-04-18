@@ -330,7 +330,7 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
                 </Button>
                 <Button
                   type="submit"
-                  className="!rounded-button flex-1 bg-yellow-600 hover:bg-yellow-700 text-black"
+                  className="!rounded-button flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={saving}
                 >
                   {saving ? 'Salvando...' : 'Salvar alterações'}

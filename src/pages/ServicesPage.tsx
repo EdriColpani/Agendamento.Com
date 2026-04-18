@@ -127,7 +127,7 @@ const ServicesPage: React.FC = () => {
           Você precisa ter uma empresa primária cadastrada para gerenciar serviços.
         </p>
         <Button
-          className="!rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black"
+          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={() => navigate('/register-company')}
         >
           <i className="fas fa-building mr-2"></i>
@@ -175,7 +175,7 @@ const ServicesPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-yellow-600">R$ {service.price.toFixed(2).replace('.', ',')}</p>
+                    <p className="font-bold text-primary">R$ {service.price.toFixed(2).replace('.', ',')}</p>
                     <Badge className={`${getStatusColor(service.status)} text-white text-xs`}>
                       {service.status}
                     </Badge>

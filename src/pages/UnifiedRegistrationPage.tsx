@@ -677,7 +677,7 @@ const UnifiedRegistrationPage: React.FC = () => {
                 type="file"
                 accept="image/*"
                 {...register('companyLogo')}
-                className="mt-2 file:text-sm file:font-semibold file:bg-yellow-600 file:text-black file:border-none file:rounded-button file:px-4 file:py-2 file:mr-4 hover:file:bg-yellow-700 dark:file:bg-yellow-700 dark:file:text-black dark:text-gray-300 dark:border-gray-600"
+                className="mt-2 file:text-sm file:font-semibold file:bg-primary file:text-black file:border-none file:rounded-button file:px-4 file:py-2 file:mr-4 hover:file:bg-primary/90 dark:file:bg-primary/90 dark:file:text-black dark:text-gray-300 dark:border-gray-600"
               />
               {errors.companyLogo && <p className="text-red-500 text-xs mt-1">{errors.companyLogo.message}</p>}
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Qualquer formato de imagem será aceito e convertido automaticamente. Máximo 5MB.</p>
@@ -685,7 +685,7 @@ const UnifiedRegistrationPage: React.FC = () => {
 
             <Button
               type="submit"
-              className="w-full !rounded-button whitespace-nowrap bg-yellow-600 hover:bg-yellow-700 text-black font-semibold py-2.5 text-base"
+              className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base"
               disabled={loading || loadingSegments}
             >
               {loading || loadingSegments ? 'Carregando...' : 'Revisar e Aceitar Contrato'}

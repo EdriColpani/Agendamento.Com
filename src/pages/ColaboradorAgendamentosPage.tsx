@@ -320,7 +320,7 @@ const ColaboradorAgendamentosPage: React.FC = () => {
                       <p className="font-semibold text-gray-900">{formattedTimeRange}</p>
                     </div>
                     <div className="text-right w-1/4 flex flex-col items-end gap-1">
-                      <p className="font-bold text-yellow-600">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
+                      <p className="font-bold text-primary">R$ {agendamento.total_price.toFixed(2).replace('.', ',')}</p>
                       {canFinalize && (
                         <Button
                           variant="outline"

@@ -421,7 +421,7 @@ const GuestAppointmentPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-yellow-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="ml-2 text-gray-600">Carregando dados da empresa...</p>
       </div>
     );
@@ -549,7 +549,7 @@ const GuestAppointmentPage: React.FC = () => {
                   locale={ptBR}
                   disabled={isSubmitting || !selectedServiceId || (!selectedCollaboratorId && selectedCollaboratorValue !== "any")}
                   fromDate={startOfDay(new Date())}
-                  className="rounded-2xl border-2 border-yellow-500 bg-white shadow-sm p-2"
+                  className="rounded-2xl border-2 border-primary bg-white shadow-sm p-2"
                 />
               </div>
               <div className="space-y-4">
@@ -574,8 +574,8 @@ const GuestAppointmentPage: React.FC = () => {
                           timeSlotButtonBaseClasses +
                           " " +
                           (selectedTime === slot.time
-                            ? "bg-yellow-600 text-black border-yellow-700 shadow-[0_3px_0_0_rgba(202,138,4,1)]"
-                            : "bg-white text-yellow-700 border-yellow-500 shadow-[0_2px_0_0_rgba(202,138,4,1)] hover:-translate-y-0.5 hover:bg-yellow-50 hover:shadow-[0_4px_0_0_rgba(202,138,4,1)]")
+                            ? "bg-primary text-primary-foreground border-primary shadow-[0_3px_0_0_rgba(202,138,4,1)]"
+                            : "bg-white text-primary border-primary shadow-[0_2px_0_0_rgba(202,138,4,1)] hover:-translate-y-0.5 hover:bg-primary/10 hover:shadow-[0_4px_0_0_rgba(202,138,4,1)]")
                         }
                         onClick={() => setSelectedTime(slot.time)}
                         disabled={
@@ -607,7 +607,7 @@ const GuestAppointmentPage: React.FC = () => {
           </div>
         </div>
 
-        <Button type="submit" className="w-full bg-yellow-600 hover:bg-yellow-700 text-black !rounded-button" disabled={isSubmitting || !selectedTime}>
+        <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 !rounded-button" disabled={isSubmitting || !selectedTime}>
           {isSubmitting ? 'Agendando...' : 'Agendar Serviço'}
         </Button>
       </form>
