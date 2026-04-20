@@ -37,12 +37,13 @@
 
     --sidebar-background: 210 69% 15%;
     --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 168 76% 42%;
+    /* Item ativo: mesmo matiz/sat./luminosidade do --primary (fundo sidebar continua marinho neutro) */
+    --sidebar-primary: 168 76% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 22%;
     --sidebar-accent-foreground: 210 20% 98%;
     --sidebar-border: 210 40% 22%;
-    --sidebar-ring: 168 60% 45%;
+    --sidebar-ring: 168 76% 48%;
   }
 
   .dark {
@@ -76,11 +77,11 @@
     --sidebar-background: 210 69% 10%;
     --sidebar-foreground: 210 20% 95%;
     --sidebar-primary: 168 65% 45%;
-    --sidebar-primary-foreground: 210 69% 8%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 18%;
     --sidebar-accent-foreground: 210 20% 98%;
     --sidebar-border: 210 40% 18%;
-    --sidebar-ring: 168 60% 50%;
+    --sidebar-ring: 168 65% 55%;
   }
 }
 

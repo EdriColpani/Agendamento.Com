@@ -134,9 +134,9 @@ const CourtReservationsListPage: React.FC = () => {
         .eq('booking_kind', 'court')
         .gte('appointment_date', effFrom)
         .lte('appointment_date', effTo)
-        .order('appointment_date', { ascending: true })
-        .order('appointment_time', { ascending: true })
-        .order('id', { ascending: true })
+        .order('appointment_date', { ascending: false })
+        .order('appointment_time', { ascending: false })
+        .order('id', { ascending: false })
         .range(fromIdx, toIdx);
 
       if (courtFilter !== 'all') {
