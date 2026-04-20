@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="arenaGrad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B82F6" />
+      <stop offset="1" stop-color="#10B981" />
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="white" />
+  <rect x="4" y="4" width="56" height="56" rx="14" stroke="#D1D5DB" />
+
+  <!-- Raquetes cruzadas -->
+  <g stroke="url(#arenaGrad)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="24" cy="22" rx="9" ry="7" transform="rotate(-28 24 22)" />
+    <ellipse cx="40" cy="22" rx="9" ry="7" transform="rotate(28 40 22)" />
+    <path d="M19 29l9 9" />
+    <path d="M45 29l-9 9" />
+  </g>
+
+  <!-- Bola -->
+  <circle cx="32" cy="39" r="7" fill="#EFF6FF" stroke="url(#arenaGrad)" stroke-width="2.4" />
+  <path d="M27 39h10M32 34v10" stroke="url(#arenaGrad)" stroke-width="2" stroke-linecap="round" />
+</svg>

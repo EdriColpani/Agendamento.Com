@@ -100,7 +100,7 @@ export const createFormField = (label: string, name: string, type = 'text', requ
 
 export const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-line', path: '/dashboard' },
-  { id: 'agendamentos', label: 'Agendamentos', icon: 'fas fa-calendar-alt', path: '/agendamentos' },
+  { id: 'agendamentos', label: 'Agendamentos', icon: 'fas fa-clock', path: '/agendamentos' },
   { id: 'servicos', label: 'Serviços', icon: 'fas fa-briefcase', path: '/servicos' }, // Ícone alterado para 'briefcase'
   { id: 'clientes', label: 'Clientes', icon: 'fas fa-users', path: '/clientes' },
   { id: 'colaboradores', label: 'Colaboradores', icon: 'fas fa-user-tie', path: '/colaboradores' },

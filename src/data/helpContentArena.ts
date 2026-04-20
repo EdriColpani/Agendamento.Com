@@ -9,7 +9,7 @@ export const helpCategoriesArena: HelpCategory[] = [
     id: 'arena-visao-geral',
     name: 'Modo Arena / Quadras',
     icon: 'fas fa-border-all',
-    description: 'Como funciona o TipoAgenda para gestão de quadras e reservas',
+    description: 'Como funciona o PlanoAgenda para gestão de quadras e reservas',
     topics: [
       {
         id: 'arena-o-que-e',
@@ -227,7 +227,7 @@ export const helpCategoriesArena: HelpCategory[] = [
   {
     id: 'arena-agendamentos-app',
     name: 'Agendamentos (visão empresa)',
-    icon: 'fas fa-calendar-alt',
+    icon: 'fas fa-clock',
     description: 'Calendário por dia, semana e mês para a equipe',
     topics: [
       {

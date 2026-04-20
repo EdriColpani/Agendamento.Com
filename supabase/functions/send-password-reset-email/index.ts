@@ -193,7 +193,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "TipoAgenda <noreply@tipoagenda.com>",
+        from: "PlanoAgenda <noreply@planoagenda.com.br>",
         to: email,
         subject: "Redefinição de senha - TipoAgenda",
         html: emailHtml,

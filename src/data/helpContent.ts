@@ -42,7 +42,7 @@ export const helpCategories: HelpCategory[] = [
   {
     id: 'agendamentos',
     name: 'Agendamentos',
-    icon: 'fas fa-calendar-alt',
+    icon: 'fas fa-clock',
     description: 'Gerenciamento completo de agendamentos',
     topics: [
       {

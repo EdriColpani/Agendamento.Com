@@ -4,11 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, CalendarDays, CheckCircle, Sparkles, Heart, Activity, GraduationCap, Briefcase, Home, Car, Dog } from 'lucide-react';
+import { Search, MapPin, Clock3, CheckCircle, Sparkles, Heart, Activity, GraduationCap, Briefcase, Home, Car, Dog } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useSession } from '@/components/SessionContextProvider';
 import UserDropdownMenu from '@/components/UserDropdownMenu'; // Reusing existing UserDropdownMenu
+import BrandHeader from '@/components/brand/BrandHeader';
 
 interface Company {
   id: string;
@@ -263,12 +264,7 @@ const CompanySelectionPage: React.FC = () => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           {/* Logo */}
-          <Link to="/meus-agendamentos" className="flex items-center gap-3 cursor-pointer">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <CalendarDays className="text-white h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">TipoAgenda</h1>
-          </Link>
+          <BrandHeader to="/meus-agendamentos" titleClassName="text-xl font-bold text-gray-900" showFullLogoOnDesktop />
 
           {/* Menu do Usuário */}
           <div className="flex items-center gap-4">
@@ -731,7 +727,7 @@ const CompanySelectionPage: React.FC = () => {
             {/* Passo 2 */}
             <div className="text-center">
               <div className="w-16 h-16 bg-primary/70 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CalendarDays className="h-8 w-8 text-black" />
+                <Clock3 className="h-8 w-8 text-black" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">
                 2. Escolha serviço e horário

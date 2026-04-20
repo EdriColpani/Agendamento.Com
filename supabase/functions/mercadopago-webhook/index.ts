@@ -241,7 +241,7 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'TipoAgenda <noreply@tipoagenda.com>',
+        from: 'PlanoAgenda <noreply@planoagenda.com.br>',
         to: adminEmail,
         subject: `🚀 NOVO CLIENTE WHATSAPP - ${companyData.razao_social || companyData.name || 'Empresa'}`,
         html: emailHtml,

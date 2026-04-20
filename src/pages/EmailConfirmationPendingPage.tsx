@@ -119,7 +119,7 @@ const EmailConfirmationPendingPage: React.FC = () => {
                 </p>
                 <ol className="list-decimal list-inside mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <li>Verifique sua caixa de entrada (e a pasta de spam/lixo eletrônico)</li>
-                  <li>Procure por um e-mail de confirmação do TipoAgenda</li>
+                  <li>Procure por um e-mail de confirmação do PlanoAgenda</li>
                   <li>Clique no link de confirmação no e-mail</li>
                   <li>Você será redirecionado para a tela de seleção de planos</li>
                   <li>Após selecionar um plano, seu sistema será habilitado</li>

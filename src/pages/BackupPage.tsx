@@ -45,7 +45,7 @@ const BackupPage: React.FC = () => {
         
         // Gerar nome do arquivo com timestamp
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        const fileName = `backup-tipoagenda-${timestamp}.sql`;
+        const fileName = `backup-planoagenda-${timestamp}.sql`;
         
         link.href = url;
         link.download = fileName;
@@ -111,7 +111,7 @@ const BackupPage: React.FC = () => {
       const link = document.createElement('a');
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const fileName = `backup-tipoagenda-${timestamp}.sql`;
+      const fileName = `backup-planoagenda-${timestamp}.sql`;
       
       link.href = url;
       link.download = fileName;
