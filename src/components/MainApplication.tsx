@@ -297,13 +297,13 @@ const MainApplication: React.FC = () => {
               isMobile
                 ? sidebarCollapsed
                   ? 'hidden'
-                  : 'fixed inset-y-16 left-0 w-64 z-40 overflow-y-auto max-h-[calc(100vh-4rem)]'
+                  : 'fixed top-16 left-0 w-64 z-40 h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain'
                 : sidebarCollapsed
                   ? 'w-16'
                   : 'w-64'
-            } min-h-full ${!isMobile ? 'overflow-y-auto' : ''}`}
+            } ${!isMobile ? 'min-h-full overflow-y-auto' : ''}`}
           >
-            <nav className="p-4">
+            <nav className="p-4 pb-24">
               <ul className="space-y-2">
                 {(() => {
                   console.log('[MainApplication] Renderizando sidebar com', sidebarMenuItems.length, 'menus:', sidebarMenuItems.map(m => ({ id: m.id, label: m.label, path: m.path })));
