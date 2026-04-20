@@ -66,6 +66,7 @@ import ConfigPage from "./pages/ConfigPage"; // Importar nova página de configu
 import GuestAppointmentPage from "./pages/GuestAppointmentPage"; // Importar nova página de agendamento para convidados
 import GuestAppointmentConfirmationPage from "./pages/GuestAppointmentConfirmationPage";
 import BannerManagementPage from "./pages/BannerManagementPage"; // Importar nova página de gerenciamento de banners
+import ArenaLoginMarketingPage from "./pages/ArenaLoginMarketingPage";
 import CollaboratorServicesPage from "./pages/CollaboratorServicesPage";
 import NovaTransacaoPage from "./pages/NovaTransacaoPage";
 import CommissionPaymentPage from "./pages/CommissionPaymentPage";
@@ -238,6 +239,7 @@ const App = () => (
             <Route path="/admin-dashboard/court-booking-timeout-health" element={<GlobalAdminProtectedRoute><CourtBookingTimeoutHealthPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gerenciamento de Banners Globais */}
             <Route path="/admin-dashboard/global-banners" element={<GlobalAdminProtectedRoute><BannerManagementPage /></GlobalAdminProtectedRoute>} />
+            <Route path="/admin-dashboard/arena-login-imagens" element={<GlobalAdminProtectedRoute><ArenaLoginMarketingPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gerenciamento de Provedores WhatsApp */}
             <Route path="/admin-dashboard/whatsapp-providers" element={<GlobalAdminProtectedRoute><WhatsAppProviderManagementPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gestão de Perfis (Roles) */}

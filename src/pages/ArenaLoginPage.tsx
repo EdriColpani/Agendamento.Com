@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import LoginForm from '@/components/LoginForm';
 import {
@@ -8,14 +8,7 @@ import {
   Sparkles,
   Volleyball,
 } from 'lucide-react';
-
-/**
- * Imagens do painel esquerdo (opcional).
- * - Coloque arquivos em `public/` (ex.: `/arena/quadra-1.jpg`) e liste o caminho aqui.
- * - Ou use URLs absolutas (https://...).
- * - Se o array estiver vazio, o painel usa só o grid com ícones (como hoje).
- */
-export const ARENA_LOGIN_MARKETING_IMAGE_URLS: string[] = [];
+import { fetchArenaLoginMarketingPublic } from '@/services/arenaLoginMarketingService';
 
 const marketingLines = [
   { lead: 'O PlanoAgenda veio para', highlight: 'organizar sua arena' },
@@ -32,8 +25,26 @@ const brand = {
 } as const;
 
 const ArenaLoginPage: React.FC = () => {
-  const images = ARENA_LOGIN_MARKETING_IMAGE_URLS.filter(Boolean);
+  const [slotUrls, setSlotUrls] = useState<(string | null)[]>([null, null, null, null]);
   const fallbackIcons = [Volleyball, Goal, Dumbbell, Sparkles] as const;
+  /** Slots cuja imagem falhou ao carregar — mostra ícone em vez de ícone quebrado. */
+  const [imgFailed, setImgFailed] = useState<Record<number, true>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const row = await fetchArenaLoginMarketingPublic();
+      if (cancelled || !row) return;
+      setSlotUrls([row.image_url_1, row.image_url_2, row.image_url_3, row.image_url_4]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setImgFailed({});
+  }, [slotUrls]);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0c2340]">
@@ -63,19 +74,20 @@ const ArenaLoginPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {[0, 1, 2, 3].map((i) => {
-              const src = images[i];
+              const src = slotUrls[i];
               const Icon = fallbackIcons[i % fallbackIcons.length];
               return (
                 <div
                   key={i}
                   className="relative aspect-[4/3] overflow-hidden rounded-xl border border-white/30 bg-[#0c2340]/25 shadow-lg backdrop-blur-sm"
                 >
-                  {src ? (
+                  {src && !imgFailed[i] ? (
                     <img
                       src={src}
                       alt=""
                       className="h-full w-full object-cover"
                       loading="lazy"
+                      onError={() => setImgFailed((prev) => ({ ...prev, [i]: true }))}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-[#0c2340]/20">
@@ -124,7 +136,6 @@ const ArenaLoginPage: React.FC = () => {
           <div
             className={[
               'rounded-2xl border border-slate-200/90 bg-white p-6 shadow-md dark:border-slate-600 dark:bg-slate-800/80',
-              /* Sobrescreve amarelo do LoginForm só aqui */
               '[&_a]:!text-[#0369a1] [&_a]:hover:!text-[#0055ff] dark:[&_a]:!text-teal-400 dark:[&_a]:hover:!text-teal-300',
               '[&_button[type="submit"]]:!border-0 [&_button[type="submit"]]:!bg-gradient-to-r [&_button[type="submit"]]:!from-[#0066ff] [&_button[type="submit"]]:!to-[#10b981] [&_button[type="submit"]]:!text-white [&_button[type="submit"]]:hover:!opacity-95 [&_button[type="submit"]]:!shadow-md',
             ].join(' ')}

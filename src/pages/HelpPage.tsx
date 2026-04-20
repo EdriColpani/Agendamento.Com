@@ -6,7 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Search, CheckCircle, Lightbulb, ArrowLeft, HelpCircle } from 'lucide-react';
-import { helpCategories, searchHelpTopics, getCategoryById, getTopicById, type HelpCategory, type HelpTopic } from '@/data/helpContent';
+import {
+  helpCategories,
+  getHelpCategories,
+  searchHelpTopics,
+  getCategoryById,
+  getTopicById,
+  type HelpCategory,
+  type HelpTopic,
+} from '@/data/helpContent';
+import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
+import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 
 const HelpPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,15 +28,32 @@ const HelpPage: React.FC = () => {
     searchParams.get('topic') || null
   );
 
+  const { primaryCompanyId } = usePrimaryCompany();
+  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
+
+  /** Catálogo serviço (completo) ou arena (somente quadras), conforme segmento da empresa. */
+  const catalog = useMemo(() => {
+    if (!primaryCompanyId) return helpCategories;
+    return getHelpCategories(isCourtMode);
+  }, [primaryCompanyId, isCourtMode]);
+
   // Buscar tópicos quando há termo de pesquisa
   const searchResults = useMemo(() => {
     if (!searchTerm.trim()) return [];
-    return searchHelpTopics(searchTerm);
-  }, [searchTerm]);
+    return searchHelpTopics(searchTerm, catalog);
+  }, [searchTerm, catalog]);
 
   // Categoria e tópico selecionados
-  const selectedCategory = selectedCategoryId ? getCategoryById(selectedCategoryId) : null;
-  const selectedTopic = selectedTopicId ? getTopicById(selectedTopicId) : null;
+  const selectedCategory = selectedCategoryId ? getCategoryById(selectedCategoryId, catalog) : null;
+  const selectedTopic = selectedTopicId ? getTopicById(selectedTopicId, catalog) : null;
+
+  if (primaryCompanyId && loadingSchedulingMode) {
+    return (
+      <div className="container mx-auto max-w-6xl py-16 text-center">
+        <p className="text-muted-foreground">Carregando conteúdo de ajuda...</p>
+      </div>
+    );
+  }
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -93,9 +120,7 @@ const HelpPage: React.FC = () => {
 
         <div className="space-y-4">
           {searchResults.map((topic) => {
-            const category = helpCategories.find(cat => 
-              cat.topics.some(t => t.id === topic.id)
-            );
+            const category = catalog.find((cat) => cat.topics.some((t) => t.id === topic.id));
             return (
               <Card key={topic.id} className="cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => {
@@ -151,9 +176,8 @@ const HelpPage: React.FC = () => {
 
   // Se um tópico está selecionado, mostrar detalhes
   if (selectedTopic) {
-    const category = selectedCategory || helpCategories.find(cat => 
-      cat.topics.some(t => t.id === selectedTopic.id)
-    );
+    const category =
+      selectedCategory || catalog.find((cat) => cat.topics.some((t) => t.id === selectedTopic.id));
 
     return (
       <div className="container mx-auto py-8 max-w-4xl">
@@ -325,10 +349,15 @@ const HelpPage: React.FC = () => {
 
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Navegar por Categorias</h2>
+        {primaryCompanyId && isCourtMode ? (
+          <p className="mb-2 text-sm text-muted-foreground">
+            Conteúdo específico para o modo Arena (gestão de quadras e reservas).
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {helpCategories.map((category) => (
+        {catalog.map((category) => (
           <Card
             key={category.id}
             className="cursor-pointer hover:shadow-lg transition-all hover:border-primary"

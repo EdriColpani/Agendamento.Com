@@ -13,7 +13,20 @@ import { useIsCompanyAdmin } from '@/hooks/useIsCompanyAdmin';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { CompanySelectionModal } from '@/components/CompanySelectionModal';
 import { useActivePlans } from '@/hooks/useActivePlans';
-import { Check, Zap, Phone, MessageSquare, PhoneCall, Menu, CalendarDays, Tag, Clock } from 'lucide-react'; // Adicionar Menu e CalendarDays
+import {
+  BarChart3,
+  Check,
+  CalendarDays,
+  Clock,
+  Menu,
+  MessageSquare,
+  Phone,
+  PhoneCall,
+  Tag,
+  Volleyball,
+  Wallet,
+  Zap,
+} from 'lucide-react';
 import ContactRequestModal from '@/components/ContactRequestModal'; // Importar o novo modal
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"; // Importar DropdownMenu
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"; // Importar componentes de diálogo
@@ -101,6 +114,7 @@ const LandingPage: React.FC = () => {
   }, [plans, loadingPlans]);
   
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
+  const [isLoginChoiceModalOpen, setIsLoginChoiceModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false); // Novo estado para o modal de contato
   const [isConfirmLogoutDialogOpen, setIsConfirmLogoutDialogOpen] = useState(false); // Novo estado para o diálogo de confirmação de logout
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly'); // Estado para período de cobrança
@@ -141,7 +155,12 @@ const LandingPage: React.FC = () => {
 
   const scrollToPlans = () => scrollToSection('plans-section');
   const scrollToContact = () => scrollToSection('contact-section');
-  
+
+  const goToLoginPath = (path: '/login' | '/arena') => {
+    setIsLoginChoiceModalOpen(false);
+    navigate(path);
+  };
+
   // Determine the most expensive plan for visual highlight (usando plansWithMenus se disponível, senão plans)
   const plansToUse = plansWithMenus.length > 0 ? plansWithMenus : plans;
   const highestPricedPlan = plansToUse.reduce((max, plan) => (plan.price > max.price ? plan : max), plansToUse[0] || { price: -1 });
@@ -226,7 +245,7 @@ const LandingPage: React.FC = () => {
                   <Button
                     variant="ghost"
                     className="!rounded-button text-gray-700 hover:text-gray-900"
-                    onClick={() => navigate('/login')}
+                    onClick={() => setIsLoginChoiceModalOpen(true)}
                   >
                     Login
                   </Button>
@@ -261,7 +280,7 @@ const LandingPage: React.FC = () => {
                       Contato
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/login')}>
+                    <DropdownMenuItem onClick={() => setIsLoginChoiceModalOpen(true)}>
                       Login/Cadastro
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/register-professional')}>
@@ -502,7 +521,7 @@ const LandingPage: React.FC = () => {
             <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
                 <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                  <i className="fas fa-money-bag text-2xl text-black"></i>
+                  <Wallet className="h-8 w-8 text-black" aria-hidden />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Controle Financeiro Completo</h3>
                 <p className="text-lg text-gray-600">
@@ -514,7 +533,7 @@ const LandingPage: React.FC = () => {
             <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
                 <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                  <i className="fas fa-chart-bar text-2xl text-black"></i>
+                  <BarChart3 className="h-8 w-8 text-black" aria-hidden />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Relatórios que Geram Resultados</h3>
                 <p className="text-lg text-gray-600">
@@ -1039,6 +1058,63 @@ const LandingPage: React.FC = () => {
         isOpen={isContactModalOpen}
         onClose={() => setIsContactModalOpen(false)}
       />
+
+      <Dialog open={isLoginChoiceModalOpen} onOpenChange={setIsLoginChoiceModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Como você usa o TipoAgenda?</DialogTitle>
+            <DialogDescription className="text-left text-base leading-relaxed text-gray-600">
+              Escolha abaixo o tipo de negócio que melhor descreve sua operação. Em ambos os casos você usa o{' '}
+              <strong>mesmo login</strong> (e-mail e senha); a diferença é a <strong>tela e as dicas</strong> alinhadas ao
+              seu contexto. Depois de entrar, o painel segue o <strong>plano</strong> e o <strong>segmento da sua empresa</strong>{' '}
+              (serviços ou quadras).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => goToLoginPath('/login')}
+              className="group flex flex-col rounded-xl border-2 border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <CalendarDays className="h-6 w-6" aria-hidden />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary">
+                Agenda de serviços
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Para salões, clínicas, estética e negócios que atendem por <strong>serviço e profissional</strong>: agenda
+                por colaborador, serviços, clientes e lembretes no fluxo tradicional.
+              </p>
+              <span className="mt-4 text-sm font-medium text-primary">Continuar para o login padrão →</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => goToLoginPath('/arena')}
+              className="group flex flex-col rounded-xl border-2 border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Volleyball className="h-6 w-6" aria-hidden />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary">
+                Quadras e Arena
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Para <strong>arenas, quadras esportivas e locais de reserva por horário</strong>: entrada com visual e
+                mensagens pensados para <strong>gestão de quadras</strong>, reservas e operação do módulo Arena.
+              </p>
+              <span className="mt-4 text-sm font-medium text-primary">Continuar para o login Arena →</span>
+            </button>
+          </div>
+
+          <p className="border-t border-border pt-4 text-center text-xs text-muted-foreground">
+            Não sabe qual escolher? Use <strong>Agenda de serviços</strong>. Os recursos disponíveis no sistema dependem do
+            seu plano e da configuração da empresa, não desta escolha.
+          </p>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

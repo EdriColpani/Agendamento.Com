@@ -4,11 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { getStatusColor, createButton, createCard } from '@/lib/dashboard-utils';
+import { getStatusColor, createCard } from '@/lib/dashboard-utils';
+import { cn } from '@/lib/utils';
+import { arenaToolbarBtnClass, arenaToolbarSolidClass } from '@/components/arena/ArenaToolbar';
 import type { DashboardData } from '@/hooks/useDashboardData';
 import MonthlyRevenueChart from '@/components/MonthlyRevenueChart';
 import CriticalStockReport from '@/components/CriticalStockReport';
 import { Info } from 'lucide-react';
+
+const arenaDashboardActionBtnClass = cn(
+  arenaToolbarBtnClass,
+  arenaToolbarSolidClass,
+  'whitespace-nowrap',
+);
 
 interface ArenaDashboardPanelProps {
   primaryCompanyId: string;
@@ -71,36 +79,56 @@ const ArenaDashboardPanel: React.FC<ArenaDashboardPanelProps> = ({
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard — Arena / quadras</h1>
         <div className="flex flex-wrap gap-3 md:justify-end">
-          <Button
-            type="button"
-            asChild
-            className="!rounded-button whitespace-nowrap cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90"
-          >
+          <Button type="button" variant="default" size="sm" asChild className={arenaDashboardActionBtnClass}>
             <Link to="/quadras">
               <i className="fas fa-border-all mr-2" />
               Gerenciar quadras
             </Link>
           </Button>
-          <Button type="button" variant="outline" asChild className="!rounded-button whitespace-nowrap">
+          <Button type="button" variant="default" size="sm" asChild className={arenaDashboardActionBtnClass}>
             <Link to={`/reservar-quadra/${primaryCompanyId}`} target="_blank" rel="noopener noreferrer">
               <i className="fas fa-external-link-alt mr-2" />
               Abrir reserva pública
             </Link>
           </Button>
-          <Button type="button" variant="outline" asChild className="!rounded-button whitespace-nowrap">
+          <Button type="button" variant="default" size="sm" asChild className={arenaDashboardActionBtnClass}>
             <Link to="/quadras/reservas">
               <i className="fas fa-list mr-2" />
               Lista de reservas
             </Link>
           </Button>
-          {createButton(
-            () => navigate(`/novo-agendamento/${primaryCompanyId}`),
-            'fas fa-plus',
-            'Nova reserva',
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className={arenaDashboardActionBtnClass}
+            onClick={() => navigate(`/novo-agendamento/${primaryCompanyId}`)}
+          >
+            <i className="fas fa-plus mr-2" />
+            Nova reserva
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className={arenaDashboardActionBtnClass}
+            onClick={() => navigate('/novo-cliente')}
+          >
+            <i className="fas fa-user-plus mr-2" />
+            Novo cliente
+          </Button>
+          {hasCashRegisterPermission && (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className={arenaDashboardActionBtnClass}
+              onClick={() => navigate('/fechar-caixa')}
+            >
+              <i className="fas fa-cash-register mr-2" />
+              Fechar caixa
+            </Button>
           )}
-          {createButton(() => navigate('/novo-cliente'), 'fas fa-user-plus', 'Novo cliente')}
-          {hasCashRegisterPermission &&
-            createButton(() => navigate('/fechar-caixa'), 'fas fa-cash-register', 'Fechar caixa')}
         </div>
       </div>
 

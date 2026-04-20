@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,9 @@ import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parse, addMinutes, parseISO, addWeeks, subWeeks, addMonths, subMonths, isSameWeek, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Edit } from 'lucide-react';
+import { Calendar, CalendarDays, CalendarRange, Edit } from 'lucide-react';
 import CheckoutModal from '@/components/CheckoutModal'; // Importar o novo modal
+import AgendamentosWeekDayStrip from '@/components/AgendamentosWeekDayStrip';
 import { useParams } from 'react-router-dom'; // Importar useParams
 
 interface Appointment {
@@ -95,17 +96,6 @@ const AgendamentosPage: React.FC = () => {
     } else if (direction === 'next') {
       setSelectedDate(addMonths(selectedDate, 1));
     }
-  };
-
-  // Função para obter o intervalo formatado da semana
-  const getWeekRange = () => {
-    const start = startOfWeek(selectedDate, { locale: ptBR });
-    const end = endOfWeek(selectedDate, { locale: ptBR });
-    return {
-      start,
-      end,
-      formatted: `${format(start, 'dd/MM/yyyy')} - ${format(end, 'dd/MM/yyyy')}`
-    };
   };
 
   // Função para obter o intervalo formatado do mês
@@ -245,6 +235,14 @@ const AgendamentosPage: React.FC = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
+  const displayedAppointments = useMemo(() => {
+    if (selectedTab !== 'semana') {
+      return appointments;
+    }
+    const dayKey = format(selectedDate, 'yyyy-MM-dd');
+    return appointments.filter((a) => a.appointment_date === dayKey);
+  }, [appointments, selectedTab, selectedDate]);
+
   const handleOpenCheckoutModal = (id: string, status: string) => {
     setAppointmentToCheckout({ id, status });
     setIsCheckoutModalOpen(true);
@@ -303,59 +301,69 @@ const AgendamentosPage: React.FC = () => {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-          <Tabs value={selectedTab} className="w-auto" onValueChange={setSelectedTab}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="dia">Dia</TabsTrigger>
-              <TabsTrigger value="semana">Semana</TabsTrigger>
-              <TabsTrigger value="mes">Mês</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-800 focus:border-primary focus:ring-1 focus:ring-primary"
-            value={selectedCollaboratorFilter}
-            onChange={(e) => setSelectedCollaboratorFilter(e.target.value)}
-          >
+        <div className="flex flex-col gap-4 md:flex-row md:items-stretch md:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground" id="agendamentos-periodo-label">
+              Período
+            </span>
+            <Tabs
+              value={selectedTab}
+              className="w-full max-w-xl"
+              onValueChange={setSelectedTab}
+              aria-labelledby="agendamentos-periodo-label"
+            >
+              <TabsList className="grid h-10 w-full grid-cols-3 gap-1 rounded-full border border-border bg-muted/60 p-1 shadow-sm dark:bg-muted/40">
+                <TabsTrigger
+                  value="dia"
+                  className="gap-1.5 rounded-full px-2 text-sm font-semibold text-foreground/70 transition-colors hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow data-[state=active]:hover:bg-primary data-[state=active]:hover:text-primary-foreground sm:px-3"
+                >
+                  <Calendar className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                  <span className="truncate">Dia</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="semana"
+                  className="gap-1.5 rounded-full px-2 text-sm font-semibold text-foreground/70 transition-colors hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow data-[state=active]:hover:bg-primary data-[state=active]:hover:text-primary-foreground sm:px-3"
+                >
+                  <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                  <span className="truncate">Semana</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="mes"
+                  className="gap-1.5 rounded-full px-2 text-sm font-semibold text-foreground/70 transition-colors hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow data-[state=active]:hover:bg-primary data-[state=active]:hover:text-primary-foreground sm:px-3"
+                >
+                  <CalendarRange className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                  <span className="truncate">Mês</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1.5 md:w-72 md:max-w-sm">
+            <span className="text-xs font-medium text-muted-foreground" id="agendamentos-colab-label">
+              Colaborador
+            </span>
+            <select
+              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:bg-background"
+              aria-labelledby="agendamentos-colab-label"
+              value={selectedCollaboratorFilter}
+              onChange={(e) => setSelectedCollaboratorFilter(e.target.value)}
+            >
             <option value="all">Todos os Colaboradores</option>
             {collaboratorsList.map(col => (
               <option key={col.id} value={col.id}>{col.first_name} {col.last_name}</option>
             ))}
           </select>
+          </div>
         </div>
 
-        {/* Navegação para Semana */}
         {selectedTab === 'semana' && (
-          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-            <Button
-              variant="outline"
-              size="sm"
-              className="!rounded-button"
-              onClick={() => navigateWeek('prev')}
-            >
-              <i className="fas fa-chevron-left"></i>
-            </Button>
-            <div className="flex-1 text-center">
-              <span className="font-medium text-gray-900">{getWeekRange().formatted}</span>
-              {!isCurrentWeek && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-2 text-xs !rounded-button text-primary hover:text-primary"
-                  onClick={() => navigateWeek('today')}
-                >
-                  Hoje
-                </Button>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="!rounded-button"
-              onClick={() => navigateWeek('next')}
-            >
-              <i className="fas fa-chevron-right"></i>
-            </Button>
-          </div>
+          <AgendamentosWeekDayStrip
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onPrevWeek={() => navigateWeek('prev')}
+            onNextWeek={() => navigateWeek('next')}
+            onToday={() => navigateWeek('today')}
+            isCurrentWeek={isCurrentWeek}
+          />
         )}
 
         {/* Navegação para Mês */}
@@ -395,10 +403,18 @@ const AgendamentosPage: React.FC = () => {
       </div>
 
       <div className="grid gap-4">
-        {appointments.length === 0 ? (
-          <p className="text-gray-600">Nenhum agendamento encontrado para {selectedTab === 'dia' ? 'o dia selecionado' : selectedTab === 'semana' ? 'a semana selecionada' : 'o mês selecionado'}.</p>
+        {displayedAppointments.length === 0 ? (
+          <p className="text-gray-600">
+            Nenhum agendamento encontrado para{' '}
+            {selectedTab === 'dia'
+              ? 'o dia selecionado'
+              : selectedTab === 'semana'
+                ? 'o dia selecionado na semana'
+                : 'o mês selecionado'}
+            .
+          </p>
         ) : (
-          appointments.map((agendamento) => {
+          displayedAppointments.map((agendamento) => {
             // Prioriza client_nickname, depois clients.name, e por último o ID truncado
             const clientNameFromClientsTable = agendamento.clients?.name;
             const clientDisplay = agendamento.client_nickname || clientNameFromClientsTable || `Cliente ID: ${agendamento.client_id.substring(0, 8)}...`;

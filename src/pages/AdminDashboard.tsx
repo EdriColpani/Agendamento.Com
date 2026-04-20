@@ -259,6 +259,15 @@ const AdminDashboard: React.FC = () => {
             onClick={() => navigate('/admin-dashboard/court-booking-timeout-health')}
           />
 
+          <ManagementCard
+            title="Imagens do login Arena"
+            description="Envie as quatro fotos exibidas no painel esquerdo da página pública /arena (antes do login)."
+            icon={<ImageIcon className="h-6 w-6 text-teal-600" />}
+            buttonText="Gerenciar imagens /arena"
+            buttonColor="bg-teal-600 hover:bg-teal-700"
+            onClick={() => navigate('/admin-dashboard/arena-login-imagens')}
+          />
+
         </div>
         
         {/* Logs de Auditoria Recentes */}

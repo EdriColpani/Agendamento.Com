@@ -7,23 +7,11 @@
  * IMPORTANTE: Não inclui funcionalidades do admin-dashboard
  */
 
-export interface HelpTopic {
-  id: string;
-  title: string;
-  description: string;
-  steps?: string[];
-  tips?: string[];
-  relatedTopics?: string[];
-  tags: string[];
-}
+import type { HelpCategory, HelpTopic } from './helpTypes';
+import { helpCategoriesArena } from './helpContentArena';
 
-export interface HelpCategory {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  topics: HelpTopic[];
-}
+export { helpCategoriesArena } from './helpContentArena';
+export type { HelpTopic, HelpCategory } from './helpTypes';
 
 export const helpCategories: HelpCategory[] = [
   {
@@ -845,42 +833,53 @@ export const helpCategories: HelpCategory[] = [
 ];
 
 /**
- * Busca tópicos por termo de pesquisa
+ * Catálogo exibido na Central de Ajuda: modo serviço (padrão) ou modo arena (somente quadras).
  */
-export function searchHelpTopics(searchTerm: string): HelpTopic[] {
+export function getHelpCategories(isArenaMode: boolean): HelpCategory[] {
+  return isArenaMode ? helpCategoriesArena : helpCategories;
+}
+
+/**
+ * Busca tópicos por termo de pesquisa
+ * @param catalog — use o mesmo catálogo da tela (serviço ou arena)
+ */
+export function searchHelpTopics(searchTerm: string, catalog: HelpCategory[] = helpCategories): HelpTopic[] {
   const term = searchTerm.toLowerCase().trim();
   if (!term) return [];
 
   const results: HelpTopic[] = [];
-  
-  helpCategories.forEach(category => {
-    category.topics.forEach(topic => {
+
+  catalog.forEach((category) => {
+    category.topics.forEach((topic) => {
       const matchesTitle = topic.title.toLowerCase().includes(term);
       const matchesDescription = topic.description.toLowerCase().includes(term);
-      const matchesTags = topic.tags.some(tag => tag.toLowerCase().includes(term));
-      
+      const matchesTags = topic.tags.some((tag) => tag.toLowerCase().includes(term));
+
       if (matchesTitle || matchesDescription || matchesTags) {
         results.push(topic);
       }
     });
   });
-  
+
   return results;
 }
 
 /**
  * Busca categoria por ID
  */
-export function getCategoryById(categoryId: string): HelpCategory | undefined {
-  return helpCategories.find(cat => cat.id === categoryId);
+export function getCategoryById(
+  categoryId: string,
+  catalog: HelpCategory[] = helpCategories,
+): HelpCategory | undefined {
+  return catalog.find((cat) => cat.id === categoryId);
 }
 
 /**
  * Busca tópico por ID
  */
-export function getTopicById(topicId: string): HelpTopic | undefined {
-  for (const category of helpCategories) {
-    const topic = category.topics.find(t => t.id === topicId);
+export function getTopicById(topicId: string, catalog: HelpCategory[] = helpCategories): HelpTopic | undefined {
+  for (const category of catalog) {
+    const topic = category.topics.find((t) => t.id === topicId);
     if (topic) return topic;
   }
   return undefined;
