@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LoginForm from '@/components/LoginForm';
 import SignupForm from '@/components/SignupForm';
 import ForgotPasswordForm from '@/components/ForgotPasswordForm';
 import ResetPasswordForm from '@/components/ResetPasswordForm';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import BrandHeader from '@/components/brand/BrandHeader';
 
 const AuthPage: React.FC = () => {
   const location = useLocation();
@@ -19,12 +20,12 @@ const AuthPage: React.FC = () => {
 
   // O título da página agora depende apenas do pathname
   const pageTitle = location.pathname === '/signup'
-    ? 'Cadastre-se no TipoAgenda'
+    ? 'Cadastre-se no PlanoAgenda'
     : location.pathname === '/reset-password'
       ? 'Redefinir Senha'
       : location.pathname === '/forgot-password'
         ? 'Esqueci minha senha'
-        : 'Bem-vindo ao TipoAgenda';
+        : 'Bem-vindo ao PlanoAgenda';
 
   const renderAuthForm = () => {
     if (location.pathname === '/signup') {
@@ -44,16 +45,9 @@ const AuthPage: React.FC = () => {
       <Card className="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
         <CardHeader className="relative flex flex-row items-center justify-center">
           <div className="flex flex-col items-center w-full">
-            <Link to="/" className="flex items-center gap-3 cursor-pointer mb-4">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <i className="fas fa-calendar-alt text-white"></i>
-              </div>
-              <CardTitle
-                className="text-3xl font-bold text-center text-gray-900 dark:text-white"
-              >
-                TipoAgenda
-              </CardTitle>
-            </Link>
+            <div className="mb-4">
+              <BrandHeader to="/" titleClassName="text-3xl font-bold text-center text-gray-900 dark:text-white" />
+            </div>
             {/* Título da página baseado na rota */}
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-2">
               {pageTitle}

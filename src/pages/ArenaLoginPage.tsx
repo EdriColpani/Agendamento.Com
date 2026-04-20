@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import LoginForm from '@/components/LoginForm';
 import {
-  Calendar,
   Dumbbell,
   Goal,
   Sparkles,
   Volleyball,
 } from 'lucide-react';
 import { fetchArenaLoginMarketingPublic } from '@/services/arenaLoginMarketingService';
+import BrandLogo from '@/components/brand/BrandLogo';
 
 const marketingLines = [
   { lead: 'O PlanoAgenda veio para', highlight: 'organizar sua arena' },
@@ -64,8 +64,8 @@ const ArenaLoginPage: React.FC = () => {
 
         <div className="relative z-10 space-y-6">
           <div className="flex items-center gap-2 text-white/95">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
-              <Calendar className="h-5 w-5" aria-hidden />
+            <div className="rounded-lg bg-white/20 p-1 backdrop-blur-sm">
+              <BrandLogo className="h-8 w-8" alt="PlanoAgenda" />
             </div>
             <span className="text-lg font-semibold tracking-tight drop-shadow-sm">
               PlanoAgenda · Quadras
@@ -114,13 +114,10 @@ const ArenaLoginPage: React.FC = () => {
       <main className="flex flex-1 flex-col items-center justify-center bg-slate-50 px-4 py-10 dark:bg-[#0f172a] md:min-h-screen md:px-8">
         <div className="w-full max-w-md space-y-8">
           <div className="flex flex-col items-center text-center">
-            <div
-              className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl shadow-md ring-2 ring-white/30"
-              style={{
-                background: `linear-gradient(135deg, ${brand.blue}, ${brand.teal})`,
-              }}
-            >
-              <Calendar className="h-8 w-8 text-white" aria-hidden />
+            <div className="mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 p-[2px] shadow-md ring-2 ring-white/30">
+              <div className="rounded-[14px] bg-white/90 p-1.5 dark:bg-slate-900/60">
+                <img src="/brand/arena-login-icon.png" alt="Ícone Arena" className="h-11 w-11 rounded-lg" />
+              </div>
             </div>
             <h1
               className="font-serif text-2xl font-bold tracking-tight text-[#0c2340] dark:text-white"

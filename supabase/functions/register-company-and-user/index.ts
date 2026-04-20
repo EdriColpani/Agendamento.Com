@@ -362,7 +362,7 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              from: 'TipoAgenda <noreply@tipoagenda.com>', // Domínio verificado - envia para qualquer email
+              from: 'PlanoAgenda <noreply@planoagenda.com.br>', // Domínio verificado - envia para qualquer email
               to: email,
               subject: 'Confirme seu cadastro no TipoAgenda',
               html: emailHtml,
@@ -500,7 +500,7 @@ serve(async (req) => {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  from: 'TipoAgenda <noreply@tipoagenda.com>',
+                  from: 'PlanoAgenda <noreply@planoagenda.com.br>',
                   to: adminEmail,
                   subject: 'Novo cadastro de empresa',
                   html: notificationEmailHtml,

@@ -866,7 +866,7 @@ Configurações
                 <p><strong>Exemplos:</strong></p>
                 <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto">
 fas fa-chart-line          (Dashboard)
-fas fa-calendar-alt        (Agendamentos)
+fas fa-clock               (Agendamentos)
 fas fa-briefcase           (Serviços)
 fas fa-users               (Clientes)
 fas fa-user-tie            (Colaboradores)

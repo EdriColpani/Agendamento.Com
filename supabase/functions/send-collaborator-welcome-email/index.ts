@@ -101,7 +101,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'TipoAgenda <noreply@tipoagenda.com>',
+        from: 'PlanoAgenda <noreply@planoagenda.com.br>',
         to: email,
         subject: 'Bem-vindo ao TipoAgenda - Credenciais de Acesso',
         html: emailHtml,

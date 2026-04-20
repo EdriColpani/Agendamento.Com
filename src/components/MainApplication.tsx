@@ -25,6 +25,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import NotificationList from './NotificationList'; // Importar novo componente
 import { useIsMobile } from '@/hooks/use-mobile';
+import BrandHeader from '@/components/brand/BrandHeader';
 
 /** Mesmas rotas/ícones dos registros em `menus` (migration arena); usado se o plano ainda não tiver menu_plans. */
 const ARENA_SIDEBAR_FALLBACK_ITEMS: Array<{
@@ -229,19 +230,12 @@ const MainApplication: React.FC = () => {
                 <i className="fas fa-bars"></i>
               </Button>
             )}
-            <Link to="/" className="flex items-center gap-3 cursor-pointer">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <i className="fas fa-calendar-alt text-white"></i>
-              </div>
-              <div className="flex flex-col items-start">
-                <h1 className="text-xl font-bold text-gray-900 leading-tight">TipoAgenda</h1>
-                {session && isCourtMode && canUseArenaManagement && (
-                  <span className="mt-0.5 rounded bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
-                    Modo arena / quadras
-                  </span>
-                )}
-              </div>
-            </Link>
+            <BrandHeader
+              to="/"
+              titleClassName="text-xl font-bold text-gray-900 leading-tight"
+              showFullLogoOnDesktop
+              subtitle={session && isCourtMode && canUseArenaManagement ? 'Modo arena / quadras' : undefined}
+            />
           </div>
 
           {session ? (

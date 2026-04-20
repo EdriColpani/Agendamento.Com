@@ -16,7 +16,7 @@ import { useActivePlans } from '@/hooks/useActivePlans';
 import {
   BarChart3,
   Check,
-  CalendarDays,
+  Clock3,
   Clock,
   Menu,
   MessageSquare,
@@ -31,6 +31,7 @@ import ContactRequestModal from '@/components/ContactRequestModal'; // Importar 
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"; // Importar DropdownMenu
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"; // Importar componentes de diálogo
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import BrandHeader from '@/components/brand/BrandHeader';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -171,12 +172,12 @@ const LandingPage: React.FC = () => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <CalendarDays className="text-white h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">TipoAgenda</h1>
-          </Link>
+          <BrandHeader
+            to="/"
+            titleClassName="text-xl font-bold text-gray-900"
+            showFullLogoOnDesktop
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          />
 
           {/* Menu de Navegação - Desktop: Links visíveis, Mobile: Menu hamburger */}
           <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
@@ -303,7 +304,7 @@ const LandingPage: React.FC = () => {
               Pare de perder dinheiro com clientes que não aparecem
             </h1>
             <p className="text-lg text-gray-600 mb-6">
-              O TipoAgenda envia <span className="font-semibold text-gray-900">lembretes automáticos pelo WhatsApp</span> antes de cada horário marcado.
+              O PlanoAgenda envia <span className="font-semibold text-gray-900">lembretes automáticos pelo WhatsApp</span> antes de cada horário marcado.
               Menos esquecimentos, <span className="font-semibold text-gray-900">mais clientes chegando na hora certa</span>, sem você mandar uma única mensagem manual.
             </p>
             <ul className="space-y-2 mb-8 text-sm text-gray-700">
@@ -442,7 +443,7 @@ const LandingPage: React.FC = () => {
               Lembretes automáticos no WhatsApp que trabalham por você
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              O TipoAgenda envia a mensagem certa, na hora certa, para o cliente certo –{' '}
+              O PlanoAgenda envia a mensagem certa, na hora certa, para o cliente certo –{' '}
               <span className="font-semibold text-gray-900">sem você precisar tocar no celular</span>.
             </p>
           </div>
@@ -499,7 +500,7 @@ const LandingPage: React.FC = () => {
       <section id="beneficios" className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Por Que Profissionais Escolhem TipoAgenda?</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Por Que Profissionais Escolhem PlanoAgenda?</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               A plataforma completa que você precisa para gerenciar seu negócio
             </p>
@@ -509,7 +510,7 @@ const LandingPage: React.FC = () => {
             <Card className="text-center border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
               <CardContent className="p-6">
                 <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CalendarDays className="h-8 w-8 text-black" />
+                  <Clock3 className="h-8 w-8 text-black" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">Agendamentos 24/7</h3>
                 <p className="text-lg text-gray-600">
@@ -821,7 +822,7 @@ const LandingPage: React.FC = () => {
                   ))}
                 </div>
                 <p className="text-gray-700 mb-4">
-                  "Em 3 meses, aumentei meus agendamentos em 45%. O sistema de lembretes automáticos reduziu faltas em 80%. Não consigo mais imaginar meu negócio sem o TipoAgenda!"
+                  "Em 3 meses, aumentei meus agendamentos em 45%. O sistema de lembretes automáticos reduziu faltas em 80%. Não consigo mais imaginar meu negócio sem o PlanoAgenda!"
                 </p>
                 <p className="text-sm font-bold text-primary">
                   Resultado: +45% de agendamentos em 3 meses
@@ -917,7 +918,7 @@ const LandingPage: React.FC = () => {
       <section className="py-20 bg-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Por Que Escolher TipoAgenda?</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Por Que Escolher PlanoAgenda?</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
@@ -1049,7 +1050,7 @@ const LandingPage: React.FC = () => {
               <i className="fab fa-linkedin-in text-2xl"></i>
             </div>
           </div>
-          <p className="text-sm text-gray-500">© {new Date().getFullYear()} TipoAgenda. Todos os direitos reservados.</p>
+          <p className="text-sm text-gray-500">© {new Date().getFullYear()} PlanoAgenda. Todos os direitos reservados.</p>
         </div>
       </footer>
       
@@ -1062,7 +1063,7 @@ const LandingPage: React.FC = () => {
       <Dialog open={isLoginChoiceModalOpen} onOpenChange={setIsLoginChoiceModalOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl">Como você usa o TipoAgenda?</DialogTitle>
+            <DialogTitle className="text-xl">Como você usa o PlanoAgenda?</DialogTitle>
             <DialogDescription className="text-left text-base leading-relaxed text-gray-600">
               Escolha abaixo o tipo de negócio que melhor descreve sua operação. Em ambos os casos você usa o{' '}
               <strong>mesmo login</strong> (e-mail e senha); a diferença é a <strong>tela e as dicas</strong> alinhadas ao
@@ -1078,7 +1079,7 @@ const LandingPage: React.FC = () => {
               className="group flex flex-col rounded-xl border-2 border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <CalendarDays className="h-6 w-6" aria-hidden />
+                  <Clock3 className="h-6 w-6" aria-hidden />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary">
                 Agenda de serviços
