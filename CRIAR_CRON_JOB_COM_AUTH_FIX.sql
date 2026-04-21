@@ -46,7 +46,7 @@ BEGIN
         schedule := '* * * * *',
         command := $cmd$
         SELECT net.http_post(
-            url := 'https://tegyiuktrmcqxkbjxqoc.supabase.co/functions/v1/whatsapp-message-scheduler',
+            url := 'https://ocawpokndruxakzmhzsa.supabase.co/functions/v1/whatsapp-message-scheduler',
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
                 'Authorization', 'Bearer ' || get_service_role_key()

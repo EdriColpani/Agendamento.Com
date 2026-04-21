@@ -2,6 +2,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 import { format, addMonths, parseISO, startOfDay, isPast } from 'https://esm.sh/date-fns@3.6.0';
 
+const BRAND_NAME = "PlanoAgenda";
+const BRAND_FROM_EMAIL = `${BRAND_NAME} <noreply@planoagenda.com.br>`;
+const BRAND_COPYRIGHT = `© ${BRAND_NAME} - Todos os direitos reservados`;
+
+function getBrandFooterHtml(): string {
+  return `<p>${BRAND_COPYRIGHT}</p>`;
+}
+
 /** Decifra credenciais MP por empresa (envelope AES-GCM v1). */
 function base64ToBytes(b64: string): Uint8Array {
   const binary = atob(b64);
@@ -223,7 +231,7 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
             </div>
             
             <div class="footer">
-              <p>© TipoAgenda - Todos os direitos reservados</p>
+              ${getBrandFooterHtml()}
             </div>
           </div>
         </div>
@@ -241,7 +249,7 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PlanoAgenda <noreply@planoagenda.com.br>',
+        from: BRAND_FROM_EMAIL,
         to: adminEmail,
         subject: `🚀 NOVO CLIENTE WHATSAPP - ${companyData.razao_social || companyData.name || 'Empresa'}`,
         html: emailHtml,
@@ -678,7 +686,7 @@ serve(async (req) => {
       return await processCourtMonthlyPackagePayment(supabaseAdmin, payment, String(paymentId));
     }
 
-    // Assinaturas TipoAgenda (external_reference com underscores)
+    // Assinaturas PlanoAgenda (external_reference com underscores)
     if (!externalReference) {
         console.error('Missing external_reference in payment data.');
         return new Response(JSON.stringify({ error: 'Missing external reference' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

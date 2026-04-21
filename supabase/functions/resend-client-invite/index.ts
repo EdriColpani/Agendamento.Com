@@ -157,7 +157,7 @@ serve(async (req) => {
         type: 'magiclink', // Sends a link to sign in or set password
         email: clientEmail,
         options: {
-          redirectTo: `${Deno.env.get('SITE_URL') || 'https://tegyiuktrmcqxkbjxqoc.supabase.co'}/signup`, // Redirect to signup to set password
+          redirectTo: `${Deno.env.get('SITE_URL') || 'https://www.planoagenda.com.br'}/signup`, // Redirect to signup to set password
         },
       });
 
@@ -171,7 +171,7 @@ serve(async (req) => {
       // User does not exist, proceed with inviteUserByEmail
       console.log('Edge Function Debug (resend-client-invite): User does not exist, inviting new user.');
       const { error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(clientEmail, {
-        redirectTo: `${Deno.env.get('SITE_URL') || 'https://tegyiuktrmcqxkbjxqoc.supabase.co'}/signup`,
+        redirectTo: `${Deno.env.get('SITE_URL') || 'https://www.planoagenda.com.br'}/signup`,
       });
 
       if (inviteError) {

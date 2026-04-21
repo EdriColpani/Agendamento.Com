@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeEdgeWithAuth } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCollaboratorLimit } from '@/hooks/useCollaboratorLimit';
@@ -429,8 +430,8 @@ const CollaboratorFormPage: React.FC = () => {
           email: data.email
         });
         
-        const response = await supabase.functions.invoke('invite-collaborator', {
-          body: JSON.stringify({
+        const response = await invokeEdgeWithAuth('invite-collaborator', {
+          body: {
             // companyId removido - será capturado automaticamente no backend do usuário logado
             firstName: data.first_name,
             lastName: data.last_name,
@@ -441,10 +442,6 @@ const CollaboratorFormPage: React.FC = () => {
             commissionPercentage: 0, // Comissão agora é gerenciada apenas na tela de serviços por colaborador
             status: data.status,
             avatarUrl: avatarUrl, // Pass the uploaded avatar URL
-          }),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
           },
         });
 

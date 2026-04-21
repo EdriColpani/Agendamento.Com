@@ -33,7 +33,7 @@ WHERE msl.status = 'PENDING'
 -- PASSO 3: EXECUTAR A EDGE FUNCTION MANUALMENTE
 -- Isso vai processar todas as mensagens PENDING e enviá-las
 SELECT net.http_post(
-    url := 'https://tegyiuktrmcqxkbjxqoc.supabase.co/functions/v1/whatsapp-message-scheduler',
+    url := 'https://ocawpokndruxakzmhzsa.supabase.co/functions/v1/whatsapp-message-scheduler',
     headers := jsonb_build_object(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)

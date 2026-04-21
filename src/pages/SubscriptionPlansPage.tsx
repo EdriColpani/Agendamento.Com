@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import { invokeEdgeWithAuth } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useIsClient } from '@/hooks/useIsClient';
@@ -455,12 +456,8 @@ const SubscriptionPlansPage: React.FC = () => {
             coupon: requestBody.coupon ? { id: requestBody.coupon.id, discount_type: requestBody.coupon.discount_type, discount_value: requestBody.coupon.discount_value } : null,
         });
 
-        const response = await supabase.functions.invoke('apply-coupon-and-subscribe', {
-            body: JSON.stringify(requestBody),
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-            },
+        const response = await invokeEdgeWithAuth('apply-coupon-and-subscribe', {
+            body: requestBody,
         });
 
         // Check if response has an error
@@ -530,14 +527,10 @@ const SubscriptionPlansPage: React.FC = () => {
 
     setCancelling(true);
     try {
-      const response = await supabase.functions.invoke('cancel-subscription', {
-        body: JSON.stringify({
+      const response = await invokeEdgeWithAuth('cancel-subscription', {
+        body: {
           companyId: primaryCompanyId,
           subscriptionId: currentSubscription.id,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
       });
 

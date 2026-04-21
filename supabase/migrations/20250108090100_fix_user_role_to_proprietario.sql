@@ -37,12 +37,29 @@ WHERE uc.user_id = '3143d9c8-2582-4871-8779-f3e03e359c27'
   AND uc.company_id = '1594effc-0648-4568-965b-bbc5a1b1d5a9';
 
 -- 5. Atualizar também o type_user para garantir consistência
-UPDATE public.type_user
-SET 
-  cod = 'PROPRIETARIO',
-  descr = 'Proprietário',
-  updated_at = NOW()
-WHERE user_id = '3143d9c8-2582-4871-8779-f3e03e359c27';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'type_user'
+      AND column_name = 'updated_at'
+  ) THEN
+    UPDATE public.type_user
+    SET
+      cod = 'PROPRIETARIO',
+      descr = 'Proprietário',
+      updated_at = NOW()
+    WHERE user_id = '3143d9c8-2582-4871-8779-f3e03e359c27';
+  ELSE
+    UPDATE public.type_user
+    SET
+      cod = 'PROPRIETARIO',
+      descr = 'Proprietário'
+    WHERE user_id = '3143d9c8-2582-4871-8779-f3e03e359c27';
+  END IF;
+END $$;
 
 -- 6. Verificar type_user atualizado
 SELECT user_id, cod, descr

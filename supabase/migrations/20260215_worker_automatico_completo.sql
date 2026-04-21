@@ -144,34 +144,28 @@ BEGIN
             RAISE NOTICE 'Erro ao remover job %: %', job_record.jobname, SQLERRM;
         END;
     END LOOP;
-END $$;
+END;
+$$;
 
 -- Criar novo cron job que executa A CADA 1 MINUTO
 -- IMPORTANTE: O mínimo permitido pelo pg_cron é 1 minuto
--- Usar delimitador diferente ($cmd$) para evitar conflito com $$ do DO block
-DO $$
-BEGIN
-    -- Usar delimitador $cmd$ para o comando do cron (evita conflito com $$ do DO block)
-    PERFORM cron.schedule(
-        job_name := 'whatsapp-message-scheduler-worker',
-        schedule := '* * * * *',
-        command := $cmd$
-        SELECT net.http_post(
-            url := 'https://tegyiuktrmcqxkbjxqoc.supabase.co/functions/v1/whatsapp-message-scheduler',
-            headers := jsonb_build_object(
-                'Content-Type', 'application/json',
-                'Authorization', 'Bearer ' || get_service_role_key()
-            ),
-            body := jsonb_build_object(
-                'source', 'cron_worker',
-                'timestamp', extract(epoch from now())::text
-            )
-        ) AS request_id;
-        $cmd$
-    );
-    RAISE NOTICE '✅ Cron job criado: whatsapp-message-scheduler-worker';
-    RAISE NOTICE '✅ Frequência: A cada 1 minuto';
-END $$;
+SELECT cron.schedule(
+    'whatsapp-message-scheduler-worker',
+    '* * * * *',
+    $cmd$
+    SELECT net.http_post(
+        url := 'https://ocawpokndruxakzmhzsa.supabase.co/functions/v1/whatsapp-message-scheduler',
+        headers := jsonb_build_object(
+            'Content-Type', 'application/json',
+            'Authorization', 'Bearer ' || get_service_role_key()
+        ),
+        body := jsonb_build_object(
+            'source', 'cron_worker',
+            'timestamp', extract(epoch from now())::text
+        )
+    ) AS request_id;
+    $cmd$
+);
 
 -- =====================================================
 -- PARTE 5: VERIFICAR CONFIGURAÇÃO
@@ -201,7 +195,7 @@ WHERE jobname = 'whatsapp-message-scheduler-worker';
 COMMENT ON TABLE public.worker_execution_logs IS 
 'Logs de execução do worker automático de mensagens WhatsApp. Registra cada execução com estatísticas de processamento.';
 
-COMMENT ON FUNCTION cron.schedule IS 
+COMMENT ON FUNCTION cron.schedule(text, text, text) IS 
 'O worker está configurado para executar automaticamente a cada 1 minuto. 
 A Edge Function whatsapp-message-scheduler processa mensagens PENDING com scheduled_for <= NOW().';
 

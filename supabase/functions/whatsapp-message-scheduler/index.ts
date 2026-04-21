@@ -614,6 +614,21 @@ serve(async (req) => {
       });
     }
 
+    // 3.1) BLINDAGEM: scheduler automático só pode processar lembretes.
+    const { data: reminderKind, error: reminderKindError } = await supabaseAdmin
+      .from<MessageKindRow>('message_kinds')
+      .select('id, code')
+      .eq('code', 'APPOINTMENT_REMINDER')
+      .maybeSingle();
+
+    if (reminderKindError || !reminderKind?.id) {
+      console.error('❌ Não foi possível localizar message_kind APPOINTMENT_REMINDER:', reminderKindError);
+      return new Response(JSON.stringify({ error: 'Tipo APPOINTMENT_REMINDER não configurado.' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('4) Buscando templates de mensagem...');
     // 4) Buscar templates (por empresa/mensagem)
     const { data: templates, error: templatesError } = await supabaseAdmin
@@ -649,6 +664,11 @@ serve(async (req) => {
     for (const schedule of schedules!) {
       console.log(`Processando schedule ${schedule.id} para company ${schedule.company_id}`);
       const companyId = schedule.company_id;
+
+      // BLINDAGEM: ignora qualquer schedule que não seja lembrete.
+      if (schedule.message_kind_id !== reminderKind.id) {
+        continue;
+      }
 
       // Buscar provedor para esta empresa específica
       let provider = providersByCompany.get(companyId);

@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
@@ -55,14 +56,6 @@ const WEEK_DAYS = [
   { value: 5, label: 'Sexta' },
   { value: 6, label: 'Sábado' },
 ];
-
-function parseEdgeInvokeError(response: { error?: { message?: string; context?: { data?: unknown } }; data?: unknown }): string {
-  if (response.error) return response.error.message || 'Erro na Edge Function.';
-  if (response.data && typeof response.data === 'object' && response.data !== null && 'error' in response.data) {
-    return String((response.data as { error?: string }).error || 'Erro na Edge Function.');
-  }
-  return 'Erro na Edge Function.';
-}
 
 const CourtMonthlyPackagesPage: React.FC = () => {
   const { session } = useSession();
@@ -179,14 +172,9 @@ const CourtMonthlyPackagesPage: React.FC = () => {
   };
 
   const openPackageCheckout = async (packageId: string) => {
-    const response = await supabase.functions.invoke('create-court-monthly-package-checkout', {
-      body: JSON.stringify({ package_id: packageId }),
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+    const payload = await invokeEdgeWithAuthOrThrow<{ init_point?: string }>('create-court-monthly-package-checkout', {
+      body: { package_id: packageId },
     });
-    if (response.error || (response.data && typeof response.data === 'object' && 'error' in response.data)) {
-      throw new Error(parseEdgeInvokeError(response));
-    }
-    const payload = response.data as { init_point?: string };
     if (!payload?.init_point) throw new Error('Checkout sem init_point.');
     window.location.href = payload.init_point;
   };

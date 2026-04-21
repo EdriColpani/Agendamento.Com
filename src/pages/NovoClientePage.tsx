@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { formatZipCodeInput, formatPhoneNumberInput } from '@/utils/validation';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
@@ -173,8 +174,8 @@ const NovoClientePage: React.FC = () => {
     }
 
     try {
-      const response = await supabase.functions.invoke('invite-client', {
-        body: JSON.stringify({
+      const responseData = await invokeEdgeWithAuthOrThrow<{ emailSent?: boolean; emailError?: string }>('invite-client', {
+        body: {
           clientEmail: data.email,
           clientName: data.nome,
           companyId: primaryCompanyId,
@@ -190,26 +191,10 @@ const NovoClientePage: React.FC = () => {
           clientObservations: data.observacoes,
           clientStatus: data.status,
           clientPoints: data.pontos,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
       });
 
-      if (response.error) {
-        // Extract the specific error message from the Edge Function's response
-        let edgeFunctionErrorMessage = 'Erro desconhecido da Edge Function.';
-        if (response.error.context && response.error.context.data && response.error.context.data.error) {
-          edgeFunctionErrorMessage = response.error.context.data.error;
-        } else if (response.error.message) {
-          edgeFunctionErrorMessage = response.error.message;
-        }
-        throw new Error(edgeFunctionErrorMessage);
-      }
-
       // Verificar se o email foi enviado
-      const responseData = response.data;
       if (responseData?.emailSent) {
         showSuccess('Cliente cadastrado e e-mail de convite enviado com sucesso!');
       } else {

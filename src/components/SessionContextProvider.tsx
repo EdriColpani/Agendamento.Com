@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
 import { getTargetCompanyId, clearTargetCompanyId } from '@/utils/storage'; // Import storage utils
-import { checkAndClearExplicitLogout } from '@/utils/auth-state'; // Import para verificar logout explícito
+import { checkAndClearExplicitLogout, clearSupabaseAuthStorage } from '@/utils/auth-state'; // Import para verificar logout explícito
+import { isSessionProjectMismatch } from '@/utils/edge-auth';
 
 interface SessionContextType {
   session: Session | null;
@@ -34,6 +35,21 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     return prevSession.user.id !== newSession.user.id;
   };
 
+  const handleProjectSessionMismatch = async () => {
+    clearTargetCompanyId();
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // ignore
+    }
+    clearSupabaseAuthStorage();
+    setSession(null);
+    previousSessionRef.current = null;
+    isUserLoggedInRef.current = false;
+    showError('Sessão inválida para este ambiente. Faça login novamente.');
+    navigate('/login', { replace: true });
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -47,6 +63,11 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         
         console.log('SessionContextProvider - Auth event:', event, 'Session:', currentSession, 'IsInitializing:', isInitializing);
         
+        if (currentSession?.access_token && isSessionProjectMismatch(currentSession.access_token)) {
+          await handleProjectSessionMismatch();
+          return;
+        }
+
         // Durante a inicialização, ignora TODOS os eventos do listener
         // A sessão será definida apenas pelo resultado do getSession()
         if (isInitializing) {
@@ -144,6 +165,14 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       
       console.log('SessionContextProvider - Initial getSession:', initialSession);
       
+      if (initialSession?.access_token && isSessionProjectMismatch(initialSession.access_token)) {
+        handleProjectSessionMismatch().finally(() => {
+          isInitializingRef.current = false;
+          setLoading(false);
+        });
+        return;
+      }
+
       // Define a sessão inicial (fonte da verdade)
       setSession(initialSession);
       previousSessionRef.current = initialSession;

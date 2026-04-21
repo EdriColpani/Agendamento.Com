@@ -6,6 +6,9 @@
 
 -- Remover política antiga de SELECT que só mostra ativos
 DROP POLICY IF EXISTS "authenticated_users_can_view_providers" ON public.messaging_providers;
+DROP POLICY IF EXISTS "global_admin_can_insert_providers" ON public.messaging_providers;
+DROP POLICY IF EXISTS "global_admin_can_update_providers" ON public.messaging_providers;
+DROP POLICY IF EXISTS "global_admin_can_delete_providers" ON public.messaging_providers;
 
 -- Política para SELECT: Todos podem ver provedores (global admin precisa ver todos, inclusive inativos)
 CREATE POLICY "authenticated_users_can_view_providers" 

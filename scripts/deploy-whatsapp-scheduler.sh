@@ -40,15 +40,18 @@ fi
 echo ""
 echo "[3/3] Abrindo Supabase Dashboard..."
 
+PROJECT_REF="${SUPABASE_PROJECT_REF:-ocawpokndruxakzmhzsa}"
+FUNCTION_DASHBOARD_URL="https://supabase.com/dashboard/project/${PROJECT_REF}/functions/whatsapp-message-scheduler"
+
 # Abrir navegador
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    open "https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/whatsapp-message-scheduler"
+    open "$FUNCTION_DASHBOARD_URL"
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    xdg-open "https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/whatsapp-message-scheduler" 2>/dev/null || \
-    sensible-browser "https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/whatsapp-message-scheduler" 2>/dev/null || \
-    echo "Por favor, abra manualmente: https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/whatsapp-message-scheduler"
+    xdg-open "$FUNCTION_DASHBOARD_URL" 2>/dev/null || \
+    sensible-browser "$FUNCTION_DASHBOARD_URL" 2>/dev/null || \
+    echo "Por favor, abra manualmente: $FUNCTION_DASHBOARD_URL"
 else
-    echo "Por favor, abra manualmente: https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/whatsapp-message-scheduler"
+    echo "Por favor, abra manualmente: $FUNCTION_DASHBOARD_URL"
 fi
 
 echo ""

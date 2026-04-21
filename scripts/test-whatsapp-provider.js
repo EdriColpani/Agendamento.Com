@@ -2,7 +2,7 @@
 // Uso: node scripts/test-whatsapp-provider.js [telefone] [mensagem]
 // Exemplo: node scripts/test-whatsapp-provider.js +5511999999999 "Teste de mensagem"
 
-const SUPABASE_URL = 'https://tegyiuktrmcqxkbjxqoc.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ocawpokndruxakzmhzsa.supabase.co';
 
 // FormData nativo está disponível no Node.js 18+
 // Se você estiver usando Node.js < 18, instale: npm install form-data

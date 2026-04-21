@@ -22,7 +22,8 @@ Write-Host "OK! Codigo copiado para clipboard." -ForegroundColor Green
 Write-Host ""
 
 Write-Host "[3/3] Abrindo Supabase Dashboard..." -ForegroundColor Yellow
-Start-Process "https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/finalize-appointment-by-collaborator"
+$projectRef = if ($env:SUPABASE_PROJECT_REF) { $env:SUPABASE_PROJECT_REF } else { "ocawpokndruxakzmhzsa" }
+Start-Process "https://supabase.com/dashboard/project/$projectRef/functions/finalize-appointment-by-collaborator"
 Write-Host ""
 
 Write-Host "========================================" -ForegroundColor Cyan

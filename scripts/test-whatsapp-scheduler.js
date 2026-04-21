@@ -1,7 +1,7 @@
 // Script Node.js para testar a função whatsapp-message-scheduler
 // Uso: node scripts/test-whatsapp-scheduler.js
 
-const SUPABASE_URL = 'https://tegyiuktrmcqxkbjxqoc.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ocawpokndruxakzmhzsa.supabase.co';
 const FUNCTION_NAME = 'whatsapp-message-scheduler';
 
 // Você precisa definir a SERVICE_ROLE_KEY como variável de ambiente

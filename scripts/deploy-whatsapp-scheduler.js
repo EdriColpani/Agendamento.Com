@@ -70,7 +70,8 @@ if (platform === 'win32') {
 console.log('');
 console.log('[3/3] Abrindo Supabase Dashboard...');
 
-const url = 'https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/whatsapp-message-scheduler';
+const projectRef = process.env.SUPABASE_PROJECT_REF || 'ocawpokndruxakzmhzsa';
+const url = `https://supabase.com/dashboard/project/${projectRef}/functions/whatsapp-message-scheduler`;
 
 if (platform === 'win32') {
     exec(`start ${url}`);

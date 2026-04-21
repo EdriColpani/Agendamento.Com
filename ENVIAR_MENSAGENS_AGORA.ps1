@@ -5,7 +5,7 @@
 # para processar e enviar todas as mensagens PENDING
 # =====================================================
 
-$SUPABASE_URL = "https://tegyiuktrmcqxkbjxqoc.supabase.co"
+$SUPABASE_URL = if ($env:SUPABASE_URL) { $env:SUPABASE_URL } else { "https://ocawpokndruxakzmhzsa.supabase.co" }
 $FUNCTION_NAME = "whatsapp-message-scheduler"
 
 Write-Host "================================================" -ForegroundColor Cyan

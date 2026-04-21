@@ -7,6 +7,7 @@
 
 -- Política para SELECT: Permitir leitura pública (anon) de collaborator_services
 -- Apenas para consultar serviços ativos de colaboradores
+DROP POLICY IF EXISTS "anon_can_view_collaborator_services" ON public.collaborator_services;
 CREATE POLICY "anon_can_view_collaborator_services" 
 ON public.collaborator_services
 FOR SELECT
