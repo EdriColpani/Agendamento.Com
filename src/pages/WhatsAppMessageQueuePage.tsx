@@ -55,10 +55,20 @@ const formatDateTimeBR = (iso: string) => {
 };
 
 const getMessageTypeLabel = (kind?: MessageKind | null): string => {
-  if (!kind?.code) return 'Agradecimento';
-  if (kind.code === 'APPOINTMENT_REMINDER') return 'Lembrete';
-  // Demais tipos (confirmação, cancelamento, pós-atendimento) serão tratados como "Agradecimento"
-  return 'Agradecimento';
+  if (!kind?.code) return 'Tipo desconhecido';
+
+  switch (kind.code) {
+    case 'APPOINTMENT_REMINDER':
+      return 'Lembrete';
+    case 'POST_SERVICE_THANKS':
+      return 'Agradecimento';
+    case 'APPOINTMENT_CONFIRMATION':
+      return 'Confirmação';
+    case 'APPOINTMENT_CANCELLATION':
+      return 'Cancelamento';
+    default:
+      return kind.description || kind.code;
+  }
 };
 
 const getStatusLabel = (status: MessageStatus): string => {

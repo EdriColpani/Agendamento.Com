@@ -6,6 +6,8 @@ import { ArrowLeft, Download, Database, AlertCircle, CheckCircle } from 'lucide-
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
+import { requireCurrentAccessToken } from '@/utils/edge-auth';
+import { invokeEdgeWithAuth } from '@/utils/edge-invoke';
 
 const BackupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,7 +16,7 @@ const BackupPage: React.FC = () => {
   const [lastBackup, setLastBackup] = useState<string | null>(null);
 
   const handleCreateBackup = async () => {
-    if (!session) {
+    if (!session?.user) {
       showError('Você precisa estar logado para criar um backup.');
       return;
     }
@@ -22,11 +24,7 @@ const BackupPage: React.FC = () => {
     setLoading(true);
     try {
       // Chamar a Edge Function para criar o backup
-      const { data, error } = await supabase.functions.invoke('create-backup', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
+      const { data, error } = await invokeEdgeWithAuth('create-backup');
 
       if (error) {
         throw error;
@@ -78,20 +76,21 @@ const BackupPage: React.FC = () => {
   };
 
   const handleDownloadBackup = async () => {
-    if (!session) {
+    if (!session?.user) {
       showError('Você precisa estar logado para baixar um backup.');
       return;
     }
 
     setLoading(true);
     try {
+      const accessToken = await requireCurrentAccessToken();
       // Fazer requisição direta para a Edge Function
       const response = await fetch(
         `${supabaseUrl}/functions/v1/create-backup`,
         {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${session.access_token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'apikey': supabaseAnonKey,
           },
         }

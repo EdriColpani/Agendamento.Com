@@ -112,7 +112,7 @@ WHERE whatsapp_messaging_enabled = true;
 SELECT 
     '=== TESTE MANUAL DA EDGE FUNCTION ===' as secao,
     net.http_post(
-        url := 'https://tegyiuktrmcqxkbjxqoc.supabase.co/functions/v1/whatsapp-message-scheduler',
+        url := 'https://ocawpokndruxakzmhzsa.supabase.co/functions/v1/whatsapp-message-scheduler',
         headers := jsonb_build_object(
             'Content-Type', 'application/json',
             'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)

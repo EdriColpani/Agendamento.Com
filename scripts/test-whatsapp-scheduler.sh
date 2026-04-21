@@ -3,7 +3,7 @@
 # Script para testar a função whatsapp-message-scheduler
 # Uso: ./scripts/test-whatsapp-scheduler.sh
 
-SUPABASE_URL="https://tegyiuktrmcqxkbjxqoc.supabase.co"
+SUPABASE_URL="${SUPABASE_URL:-https://ocawpokndruxakzmhzsa.supabase.co}"
 FUNCTION_NAME="whatsapp-message-scheduler"
 
 # Você precisa definir a SERVICE_ROLE_KEY como variável de ambiente

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { showError } from '@/utils/toast';
+import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 
@@ -42,31 +43,6 @@ type ReconciliationRunRow = {
   duration_ms: number | null;
 };
 
-function parseInvokeError(response: {
-  error?: { message?: string; context?: { data?: unknown } };
-  data?: unknown;
-}): string {
-  if (response.error) {
-    const ctx = response.error.context?.data;
-    if (typeof ctx === 'string') {
-      try {
-        const parsed = JSON.parse(ctx) as { error?: string };
-        return parsed.error || response.error.message || 'Erro na Edge Function.';
-      } catch {
-        return ctx || response.error.message || 'Erro na Edge Function.';
-      }
-    }
-    if (ctx && typeof ctx === 'object' && 'error' in (ctx as object)) {
-      return String((ctx as { error?: string }).error || response.error.message || 'Erro na Edge Function.');
-    }
-    return response.error.message || 'Erro na Edge Function.';
-  }
-  if (response.data && typeof response.data === 'object' && 'error' in (response.data as object)) {
-    return String((response.data as { error?: string }).error || 'Erro na Edge Function.');
-  }
-  return 'Erro na Edge Function.';
-}
-
 const CourtBookingRefundHealthPage: React.FC = () => {
   const navigate = useNavigate();
   const { session } = useSession();
@@ -81,26 +57,18 @@ const CourtBookingRefundHealthPage: React.FC = () => {
   const [latestRuns, setLatestRuns] = useState<ReconciliationRunRow[]>([]);
 
   const loadData = useCallback(async (hours: 24 | 168 | 720 = windowHours) => {
-    if (!session?.access_token || !primaryCompanyId) return;
+    if (!session?.user || !primaryCompanyId) return;
     setLoading(true);
     try {
-      const response = await supabase.functions.invoke('get-court-booking-refund-report', {
-        body: JSON.stringify({ window_hours: hours, latest_limit: 25, company_id: primaryCompanyId }),
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-      if (response.error || (response.data && typeof response.data === 'object' && 'error' in response.data)) {
-        throw new Error(parseInvokeError(response));
-      }
-      const payload = response.data as {
+      const payload = await invokeEdgeWithAuthOrThrow<{
         summary?: RefundSummary;
         top_reasons?: ReasonRow[];
         payment_type_counts?: PaymentTypeRow[];
         latest_attempts?: AttemptRow[];
         latest_reconciliation_runs?: ReconciliationRunRow[];
-      };
+      }>('get-court-booking-refund-report', {
+        body: { window_hours: hours, latest_limit: 25, company_id: primaryCompanyId },
+      });
       setSummary(payload.summary ?? null);
       setTopReasons(Array.isArray(payload.top_reasons) ? payload.top_reasons : []);
       setPaymentTypes(Array.isArray(payload.payment_type_counts) ? payload.payment_type_counts : []);
@@ -111,11 +79,11 @@ const CourtBookingRefundHealthPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token, primaryCompanyId, windowHours]);
+  }, [session?.user, primaryCompanyId, windowHours]);
 
   useEffect(() => {
-    if (session?.access_token) loadData(windowHours);
-  }, [session?.access_token, loadData, windowHours]);
+    if (session?.user) loadData(windowHours);
+  }, [session?.user, loadData, windowHours]);
 
   if (loadingPrimaryCompany || loadingArenaModule) {
     return (

@@ -1,5 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
+const BRAND_NAME = "PlanoAgenda";
+const BRAND_FROM_EMAIL = `${BRAND_NAME} <noreply@planoagenda.com.br>`;
+const BRAND_COPYRIGHT = `© ${BRAND_NAME} - Todos os direitos reservados`;
+
+function getBrandFooterHtml(): string {
+  return `<p>${BRAND_COPYRIGHT}</p>`;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -67,9 +75,9 @@ serve(async (req) => {
       </head>
       <body>
         <div class="container">
-          <h2>Bem-vindo ao TipoAgenda!</h2>
+          <h2>Bem-vindo ao ${BRAND_NAME}!</h2>
           <p>Olá ${firstName} ${lastName},</p>
-          <p>Você foi cadastrado como ${userTypeText} no sistema TipoAgenda. Utilize as credenciais abaixo para acessar o sistema:</p>
+          <p>Você foi cadastrado como ${userTypeText} no sistema ${BRAND_NAME}. Utilize as credenciais abaixo para acessar o sistema:</p>
           
           <div class="credentials">
             <p><strong>E-mail:</strong> ${email}</p>
@@ -85,7 +93,7 @@ serve(async (req) => {
           
           <div class="footer">
             <p>Se você não foi cadastrado, entre em contato com o administrador do sistema.</p>
-            <p>© TipoAgenda - Todos os direitos reservados</p>
+            ${getBrandFooterHtml()}
           </div>
         </div>
       </body>
@@ -101,9 +109,9 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PlanoAgenda <noreply@planoagenda.com.br>',
+        from: BRAND_FROM_EMAIL,
         to: email,
-        subject: 'Bem-vindo ao TipoAgenda - Credenciais de Acesso',
+        subject: `Bem-vindo ao ${BRAND_NAME} - Credenciais de Acesso`,
         html: emailHtml,
       }),
     });

@@ -2,7 +2,7 @@
 REM Script Batch para testar a função whatsapp-message-scheduler
 REM Uso: scripts\test-whatsapp-scheduler.bat
 
-set SUPABASE_URL=https://tegyiuktrmcqxkbjxqoc.supabase.co
+if "%SUPABASE_URL%"=="" set SUPABASE_URL=https://ocawpokndruxakzmhzsa.supabase.co
 set FUNCTION_NAME=whatsapp-message-scheduler
 
 REM Você precisa definir a SERVICE_ROLE_KEY como variável de ambiente

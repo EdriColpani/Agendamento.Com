@@ -118,6 +118,7 @@ DROP POLICY IF EXISTS "allow_delete_subscription" ON public.company_subscription
 DROP POLICY IF EXISTS "users_can_delete_own_subscription" ON public.company_subscriptions;
 DROP POLICY IF EXISTS "prevent_accidental_deletion_subscriptions" ON public.company_subscriptions;
 DROP POLICY IF EXISTS "service_role_can_delete" ON public.company_subscriptions;
+DROP POLICY IF EXISTS "block_all_subscription_deletions" ON public.company_subscriptions;
 
 -- Criar política que BLOQUEIA TODAS as deleções via RLS
 -- Apenas service_role (Edge Functions) pode deletar (não passa por RLS)
@@ -149,6 +150,7 @@ $$;
 -- Remover trigger antigo se existir
 DROP TRIGGER IF EXISTS trg_audit_subscription_changes ON public.company_subscriptions;
 DROP TRIGGER IF EXISTS trg_prevent_subscription_deletion ON public.company_subscriptions;
+DROP TRIGGER IF EXISTS trg_audit_subscription_deletion ON public.company_subscriptions;
 
 -- Criar trigger que LOGA deleções (para investigação)
 CREATE TRIGGER trg_audit_subscription_deletion

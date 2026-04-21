@@ -2,6 +2,15 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 import { format, addMonths, parseISO, isPast, startOfDay } from 'https://esm.sh/date-fns@3.6.0';
 
+const BRAND_NAME = "PlanoAgenda";
+const BRAND_SITE_URL = "https://www.planoagenda.com.br";
+const BRAND_FROM_EMAIL = `${BRAND_NAME} <noreply@planoagenda.com.br>`;
+const BRAND_COPYRIGHT = `© ${BRAND_NAME} - Todos os direitos reservados`;
+
+function getBrandFooterHtml(): string {
+  return `<p>${BRAND_COPYRIGHT}</p>`;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -170,7 +179,7 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
             </div>
             
             <div class="footer">
-              <p>© TipoAgenda - Todos os direitos reservados</p>
+              ${getBrandFooterHtml()}
             </div>
           </div>
         </div>
@@ -188,7 +197,7 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PlanoAgenda <noreply@planoagenda.com.br>',
+        from: BRAND_FROM_EMAIL,
         to: adminEmail,
         subject: `🚀 NOVO CLIENTE WHATSAPP - ${companyData.razao_social || companyData.name || 'Empresa'}`,
         html: emailHtml,
@@ -312,7 +321,7 @@ serve(async (req) => {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const MERCADOPAGO_ACCESS_TOKEN = Deno.env.get('PAYMENT_API_KEY_SECRET');
-  const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://tipoagenda.com';
+  const SITE_URL = Deno.env.get('SITE_URL') ?? BRAND_SITE_URL;
 
   const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },

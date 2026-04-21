@@ -1,10 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const supabaseUrl = "https://tegyiuktrmcqxkbjxqoc.supabase.co";
-export const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlZ3lpdWt0cm1jcXhrYmp4cW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5NDYxMDgsImV4cCI6MjA4MDUyMjEwOH0.bfwrlBY0Sg3u-MEdvSZlBMor6cd17iHBYlrpnhNgGEM"; 
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Configuração do Supabase ausente. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+}
 
 console.log("Supabase URL sendo usado:", supabaseUrl);
-console.log("Supabase Anon Key sendo usado:", supabaseAnonKey);
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

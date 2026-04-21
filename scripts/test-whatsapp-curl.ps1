@@ -1,7 +1,7 @@
 # Script PowerShell para testar a API LiotPRO usando curl
 # Uso: .\scripts\test-whatsapp-curl.ps1
 
-$SUPABASE_URL = "https://tegyiuktrmcqxkbjxqoc.supabase.co"
+$SUPABASE_URL = if ($env:SUPABASE_URL) { $env:SUPABASE_URL } else { "https://ocawpokndruxakzmhzsa.supabase.co" }
 $SERVICE_ROLE_KEY = $env:SUPABASE_SERVICE_ROLE_KEY
 
 if (-not $SERVICE_ROLE_KEY) {

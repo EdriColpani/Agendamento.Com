@@ -3,11 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Key, Lock, ExternalLink } from 'lucide-react';
+import { supabaseUrl } from '@/integrations/supabase/client';
 
 const ApiKeysPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const supabaseSecretsLink = `https://app.supabase.com/project/tegyiuktrmcqxkbjxqoc/functions/secrets`;
+  const projectRef = (() => {
+    try {
+      return new URL(supabaseUrl).hostname.split('.')[0];
+    } catch {
+      return '';
+    }
+  })();
+  const supabaseSecretsLink = projectRef
+    ? `https://app.supabase.com/project/${projectRef}/functions/secrets`
+    : 'https://app.supabase.com';
 
   return (
     <div className="space-y-6">

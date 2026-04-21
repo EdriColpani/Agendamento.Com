@@ -1,6 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 
+const BRAND_NAME = "PlanoAgenda";
+const BRAND_SITE_URL = "https://www.planoagenda.com.br";
+const BRAND_FROM_EMAIL = `${BRAND_NAME} <noreply@planoagenda.com.br>`;
+const BRAND_COPYRIGHT = `© ${BRAND_NAME} - Todos os direitos reservados`;
+
+function getBrandFooterHtml(): string {
+  return `<p>${BRAND_COPYRIGHT}</p>`;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -31,7 +40,7 @@ serve(async (req) => {
       });
     }
 
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://tegyiuktrmcqxkbjxqoc.supabase.co';
+    const siteUrl = Deno.env.get('SITE_URL') || BRAND_SITE_URL;
 
     // 1. Gerar link de confirmação
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -95,16 +104,16 @@ serve(async (req) => {
       </head>
       <body>
         <div class="container">
-          <h2>Confirme seu cadastro no TipoAgenda</h2>
+          <h2>Confirme seu cadastro no ${BRAND_NAME}</h2>
           <p>Olá,</p>
-          <p>Obrigado por se cadastrar no TipoAgenda! Para ativar sua conta, clique no botão abaixo e faça login:</p>
+          <p>Obrigado por se cadastrar no ${BRAND_NAME}! Para ativar sua conta, clique no botão abaixo e faça login:</p>
           <p><a href="${confirmationLink}" class="button">Confirmar E-mail</a></p>
           <p>Ou copie e cole este link no seu navegador:</p>
           <p style="word-break: break-all; color: #0066cc;">${confirmationLink}</p>
           <p>Este link expira em 24 horas.</p>
           <div class="footer">
             <p>Se você não se cadastrou, ignore este email.</p>
-            <p>© TipoAgenda - Todos os direitos reservados</p>
+            ${getBrandFooterHtml()}
           </div>
         </div>
       </body>
@@ -118,9 +127,9 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PlanoAgenda <noreply@planoagenda.com.br>', // Domínio verificado - envia para qualquer email
+        from: BRAND_FROM_EMAIL, // Domínio verificado - envia para qualquer email
         to: email,
-        subject: 'Confirme seu cadastro no TipoAgenda',
+        subject: `Confirme seu cadastro no ${BRAND_NAME}`,
         html: emailHtml,
       }),
     });

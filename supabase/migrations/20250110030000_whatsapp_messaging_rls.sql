@@ -227,6 +227,8 @@ END $$;
 DROP POLICY IF EXISTS "authenticated_users_can_view_logs" ON public.message_send_log;
 DROP POLICY IF EXISTS "authenticated_users_can_insert_logs" ON public.message_send_log;
 DROP POLICY IF EXISTS "authenticated_users_can_update_logs" ON public.message_send_log;
+DROP POLICY IF EXISTS "block_direct_log_inserts" ON public.message_send_log;
+DROP POLICY IF EXISTS "block_direct_log_updates" ON public.message_send_log;
 
 -- Política para SELECT: Usuários podem ver logs de envio de suas empresas
 CREATE POLICY "authenticated_users_can_view_logs" 

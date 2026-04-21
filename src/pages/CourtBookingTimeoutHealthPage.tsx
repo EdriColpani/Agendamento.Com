@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { showError } from '@/utils/toast';
+import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 
 type TimeoutRunRow = {
   id: string;
@@ -27,31 +28,6 @@ type TimeoutSummary = {
   cancelled_window: number;
 };
 
-function parseInvokeError(response: {
-  error?: { message?: string; context?: { data?: unknown } };
-  data?: unknown;
-}): string {
-  if (response.error) {
-    const ctx = response.error.context?.data;
-    if (typeof ctx === 'string') {
-      try {
-        const parsed = JSON.parse(ctx) as { error?: string };
-        return parsed.error || response.error.message || 'Erro na Edge Function.';
-      } catch {
-        return ctx || response.error.message || 'Erro na Edge Function.';
-      }
-    }
-    if (ctx && typeof ctx === 'object' && 'error' in (ctx as object)) {
-      return String((ctx as { error?: string }).error || response.error.message || 'Erro na Edge Function.');
-    }
-    return response.error.message || 'Erro na Edge Function.';
-  }
-  if (response.data && typeof response.data === 'object' && 'error' in (response.data as object)) {
-    return String((response.data as { error?: string }).error || 'Erro na Edge Function.');
-  }
-  return 'Erro na Edge Function.';
-}
-
 const CourtBookingTimeoutHealthPage: React.FC = () => {
   const navigate = useNavigate();
   const { session } = useSession();
@@ -62,28 +38,18 @@ const CourtBookingTimeoutHealthPage: React.FC = () => {
   const [windowHours, setWindowHours] = useState<24 | 168>(24);
 
   const loadData = useCallback(async (hours: 24 | 168 = windowHours) => {
-    if (!session?.access_token) return;
+    if (!session?.user) return;
     setLoading(true);
     try {
-      const response = await supabase.functions.invoke('get-court-booking-timeout-runs', {
-        body: JSON.stringify({
-          window_hours: hours,
-          latest_limit: 20,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (response.error || (response.data && typeof response.data === 'object' && 'error' in response.data)) {
-        throw new Error(parseInvokeError(response));
-      }
-
-      const payload = response.data as {
+      const payload = await invokeEdgeWithAuthOrThrow<{
         summary?: TimeoutSummary;
         latest_runs?: TimeoutRunRow[];
-      };
+      }>('get-court-booking-timeout-runs', {
+        body: {
+          window_hours: hours,
+          latest_limit: 20,
+        },
+      });
       setSummary(payload.summary ?? null);
       setRuns(Array.isArray(payload.latest_runs) ? payload.latest_runs : []);
     } catch (error: unknown) {
@@ -92,13 +58,13 @@ const CourtBookingTimeoutHealthPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token, windowHours]);
+  }, [session?.user, windowHours]);
 
   useEffect(() => {
-    if (session?.access_token) {
+    if (session?.user) {
       loadData(windowHours);
     }
-  }, [session?.access_token, loadData, windowHours]);
+  }, [session?.user, loadData, windowHours]);
 
   return (
     <div className="space-y-6">

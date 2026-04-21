@@ -8,6 +8,7 @@ import { getStatusColor, createButton } from '@/lib/dashboard-utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast'; // Importar showSuccess
+import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { Edit, MailCheck } from 'lucide-react'; // Importar o ícone MailCheck
@@ -77,34 +78,19 @@ const ClientesPage: React.FC = () => {
   );
 
   const handleResendInvite = async (client: Client) => {
-    if (!session?.access_token || !primaryCompanyId) {
+    if (!session?.user || !primaryCompanyId) {
       showError('Erro de autenticação ou empresa primária não encontrada.');
       return;
     }
 
     setResendingInviteId(client.id);
     try {
-      const response = await supabase.functions.invoke('resend-client-invite', {
-        body: JSON.stringify({
+      await invokeEdgeWithAuthOrThrow('resend-client-invite', {
+        body: {
           clientEmail: client.email,
           companyId: primaryCompanyId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
       });
-
-      if (response.error) {
-        // Extract the specific error message from the Edge Function's response
-        let edgeFunctionErrorMessage = 'Erro desconhecido da Edge Function.';
-        if (response.error.context && response.error.context.data && response.error.context.data.error) {
-          edgeFunctionErrorMessage = response.error.context.data.error;
-        } else if (response.error.message) {
-          edgeFunctionErrorMessage = response.error.message;
-        }
-        throw new Error(edgeFunctionErrorMessage);
-      }
 
       showSuccess(`Convite reenviado para ${client.email} com sucesso!`);
     } catch (error: any) {

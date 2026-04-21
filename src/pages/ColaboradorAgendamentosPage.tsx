@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getStatusColor } from '@/lib/dashboard-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import { invokeEdgeWithAuth } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { useIsCollaborator } from '@/hooks/useIsCollaborator';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parse, addMinutes, parseISO } from 'date-fns';
@@ -185,15 +186,11 @@ const ColaboradorAgendamentosPage: React.FC = () => {
 
     try {
       // Chamar Edge Function para finalizar agendamento
-      const response = await supabase.functions.invoke('finalize-appointment-by-collaborator', {
-        body: JSON.stringify({
+      const response = await invokeEdgeWithAuth('finalize-appointment-by-collaborator', {
+        body: {
           appointmentId: finalizingAppointmentId,
           collaboratorId: collaboratorId,
           paymentMethod: paymentMethod, // Adicionar forma de pagamento
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
       });
 

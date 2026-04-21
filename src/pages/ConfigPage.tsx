@@ -16,6 +16,7 @@ import { BannerFormModal } from '@/components/BannerFormModal';
 import { getBannerByCompanyId, deleteBanner, type Banner } from '@/services/bannerService';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -36,28 +37,6 @@ type MpCredentialRow = {
   provider_account_id: string | null;
   updated_at: string | null;
 };
-
-function parseEdgeInvokeError(response: { error?: { message?: string; context?: { data?: unknown } }; data?: unknown }): string {
-  if (response.error) {
-    const ctx = response.error.context?.data;
-    if (typeof ctx === 'string') {
-      try {
-        const parsed = JSON.parse(ctx) as { error?: string };
-        return parsed.error || response.error.message || 'Erro na Edge Function.';
-      } catch {
-        return ctx || response.error.message || 'Erro na Edge Function.';
-      }
-    }
-    if (ctx && typeof ctx === 'object' && ctx !== null && 'error' in ctx) {
-      return String((ctx as { error?: string }).error || response.error.message || 'Erro na Edge Function.');
-    }
-    return response.error.message || 'Erro na Edge Function.';
-  }
-  if (response.data && typeof response.data === 'object' && response.data !== null && 'error' in response.data) {
-    return String((response.data as { error?: string }).error || 'Erro na Edge Function.');
-  }
-  return 'Erro na Edge Function.';
-}
 
 const ConfigPage: React.FC = () => {
   const { session } = useSession();
@@ -87,23 +66,15 @@ const ConfigPage: React.FC = () => {
   const [enableMonthlyPackages, setEnableMonthlyPackages] = useState(false);
 
   const fetchPaymentCredentialsStatus = useCallback(async () => {
-    if (!primaryCompanyId || !session?.access_token) return;
+    if (!primaryCompanyId || !session?.user) return;
     setMpLoadingStatus(true);
     try {
-      const response = await supabase.functions.invoke('upsert-company-payment-credentials', {
-        body: JSON.stringify({
+      const payload = await invokeEdgeWithAuthOrThrow<{ data?: MpCredentialRow[] }>('upsert-company-payment-credentials', {
+        body: {
           action: 'status',
           company_id: primaryCompanyId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
         },
       });
-      if (response.error || (response.data && typeof response.data === 'object' && 'error' in response.data)) {
-        throw new Error(parseEdgeInvokeError(response));
-      }
-      const payload = response.data as { data?: MpCredentialRow[] };
       setMpRows(Array.isArray(payload?.data) ? payload.data : []);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro ao carregar status de pagamentos.';
@@ -111,16 +82,16 @@ const ConfigPage: React.FC = () => {
     } finally {
       setMpLoadingStatus(false);
     }
-  }, [primaryCompanyId, session?.access_token]);
+  }, [primaryCompanyId, session?.user]);
 
   useEffect(() => {
-    if (canManageCompanyPayments && primaryCompanyId && session?.access_token) {
+    if (canManageCompanyPayments && primaryCompanyId && session?.user) {
       fetchPaymentCredentialsStatus();
     }
-  }, [canManageCompanyPayments, primaryCompanyId, session?.access_token, fetchPaymentCredentialsStatus]);
+  }, [canManageCompanyPayments, primaryCompanyId, session?.user, fetchPaymentCredentialsStatus]);
 
   const handleSaveMercadoPagoToken = async () => {
-    if (!primaryCompanyId || !session?.access_token) {
+    if (!primaryCompanyId || !session?.user) {
       showError('Sessão ou empresa não disponível.');
       return;
     }
@@ -131,21 +102,14 @@ const ConfigPage: React.FC = () => {
     }
     setMpSaving(true);
     try {
-      const response = await supabase.functions.invoke('upsert-company-payment-credentials', {
-        body: JSON.stringify({
+      await invokeEdgeWithAuthOrThrow('upsert-company-payment-credentials', {
+        body: {
           action: 'upsert',
           company_id: primaryCompanyId,
           provider: 'mercadopago',
           credentials: { access_token: trimmed },
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
         },
       });
-      if (response.error || (response.data && typeof response.data === 'object' && 'error' in response.data)) {
-        throw new Error(parseEdgeInvokeError(response));
-      }
       showSuccess('Credenciais validadas e salvas com segurança no servidor.');
       setMpAccessToken('');
       await fetchPaymentCredentialsStatus();

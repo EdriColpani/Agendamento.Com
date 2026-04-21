@@ -1,7 +1,7 @@
 # Script PowerShell para testar a função whatsapp-message-scheduler
 # Uso: .\scripts\test-whatsapp-scheduler.ps1
 
-$SUPABASE_URL = "https://tegyiuktrmcqxkbjxqoc.supabase.co"
+$SUPABASE_URL = if ($env:SUPABASE_URL) { $env:SUPABASE_URL } else { "https://ocawpokndruxakzmhzsa.supabase.co" }
 $FUNCTION_NAME = "whatsapp-message-scheduler"
 
 # Você precisa definir a SERVICE_ROLE_KEY como variável de ambiente

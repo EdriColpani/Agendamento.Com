@@ -8,6 +8,9 @@
 DROP POLICY IF EXISTS "users_can_view_own_subscriptions" ON public.company_subscriptions;
 DROP POLICY IF EXISTS "authenticated_users_can_view_subscriptions" ON public.company_subscriptions;
 DROP POLICY IF EXISTS "proprietarios_can_view_subscriptions" ON public.company_subscriptions;
+DROP POLICY IF EXISTS "authenticated_users_can_view_company_subscriptions" ON public.company_subscriptions;
+DROP POLICY IF EXISTS "block_direct_subscription_inserts" ON public.company_subscriptions;
+DROP POLICY IF EXISTS "block_direct_subscription_updates" ON public.company_subscriptions;
 
 -- Criar política que permite usuários autenticados verem assinaturas de suas empresas
 -- Um usuário pode ver assinaturas de empresas onde ele tem um papel (user_companies)

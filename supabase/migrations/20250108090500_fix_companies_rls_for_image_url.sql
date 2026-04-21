@@ -20,6 +20,7 @@ END $$;
 -- Remover políticas antigas que possam estar bloqueando a leitura
 DROP POLICY IF EXISTS "companies_read_policy" ON public.companies;
 DROP POLICY IF EXISTS "allow_public_read_companies" ON public.companies;
+DROP POLICY IF EXISTS "allow_all_read_companies" ON public.companies;
 
 -- Política: Permitir que usuários autenticados e não autenticados (público) 
 -- possam ler todos os campos da tabela `companies`
@@ -27,7 +28,7 @@ DROP POLICY IF EXISTS "allow_public_read_companies" ON public.companies;
 CREATE POLICY "allow_all_read_companies"
 ON public.companies
 FOR SELECT
-TO public, authenticated
+TO public
 USING (true); -- Permite a leitura de todos os registros e colunas
 
 -- Adicionar políticas para INSERT, UPDATE e DELETE se não existirem
@@ -45,7 +46,7 @@ WITH CHECK (
     SELECT 1 FROM public.user_companies uc
     JOIN public.role_types rt ON uc.role_type = rt.id
     WHERE uc.user_id = auth.uid()
-      AND uc.company_id = NEW.id
+      AND uc.company_id = companies.id
       AND (rt.description = 'Proprietário' OR rt.description = 'Admin')
   )
 );

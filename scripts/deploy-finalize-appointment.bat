@@ -18,7 +18,8 @@ echo OK! Codigo copiado para clipboard.
 echo.
 
 echo [2/3] Abrindo Supabase Dashboard...
-start https://supabase.com/dashboard/project/tegyiuktrmcqxkbjxqoc/functions/finalize-appointment-by-collaborator
+if "%SUPABASE_PROJECT_REF%"=="" set SUPABASE_PROJECT_REF=ocawpokndruxakzmhzsa
+start https://supabase.com/dashboard/project/%SUPABASE_PROJECT_REF%/functions/finalize-appointment-by-collaborator
 echo.
 
 echo [3/3] INSTRUCOES:

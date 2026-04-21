@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.46.0";
 
+const BRAND_SITE_URL = "https://www.planoagenda.com.br";
+
 /** Decifra payload de `company_payment_credentials` (mesmo envelope da Edge upsert-company-payment-credentials). */
 function base64ToBytes(b64: string): Uint8Array {
   const binary = atob(b64);
@@ -77,7 +79,7 @@ serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const SITE_URL = Deno.env.get("SITE_URL") ?? "https://tipoagenda.com";
+  const SITE_URL = Deno.env.get("SITE_URL") ?? BRAND_SITE_URL;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: "Ambiente Supabase incompleto." }), {

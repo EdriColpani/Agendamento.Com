@@ -1,6 +1,28 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.46.0";
 
+const BRAND_NAME = "PlanoAgenda";
+const BRAND_FROM_EMAIL = "PlanoAgenda <noreply@planoagenda.com.br>";
+const BRAND_RESET_PASSWORD_URL = "https://www.planoagenda.com.br/reset-password";
+const BRAND_LOGO_URL = "https://www.planoagenda.com.br/brand/planoagenda-logo-pa.svg";
+const BRAND_COPYRIGHT = `© ${BRAND_NAME} - Todos os direitos reservados`;
+
+function getBrandFooterHtml(): string {
+  return `<p>${BRAND_COPYRIGHT}</p>`;
+}
+
+function getBrandLogoHtml(maxWidth = 180): string {
+  return `
+    <p style="margin: 0 0 16px;">
+      <img
+        src="${BRAND_LOGO_URL}"
+        alt="${BRAND_NAME}"
+        style="display:block;max-width:${maxWidth}px;height:auto;"
+      />
+    </p>
+  `;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -55,8 +77,8 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    // URL fixa do redirect: sempre www.tipoagenda.com/reset-password (não depende de SITE_URL)
-    const REDIRECT_TO = "https://www.tipoagenda.com/reset-password";
+    // URL fixa do redirect para reset de senha (não depende de SITE_URL)
+    const REDIRECT_TO = BRAND_RESET_PASSWORD_URL;
 
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       console.error(
@@ -170,16 +192,17 @@ serve(async (req) => {
       </head>
       <body>
         <div class="container">
-          <h2>Redefinir senha - TipoAgenda</h2>
+          ${getBrandLogoHtml()}
+          <h2>Redefinir senha - ${BRAND_NAME}</h2>
           <p>Olá,</p>
-          <p>Recebemos um pedido para redefinir a senha da sua conta no <strong>TipoAgenda</strong>.</p>
+          <p>Recebemos um pedido para redefinir a senha da sua conta no <strong>${BRAND_NAME}</strong>.</p>
           <p>Clique no botão abaixo para criar uma nova senha:</p>
           <p><a href="${resetLink}" class="button">Redefinir senha</a></p>
           <p>Ou copie e cole este link no seu navegador:</p>
           <p style="word-break: break-all; color: #0066cc;">${resetLink}</p>
           <p>Se você não solicitou esta alteração, pode ignorar este e-mail com segurança.</p>
           <div class="footer">
-            <p>© TipoAgenda - Todos os direitos reservados</p>
+            ${getBrandFooterHtml()}
           </div>
         </div>
       </body>
@@ -193,9 +216,9 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "PlanoAgenda <noreply@planoagenda.com.br>",
+        from: BRAND_FROM_EMAIL,
         to: email,
-        subject: "Redefinição de senha - TipoAgenda",
+        subject: `Redefinição de senha - ${BRAND_NAME}`,
         html: emailHtml,
       }),
     });
