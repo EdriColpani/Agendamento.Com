@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { invokeEdgeWithAuth } from '@/utils/edge-invoke';
+import { invokeEdgeWithAuth, parseEdgeInvokeError } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCollaboratorLimit } from '@/hooks/useCollaboratorLimit';
@@ -448,45 +448,8 @@ const CollaboratorFormPage: React.FC = () => {
         if (response.error) {
           console.error('Erro completo da Edge Function (invite-collaborator):', response);
 
-          // Tenta extrair a mensagem real retornada pela Edge Function
-          let edgeFunctionErrorMessage = 'Erro ao salvar colaborador. Verifique suas permissões.';
-
-          // Tenta múltiplas formas de extrair a mensagem de erro
-          try {
-            // Forma 1: response.error.context.data.error (mais comum no Supabase)
-            if ((response as any).error?.context?.data?.error) {
-              edgeFunctionErrorMessage = (response as any).error.context.data.error;
-            }
-            // Forma 2: response.error.message
-            else if (response.error.message) {
-              edgeFunctionErrorMessage = response.error.message;
-            }
-            // Forma 3: Tentar ler o body da resposta HTTP diretamente (se disponível)
-            else {
-              const rawResponse: any = (response as any).error?.context?.response;
-              if (rawResponse) {
-                try {
-                  // Tenta ler como texto primeiro
-                  if (typeof rawResponse.text === 'function') {
-                    const text = await rawResponse.text();
-                    try {
-                      const parsed = JSON.parse(text);
-                      if (parsed.error) {
-                        edgeFunctionErrorMessage = parsed.error;
-                      }
-                    } catch {
-                      // Se não for JSON, usa o texto como mensagem
-                      if (text) edgeFunctionErrorMessage = text;
-                    }
-                  }
-                } catch (e) {
-                  // Ignora erro de parsing
-                }
-              }
-            }
-          } catch (e) {
-            console.error('Falha ao extrair mensagem de erro da Edge Function:', e);
-          }
+          // Extrai erro real vindo da Edge Function (JSON/string/context).
+          const edgeFunctionErrorMessage = parseEdgeInvokeError(response);
 
           console.error('Mensagem de erro extraída da Edge Function:', edgeFunctionErrorMessage);
           

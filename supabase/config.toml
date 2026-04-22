@@ -1,0 +1,94 @@
+# Configuração do projeto Supabase (CLI).
+# Projetos novos usam JWT de usuário com algoritmo ES256; o gateway das Edge Functions
+# pode retornar UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM se verify_jwt estiver ativo.
+# Desativamos a verificação no edge e mantemos a validação dentro de cada função (getUser / RLS).
+# Ver: https://supabase.com/docs/guides/functions/function-configuration
+
+project_id = "ocawpokndruxakzmhzsa"
+
+[functions.apply-coupon-and-subscribe]
+verify_jwt = false
+
+[functions.book-appointment]
+verify_jwt = false
+
+[functions.cancel-court-booking-with-policy]
+verify_jwt = false
+
+[functions.cancel-subscription]
+verify_jwt = false
+
+[functions.court-booking-payment-timeout-scheduler]
+verify_jwt = false
+
+[functions.court-booking-refund-reconciliation]
+verify_jwt = false
+
+[functions.create-backup]
+verify_jwt = false
+
+[functions.create-court-booking-checkout]
+verify_jwt = false
+
+[functions.create-court-monthly-package-checkout]
+verify_jwt = false
+
+[functions.finalize-appointment-by-collaborator]
+verify_jwt = false
+
+[functions.get-court-booking-refund-report]
+verify_jwt = false
+
+[functions.get-court-booking-timeout-runs]
+verify_jwt = false
+
+[functions.get-default-guest-client]
+verify_jwt = false
+
+[functions.get-scheduling-data]
+verify_jwt = false
+
+[functions.get-user-auth-data]
+verify_jwt = false
+
+[functions.invite-client]
+verify_jwt = false
+
+[functions.invite-collaborator]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
+
+[functions.refund-court-booking-payment]
+verify_jwt = false
+
+[functions.register-company-and-user]
+verify_jwt = false
+
+[functions.resend-client-invite]
+verify_jwt = false
+
+[functions.resend-email-confirmation]
+verify_jwt = false
+
+[functions.send-collaborator-welcome-email]
+verify_jwt = false
+
+[functions.send-company-registration-notification]
+verify_jwt = false
+
+[functions.send-contact-request-email]
+verify_jwt = false
+
+[functions.send-password-reset-email]
+verify_jwt = false
+
+[functions.signup-client]
+verify_jwt = false
+
+[functions.upsert-company-payment-credentials]
+verify_jwt = false
+
+[functions.whatsapp-message-scheduler]
+verify_jwt = false

@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getTargetCompanyId, clearTargetCompanyId } from '@/utils/storage'; // Import storage utils
+import { invokeEdgePublicOrThrow } from '@/utils/edge-invoke';
 
 // Esquema de validação com Zod simplificado
 const signupSchema = z.object({
@@ -47,32 +47,19 @@ const SignupForm: React.FC = () => {
     const { email, password, firstName, lastName } = data;
 
     try {
-      // Chamar Edge Function signup-client (mesma rotina de invite-client)
-      const response = await supabase.functions.invoke('signup-client', {
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          password,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const responseData = await invokeEdgePublicOrThrow<{
+        error?: string;
+        emailSent?: boolean;
+        emailError?: string;
+      }>('signup-client', {
+        body: { firstName, lastName, email, password },
       });
 
-      if (response.error) {
-        // Extract the specific error message from the Edge Function's response
-        let edgeFunctionErrorMessage = 'Erro desconhecido da Edge Function.';
-        if (response.error.context && response.error.context.data && response.error.context.data.error) {
-          edgeFunctionErrorMessage = response.error.context.data.error;
-        } else if (response.error.message) {
-          edgeFunctionErrorMessage = response.error.message;
-        }
-        throw new Error(edgeFunctionErrorMessage);
+      if (responseData?.error) {
+        throw new Error(responseData.error);
       }
 
       // Verificar se o email foi enviado
-      const responseData = response.data;
       if (responseData?.emailSent) {
         showSuccess('Cadastro realizado com sucesso! Email de confirmação foi enviado.');
       } else {

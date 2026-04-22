@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { formatPhoneNumberInput } from '@/utils/validation'; // Corrected import path
+import { invokeEdgePublic } from '@/utils/edge-invoke';
 
 // Zod schema for contact request
 const contactRequestSchema = z.object({
@@ -89,20 +90,17 @@ const ContactRequestModal: React.FC<ContactRequestModalProps> = ({
       }
 
       // 2. Call Edge Function to notify administrator
-      const { error: edgeError } = await supabase.functions.invoke('send-contact-request-email', {
-        body: JSON.stringify({
+      const edgeResponse = await invokeEdgePublic('send-contact-request-email', {
+        body: {
           name: data.name,
           email: data.email,
           phone_number: cleanedPhoneNumber,
           description: data.description,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
         },
       });
 
-      if (edgeError) {
-        console.warn('Aviso: Falha ao notificar administrador por e-mail (Edge Function):', edgeError);
+      if (edgeResponse.error) {
+        console.warn('Aviso: Falha ao notificar administrador por e-mail (Edge Function):', edgeResponse.error);
         // Não lançamos erro crítico aqui, pois a solicitação foi salva no DB.
       }
 

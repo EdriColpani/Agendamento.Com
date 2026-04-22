@@ -38,6 +38,7 @@ import {
   type CourtPriceBand,
 } from '@/utils/courtSlots';
 import { Loader2 } from 'lucide-react';
+import { invokeEdgePublicOrThrow } from '@/utils/edge-invoke';
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, '');
@@ -64,31 +65,6 @@ function formatPhoneBR(value: string) {
   const part1 = rest.slice(0, 5);
   const part2 = rest.slice(5, 9);
   return `(${ddd}) ${part1}-${part2}`;
-}
-
-function parseEdgeInvokeError(response: {
-  error?: { message?: string; context?: { data?: unknown } };
-  data?: unknown;
-}): string {
-  if (response.error) {
-    const ctx = response.error.context?.data;
-    if (typeof ctx === 'string') {
-      try {
-        const parsed = JSON.parse(ctx) as { error?: string };
-        return parsed.error || response.error.message || 'Erro na Edge Function.';
-      } catch {
-        return ctx || response.error.message || 'Erro na Edge Function.';
-      }
-    }
-    if (ctx && typeof ctx === 'object' && ctx !== null && 'error' in ctx) {
-      return String((ctx as { error?: string }).error || response.error.message || 'Erro na Edge Function.');
-    }
-    return response.error.message || 'Erro na Edge Function.';
-  }
-  if (response.data && typeof response.data === 'object' && response.data !== null && 'error' in response.data) {
-    return String((response.data as { error?: string }).error || 'Erro na Edge Function.');
-  }
-  return 'Erro na Edge Function.';
 }
 
 type PublicPaymentMethod = 'mercado_pago' | 'dinheiro';
@@ -316,13 +292,9 @@ const PublicCourtBookingPage: React.FC = () => {
       });
 
       if (selectedPaymentMethod === 'mercado_pago') {
-        const checkoutRes = await supabase.functions.invoke('create-court-booking-checkout', {
-          body: JSON.stringify({ appointment_id: newId }),
+        const payload = await invokeEdgePublicOrThrow<{ init_point?: string }>('create-court-booking-checkout', {
+          body: { appointment_id: newId },
         });
-        if (checkoutRes.error || (checkoutRes.data && typeof checkoutRes.data === 'object' && 'error' in checkoutRes.data)) {
-          throw new Error(parseEdgeInvokeError(checkoutRes));
-        }
-        const payload = checkoutRes.data as { init_point?: string };
         if (!payload?.init_point) {
           throw new Error('Não foi possível abrir o checkout do Mercado Pago.');
         }

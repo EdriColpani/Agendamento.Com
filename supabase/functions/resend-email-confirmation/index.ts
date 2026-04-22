@@ -10,6 +10,33 @@ function getBrandFooterHtml(): string {
   return `<p>${BRAND_COPYRIGHT}</p>`;
 }
 
+function normalizeSiteUrl(rawSiteUrl: string | null | undefined): string {
+  const raw = (rawSiteUrl ?? '').trim();
+  if (!raw) return BRAND_SITE_URL;
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(withProtocol);
+    const host = parsed.hostname.toLowerCase();
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+    if (isLocalHost) return BRAND_SITE_URL;
+  } catch {
+    return BRAND_SITE_URL;
+  }
+  return withProtocol.replace(/\/+$/, '');
+}
+
+function forceRedirectParam(actionLink: string | null | undefined, redirectTo: string): string | null {
+  if (!actionLink) return null;
+  try {
+    const url = new URL(actionLink);
+    url.searchParams.set('redirect_to', redirectTo);
+    return url.toString();
+  } catch {
+    return actionLink;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -40,14 +67,16 @@ serve(async (req) => {
       });
     }
 
-    const siteUrl = Deno.env.get('SITE_URL') || BRAND_SITE_URL;
+    const siteUrl = normalizeSiteUrl(Deno.env.get('SITE_URL'));
+
+    const forcedRedirectTo = `${siteUrl}/login`;
 
     // 1. Gerar link de confirmação
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email: email,
       options: {
-        redirectTo: `${siteUrl}/login`,
+        redirectTo: forcedRedirectTo,
       },
     });
 
@@ -57,16 +86,16 @@ serve(async (req) => {
         type: 'recovery',
         email: email,
         options: {
-          redirectTo: `${siteUrl}/login`,
+          redirectTo: forcedRedirectTo,
         },
       });
       
       if (recoveryData?.properties?.action_link) {
-        linkData.properties = { action_link: recoveryData.properties.action_link };
+        linkData.properties = { action_link: forceRedirectParam(recoveryData.properties.action_link, forcedRedirectTo) };
       }
     }
 
-    const confirmationLink = linkData?.properties?.action_link;
+    const confirmationLink = forceRedirectParam(linkData?.properties?.action_link, forcedRedirectTo);
 
     if (!confirmationLink) {
       return new Response(JSON.stringify({ 

@@ -109,10 +109,20 @@ serve(async (req) => {
     });
 
     if (linkError) {
-      console.error(
-        "[send-password-reset-email] Erro ao gerar link de recuperação:",
-        linkError,
-      );
+      // E-mail sem usuário em auth.users: Supabase retorna user_not_found (404).
+      // Não é falha técnica — resposta genérica por segurança (não revelar se o e-mail existe).
+      const err = linkError as { code?: string; status?: number; message?: string };
+      const isUserNotInAuth =
+        err.code === "user_not_found" ||
+        err.status === 404 ||
+        /not found/i.test(err.message || "");
+
+      if (!isUserNotInAuth) {
+        console.error(
+          "[send-password-reset-email] Erro ao gerar link de recuperação:",
+          linkError,
+        );
+      }
 
       return new Response(
         JSON.stringify({
