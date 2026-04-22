@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { supabase } from "@/integrations/supabase/client";
 import { showError } from "@/utils/toast";
+import { invokeEdgePublicOrThrow } from "@/utils/edge-invoke";
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   dinheiro: "Dinheiro",
@@ -54,17 +54,9 @@ const GuestAppointmentConfirmationPage = () => {
     if (!appointmentId) return;
     setRetryLoading(true);
     try {
-      const response = await supabase.functions.invoke("create-court-booking-checkout", {
-        body: JSON.stringify({ appointment_id: appointmentId }),
+      const payload = await invokeEdgePublicOrThrow<{ init_point?: string }>("create-court-booking-checkout", {
+        body: { appointment_id: appointmentId },
       });
-
-      if (response.error || (response.data && typeof response.data === "object" && "error" in response.data)) {
-        const msg = response.error?.message ||
-          String((response.data as { error?: string })?.error || "Falha ao reabrir checkout.");
-        throw new Error(msg);
-      }
-
-      const payload = response.data as { init_point?: string };
       if (!payload?.init_point) {
         throw new Error("Checkout indisponível para esta reserva.");
       }

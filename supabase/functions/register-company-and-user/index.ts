@@ -2,11 +2,39 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 
 const BRAND_NAME = "PlanoAgenda";
+const BRAND_SITE_URL = "https://www.planoagenda.com.br";
 const BRAND_FROM_EMAIL = `${BRAND_NAME} <noreply@planoagenda.com.br>`;
 const BRAND_COPYRIGHT = `© ${BRAND_NAME} - Todos os direitos reservados`;
 
 function getBrandFooterHtml(): string {
   return `<p>${BRAND_COPYRIGHT}</p>`;
+}
+
+function normalizeSiteUrl(rawSiteUrl: string | null | undefined): string {
+  const raw = (rawSiteUrl ?? '').trim();
+  if (!raw) return BRAND_SITE_URL;
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(withProtocol);
+    const host = parsed.hostname.toLowerCase();
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+    if (isLocalHost) return BRAND_SITE_URL;
+  } catch {
+    return BRAND_SITE_URL;
+  }
+  return withProtocol.replace(/\/+$/, '');
+}
+
+function forceRedirectParam(actionLink: string | null | undefined, redirectTo: string): string | null {
+  if (!actionLink) return null;
+  try {
+    const url = new URL(actionLink);
+    url.searchParams.set('redirect_to', redirectTo);
+    return url.toString();
+  } catch {
+    return actionLink;
+  }
 }
 
 const corsHeaders = {
@@ -285,18 +313,20 @@ serve(async (req) => {
     }
 
     // 8. Send email confirmation with redirect to login page
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://www.planoagenda.com.br';
+    const siteUrl = normalizeSiteUrl(Deno.env.get('SITE_URL'));
     
     console.log('Edge Function Debug (register-company-and-user): Sending email confirmation to:', email);
     console.log('Edge Function Debug (register-company-and-user): Site URL:', siteUrl);
     console.log('Edge Function Debug (register-company-and-user): Redirect to:', `${siteUrl}/login`);
+
+    const forcedRedirectTo = `${siteUrl}/login`;
 
     // Gerar link de confirmação (sempre necessário para o Resend ou fallback do Supabase)
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email: email,
       options: {
-        redirectTo: `${siteUrl}/login`,
+        redirectTo: forcedRedirectTo,
       },
     });
 
@@ -306,16 +336,16 @@ serve(async (req) => {
         type: 'recovery',
         email: email,
         options: {
-          redirectTo: `${siteUrl}/login`,
+          redirectTo: forcedRedirectTo,
         },
       });
       
       if (recoveryData?.properties?.action_link) {
-        linkData.properties = { action_link: recoveryData.properties.action_link };
+        linkData.properties = { action_link: forceRedirectParam(recoveryData.properties.action_link, forcedRedirectTo) };
       }
     }
 
-    const confirmationLink = linkData?.properties?.action_link;
+    const confirmationLink = forceRedirectParam(linkData?.properties?.action_link, forcedRedirectTo);
 
     // Declarar emailSentSuccessfully fora do bloco para evitar erro de escopo
     let emailSentSuccessfully = false;

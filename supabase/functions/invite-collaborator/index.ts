@@ -10,6 +10,22 @@ function getBrandFooterHtml(): string {
   return `<p>${BRAND_COPYRIGHT}</p>`;
 }
 
+function normalizeSiteUrl(rawSiteUrl: string | null | undefined): string {
+  const raw = (rawSiteUrl ?? '').trim();
+  if (!raw) return BRAND_SITE_URL;
+
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  try {
+    const parsed = new URL(withProtocol);
+    const host = parsed.hostname.toLowerCase();
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+    if (isLocalHost) return BRAND_SITE_URL;
+  } catch {
+    return BRAND_SITE_URL;
+  }
+  return withProtocol.replace(/\/+$/, '');
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -390,7 +406,7 @@ serve(async (req) => {
       }
       
       // Enviar email com credenciais - DIRETO VIA RESEND API (igual ao cadastro de empresa)
-      const siteUrl = Deno.env.get('SITE_URL') || BRAND_SITE_URL;
+      const siteUrl = normalizeSiteUrl(Deno.env.get('SITE_URL'));
       const loginUrl = `${siteUrl}/login`;
       
       console.log('Edge Function Debug (invite-collaborator): Enviando email de boas-vindas para:', email);

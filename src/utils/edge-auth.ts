@@ -69,10 +69,26 @@ async function forceLocalSignOutOnProjectMismatch(): Promise<void> {
  */
 export async function requireCurrentAccessToken(): Promise<string> {
   const { data, error } = await supabase.auth.getSession();
-  const accessToken = data.session?.access_token;
+  let session = data.session;
+  let accessToken = session?.access_token;
 
   if (error || !accessToken) {
     throw new Error('Sessão expirada ou inválida. Faça login novamente.');
+  }
+
+  // Evita 401 em Edge Functions por token expirado/quase expirando.
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const expiresAt = session?.expires_at ?? 0;
+  const isExpiredOrNearExpiry = !expiresAt || expiresAt - nowInSeconds <= 60;
+
+  if (isExpiredOrNearExpiry) {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    session = refreshData.session ?? null;
+    accessToken = session?.access_token;
+
+    if (refreshError || !accessToken) {
+      throw new Error('Sessão expirada ou inválida. Faça login novamente.');
+    }
   }
 
   if (isSessionProjectMismatch(accessToken)) {

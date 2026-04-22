@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { invokeEdgePublicOrThrow } from '@/utils/edge-invoke';
 
 // Esquema de validação com Zod
 const forgotPasswordSchema = z.object({
@@ -37,15 +37,9 @@ const ForgotPasswordForm: React.FC = () => {
     try {
       // Usar Edge Function que envia email via Resend
       const normalizedEmail = data.email.trim().toLowerCase();
-
-      const { error } = await supabase.functions.invoke('send-password-reset-email', {
+      await invokeEdgePublicOrThrow('send-password-reset-email', {
         body: { email: normalizedEmail },
       });
-
-      if (error) {
-        console.error('Erro na Edge Function send-password-reset-email:', error);
-        throw error;
-      }
 
       // Mensagem genérica para não expor se o email existe ou não
       showSuccess(

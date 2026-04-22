@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
+import { invokeEdgePublic } from '@/utils/edge-invoke';
 
 const EmailConfirmationPendingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,24 +23,23 @@ const EmailConfirmationPendingPage: React.FC = () => {
     setResendSuccess(false);
 
     try {
-      const { data, error } = await supabase.functions.invoke('resend-email-confirmation', {
-        body: JSON.stringify({ email }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await invokeEdgePublic('resend-email-confirmation', {
+        body: { email },
       });
 
-      if (error) {
-        console.error('Erro completo da Edge Function:', error);
+      if (response.error) {
+        console.error('Erro completo da Edge Function:', response.error);
         let errorMessage = 'Erro ao reenviar e-mail de confirmação.';
         
         // Verificar diferentes formatos de erro
-        if (error.context && error.context.data && error.context.data.error) {
-          errorMessage = error.context.data.error;
-        } else if (error.message) {
-          errorMessage = error.message;
-        } else if (error.error) {
-          errorMessage = error.error;
+        const errorContext = response.error.context?.data;
+        if (errorContext && typeof errorContext === 'object' && 'error' in errorContext) {
+          const nestedError = (errorContext as { error?: unknown }).error;
+          if (typeof nestedError === 'string') {
+            errorMessage = nestedError;
+          }
+        } else if (response.error.message) {
+          errorMessage = response.error.message;
         }
         
         // Mensagem específica para erro de CORS ou rede
@@ -50,8 +49,9 @@ const EmailConfirmationPendingPage: React.FC = () => {
         
         showError(errorMessage);
         setResendSuccess(false);
-      } else if (data) {
-        showSuccess(data.message || 'E-mail de confirmação reenviado com sucesso!');
+      } else if (response.data && typeof response.data === 'object') {
+        const message = (response.data as { message?: string }).message;
+        showSuccess(message || 'E-mail de confirmação reenviado com sucesso!');
         setResendSuccess(true);
       } else {
         // Caso não tenha data nem error (situação inesperada)

@@ -14,6 +14,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { validateCnpj, formatCnpjInput, formatZipCodeInput, formatPhoneNumberInput } from '@/utils/validation';
 import ContractAcceptanceModal from '@/components/ContractAcceptanceModal';
 import { useSession } from '@/components/SessionContextProvider';
+import { invokeEdgePublicOrThrow } from '@/utils/edge-invoke';
 
 // Helper function for numeric preprocessing
 const numericPreprocess = (val: unknown) => {
@@ -401,37 +402,13 @@ const UnifiedRegistrationPage: React.FC = () => {
     });
 
     try {
-      const response = await supabase.functions.invoke('register-company-and-user', {
-        body: JSON.stringify(cleanedData),
-        headers: {
-          'Content-Type': 'application/json',
+      const responseData = await invokeEdgePublicOrThrow<{ email: string }>(
+        'register-company-and-user',
+        {
+          body: cleanedData,
         },
-      });
-
-      if (response.error) {
-        console.error('Edge Function Error Response:', response.error);
-        let edgeFunctionErrorMessage = 'Erro desconhecido da Edge Function.';
-        
-        // Tentar extrair mensagem de erro de diferentes formatos
-        if (response.error.context && response.error.context.data) {
-          const errorData = response.error.context.data;
-          if (errorData.error) {
-            edgeFunctionErrorMessage = errorData.error;
-            if (errorData.missingFields) {
-              edgeFunctionErrorMessage += ` Campos faltando: ${errorData.missingFields.join(', ')}`;
-            }
-          }
-        } else if (response.error.message) {
-          edgeFunctionErrorMessage = response.error.message;
-        } else if (response.error.error) {
-          edgeFunctionErrorMessage = response.error.error;
-        }
-        
-        console.error('Erro extraído da Edge Function:', edgeFunctionErrorMessage);
-        throw new Error(edgeFunctionErrorMessage);
-      }
-
-      const { email: registeredEmail, requiresEmailConfirmation } = response.data as { email: string, requiresEmailConfirmation?: boolean };
+      );
+      const { email: registeredEmail } = responseData;
 
       // Não fazer login automático - usuário precisa confirmar email primeiro
       showSuccess('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar sua conta.');
