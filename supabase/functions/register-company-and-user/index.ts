@@ -227,12 +227,15 @@ serve(async (req) => {
     }
 
     // 5. Insert Company
+    // Segmento court (Arena / quadras): ativa reserva de quadras no app (alinhado a useCourtBookingModule)
+    const courtBookingEnabled = await isSegmentCourtMode(supabaseAdmin, segmentType);
     console.log('Edge Function Debug (register-company-and-user): Inserting company data...');
     console.log('Edge Function Debug (register-company-and-user): Company data:', {
         name: companyName,
         razao_social: razaoSocial,
         cnpj: cnpj ? '***' : 'missing',
         segment_type: segmentType,
+        court_booking_enabled: courtBookingEnabled,
         user_id: userId,
     });
 
@@ -246,6 +249,7 @@ serve(async (req) => {
             company_email: companyEmail,
             phone_number: companyPhoneNumber,
             segment_type: segmentType,
+            court_booking_enabled: courtBookingEnabled,
             address: address,
             number: number,
             neighborhood: neighborhood,

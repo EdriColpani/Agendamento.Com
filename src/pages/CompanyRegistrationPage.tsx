@@ -16,6 +16,7 @@ import { validateCnpj, formatCnpjInput, formatZipCodeInput } from '@/utils/valid
 import ContractAcceptanceModal from '@/components/ContractAcceptanceModal';
 import { PermissionsAlertModal } from '@/components/PermissionsAlertModal';
 import { ALERT_KEYS, hasSeenAlert, markAlertAsSeen } from '@/utils/onboardingAlerts';
+import { isSegmentCourtModeClient } from '@/utils/segmentCourtMode';
 
 // Zod schema for company registration
 const companySchema = z.object({
@@ -371,6 +372,8 @@ const CompanyRegistrationPage: React.FC = () => {
     const cleanedZipCode = pendingCompanyData.zip_code.replace(/\D/g, '');
     const cleanedPhoneNumber = pendingCompanyData.phone_number.replace(/\D/g, '');
 
+    const courtBookingEnabled = await isSegmentCourtModeClient(pendingCompanyData.segment_type);
+
     const { data: companyData, error: insertError } = await supabase
       .from('companies')
       .insert({
@@ -381,6 +384,7 @@ const CompanyRegistrationPage: React.FC = () => {
         company_email: pendingCompanyData.company_email,
         phone_number: cleanedPhoneNumber,
         segment_type: pendingCompanyData.segment_type, // Now stores segment_type ID
+        court_booking_enabled: courtBookingEnabled,
         address: pendingCompanyData.address,
         number: pendingCompanyData.number,
         neighborhood: pendingCompanyData.neighborhood,
