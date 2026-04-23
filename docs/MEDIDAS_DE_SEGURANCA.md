@@ -43,3 +43,20 @@ Registrar ações para reduzir exposição de token no frontend e endurecer a se
 ## Próxima execução sugerida
 
 Após finalizar a homologação E2E acima, iniciar a fase de hardening de segurança listada neste documento.
+
+## Checkpoint de retomada (fim do dia)
+
+Data: 2026-04-23
+
+- Correção aplicada no banco para função de bloqueio por assinatura (`assert_company_mutation_by_company_id`) no ambiente de teste.
+- Validação de versão realizada com:
+  - `select pg_get_functiondef('public.assert_company_mutation_by_company_id()'::regprocedure) like '%(empresa:%' as versao_antiga;`
+  - resultado: `false` (função atualizada).
+- Próxima ação combinada: executar testes funcionais no sistema durante a noite para validar fluxo completo de troca de plano.
+
+### Itens para validar nos testes da noite
+
+1. Upgrade de plano com cálculo de proration.
+2. Downgrade agendado e aplicação por scheduler.
+3. Relatório e ações em `Operações de Assinatura` no `AdminDashboard`.
+4. Bloqueio de acesso para usuário não Global Admin (esperado: 403 nas funções administrativas).
