@@ -6,6 +6,37 @@
 
 project_id = "ocawpokndruxakzmhzsa"
 
+# URL padrão pós-auth (e-mails de confirmação / links). Deve bater com redirect_to usado no app e nas Edge Functions.
+# supabase config push aplica no projeto em nuvem (requer login CLI).
+[auth]
+site_url = "https://www.planoagenda.com.br"
+additional_redirect_urls = [
+  "https://www.planoagenda.com.br",
+  "https://www.planoagenda.com.br/arena",
+  "https://www.planoagenda.com.br/**",
+  "https://planoagenda.com.br",
+  "https://planoagenda.com.br/**",
+  "http://localhost:3000/**",
+  "http://localhost:8080/**",
+  "http://localhost:8081/**",
+  "http://localhost:8082/**",
+  "http://127.0.0.1:3000/**"
+]
+
+# Obrigatório declarar: um [auth] parcial faz o CLI preencher defaults de dev (confirmations off, etc.).
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [functions.apply-coupon-and-subscribe]
 verify_jwt = false
 

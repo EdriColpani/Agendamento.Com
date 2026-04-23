@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
+import { getPostAuthRedirectTo, isCompanyCourtMode } from "./post-auth-redirect.ts";
 
 const BRAND_NAME = "PlanoAgenda";
 const BRAND_SITE_URL = "https://www.planoagenda.com.br";
@@ -407,9 +408,10 @@ serve(async (req) => {
       
       // Enviar email com credenciais - DIRETO VIA RESEND API (igual ao cadastro de empresa)
       const siteUrl = normalizeSiteUrl(Deno.env.get('SITE_URL'));
-      const loginUrl = `${siteUrl}/login`;
-      
-      console.log('Edge Function Debug (invite-collaborator): Enviando email de boas-vindas para:', email);
+      const isArenaCompany = await isCompanyCourtMode(supabaseAdmin, companyId);
+      const loginUrl = getPostAuthRedirectTo(siteUrl, isArenaCompany);
+
+      console.log('Edge Function Debug (invite-collaborator): Enviando email de boas-vindas para:', email, 'arena landing:', isArenaCompany);
       
       const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
       

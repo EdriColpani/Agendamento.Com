@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
+import {
+  getPostAuthRedirectTo,
+  resolveCourtModeForAuthEmail,
+} from "./post-auth-redirect.ts";
 
 const BRAND_NAME = "PlanoAgenda";
 const BRAND_SITE_URL = "https://www.planoagenda.com.br";
@@ -10,28 +14,25 @@ function getBrandFooterHtml(): string {
   return `<p>${BRAND_COPYRIGHT}</p>`;
 }
 
-function normalizeSiteUrl(rawSiteUrl: string | null | undefined): string {
-  const raw = (rawSiteUrl ?? '').trim();
-  if (!raw) return BRAND_SITE_URL;
-
-  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-  try {
-    const parsed = new URL(withProtocol);
-    const host = parsed.hostname.toLowerCase();
-    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
-    if (isLocalHost) return BRAND_SITE_URL;
-  } catch {
-    return BRAND_SITE_URL;
-  }
-  return withProtocol.replace(/\/+$/, '');
-}
-
-function forceRedirectParam(actionLink: string | null | undefined, redirectTo: string): string | null {
+/**
+ * Reconstrói o link de verify do GoTrue para fixar redirect_to.
+ * O Supabase pode ignorar redirect_to se não estiver no allowlist — site_url no projeto deve ser produção.
+ */
+function buildVerifyLinkWithRedirect(actionLink: string | null | undefined, redirectTo: string): string | null {
   if (!actionLink) return null;
   try {
-    const url = new URL(actionLink);
-    url.searchParams.set('redirect_to', redirectTo);
-    return url.toString();
+    const u = new URL(actionLink);
+    const token = u.searchParams.get('token');
+    if (!token) {
+      u.searchParams.set('redirect_to', redirectTo);
+      return u.toString();
+    }
+    const type = u.searchParams.get('type') || 'signup';
+    const out = new URL(u.origin + u.pathname);
+    out.searchParams.set('token', token);
+    out.searchParams.set('type', type);
+    out.searchParams.set('redirect_to', redirectTo);
+    return out.toString();
   } catch {
     return actionLink;
   }
@@ -67,9 +68,10 @@ serve(async (req) => {
       });
     }
 
-    const siteUrl = normalizeSiteUrl(Deno.env.get('SITE_URL'));
-
-    const forcedRedirectTo = `${siteUrl}/login`;
+    // Sempre produção no e-mail transacional (evita localhost vindo de secrets/dashboard).
+    const siteUrl = BRAND_SITE_URL;
+    const isArenaCompany = await resolveCourtModeForAuthEmail(supabaseAdmin, email);
+    const forcedRedirectTo = getPostAuthRedirectTo(siteUrl, isArenaCompany);
 
     // 1. Gerar link de confirmação
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -91,11 +93,13 @@ serve(async (req) => {
       });
       
       if (recoveryData?.properties?.action_link) {
-        linkData.properties = { action_link: forceRedirectParam(recoveryData.properties.action_link, forcedRedirectTo) };
+        linkData.properties = {
+          action_link: buildVerifyLinkWithRedirect(recoveryData.properties.action_link, forcedRedirectTo) || recoveryData.properties.action_link,
+        };
       }
     }
 
-    const confirmationLink = forceRedirectParam(linkData?.properties?.action_link, forcedRedirectTo);
+    const confirmationLink = buildVerifyLinkWithRedirect(linkData?.properties?.action_link, forcedRedirectTo);
 
     if (!confirmationLink) {
       return new Response(JSON.stringify({ 
