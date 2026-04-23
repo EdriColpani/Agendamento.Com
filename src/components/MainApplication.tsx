@@ -41,6 +41,22 @@ const ARENA_SIDEBAR_FALLBACK_ITEMS: Array<{
   { id: 'arena-precos', label: 'Preços por horário', icon: 'fas fa-tags', path: '/quadras/precos' },
 ];
 
+/** Item de menu que leva à página de planos (rota e/ou chave conhecidas). */
+function isPlanosSidebarItem(item: { id: string; path?: string }): boolean {
+  const path = (item.path || '').split('?')[0].trim().toLowerCase();
+  if (path === '/planos' || path.startsWith('/planos/')) {
+    return true;
+  }
+  const id = String(item.id).toLowerCase();
+  if (id === 'planos') {
+    return true;
+  }
+  if (id.includes('plano') && (id.includes('planos') || id.includes('assinatura'))) {
+    return true;
+  }
+  return false;
+}
+
 const MainApplication: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { session, loading: sessionLoading } = useSession();
@@ -198,11 +214,34 @@ const MainApplication: React.FC = () => {
     ? [...finalMenuItems, ...ARENA_SIDEBAR_FALLBACK_ITEMS]
     : finalMenuItems;
 
+  // Sem assinatura ativa (ou expirada): só exibir "Planos" na sidebar para Proprietário/Admin
+  const restrictSidebarToPlanosOnly =
+    isProprietarioOrCompanyAdmin &&
+    !isGlobalAdmin &&
+    (subscriptionStatus === 'no_subscription' || subscriptionStatus === 'expired');
+
+  const displaySidebarMenuItems = (() => {
+    if (!restrictSidebarToPlanosOnly) {
+      return sidebarMenuItems;
+    }
+    const onlyPlanos = sidebarMenuItems.filter((item) => isPlanosSidebarItem(item));
+    if (onlyPlanos.length > 0) {
+      return onlyPlanos;
+    }
+    const fallback = staticMenuItems.find((m) => m.id === 'planos');
+    return fallback ? [fallback] : [];
+  })();
+
   // Se o usuário é Proprietário/Admin e a assinatura expirou ou não existe, bloqueia o acesso a todas as rotas de gerenciamento
   if (isProprietarioOrCompanyAdmin && (subscriptionStatus === 'expired' || subscriptionStatus === 'no_subscription')) {
     // Permite apenas acesso a rotas públicas, perfil, e a página de planos
     if (!['/planos', '/profile'].includes(location.pathname)) {
-      return <SubscriptionExpiredPage endDate={endDate} />;
+      return (
+        <SubscriptionExpiredPage
+          endDate={endDate}
+          reason={subscriptionStatus === 'expired' ? 'expired' : 'no_subscription'}
+        />
+      );
     }
   }
 
@@ -240,8 +279,8 @@ const MainApplication: React.FC = () => {
 
           {session ? (
             <div className="flex items-center gap-4">
-              {/* Ícone de Notificações (Sininho) */}
-              {isProprietarioOrCompanyAdmin && (
+              {/* Ícone de Notificações (Sininho) — oculto enquanto só "Planos" estiver no fluxo de adesão */}
+              {isProprietarioOrCompanyAdmin && !restrictSidebarToPlanosOnly && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="!rounded-button cursor-pointer relative">
@@ -300,15 +339,22 @@ const MainApplication: React.FC = () => {
             <nav className="p-4 pb-24">
               <ul className="space-y-2">
                 {(() => {
-                  console.log('[MainApplication] Renderizando sidebar com', sidebarMenuItems.length, 'menus:', sidebarMenuItems.map(m => ({ id: m.id, label: m.label, path: m.path })));
+                  console.log(
+                    '[MainApplication] Renderizando sidebar com',
+                    displaySidebarMenuItems.length,
+                    'menus (restrictPlanosOnly:',
+                    restrictSidebarToPlanosOnly,
+                    '):',
+                    displaySidebarMenuItems.map((m) => ({ id: m.id, label: m.label, path: m.path })),
+                  );
                   return null;
                 })()}
-                {sidebarMenuItems.length === 0 && !loadingMenus && (
+                {displaySidebarMenuItems.length === 0 && !loadingMenus && (
                   <li className="text-sidebar-foreground/50 text-sm p-3">
                     Nenhum menu disponível
                   </li>
                 )}
-                {sidebarMenuItems.map((item) => {
+                {displaySidebarMenuItems.map((item) => {
                   const isActive =
                     item.id === 'arena-quadras'
                       ? location.pathname === '/quadras'
@@ -344,14 +390,14 @@ const MainApplication: React.FC = () => {
                 })}
                 
                 {/* Separador visual antes do item de Ajuda */}
-                {sidebarMenuItems.length > 0 && (
+                {displaySidebarMenuItems.length > 0 && !restrictSidebarToPlanosOnly && (
                   <li className="my-2">
                     <div className="h-px bg-sidebar-border"></div>
                   </li>
                 )}
-                
-                {/* Item de Ajuda - sempre visível para usuários autenticados */}
-                {session && (
+
+                {/* Item de Ajuda — oculto no modo "só aderir ao plano" (sidebar = apenas Planos) */}
+                {session && !restrictSidebarToPlanosOnly && (
                   <li>
                     <Link
                       to="/help"

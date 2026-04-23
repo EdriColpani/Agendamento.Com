@@ -8,13 +8,18 @@ import { invokeEdgeWithAuth } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useIsClient } from '@/hooks/useIsClient';
-import { Check, X, DollarSign, Clock, Zap, Tag, AlertTriangle, Settings, HeadphonesIcon } from 'lucide-react';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
+import { useIsProprietario } from '@/hooks/useIsProprietario';
+import { useIsCompanyAdmin } from '@/hooks/useIsCompanyAdmin';
+import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
+import { Check, X, DollarSign, Clock, Zap, Tag, AlertTriangle, Settings, Info } from 'lucide-react';
 import { format, parseISO, addMonths, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from "@/components/ui/badge";
 import { Input } from '@/components/ui/input'; // Importar Input
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"; // Importar Dialog
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Menu {
   id: string;
@@ -49,6 +54,14 @@ const SubscriptionPlansPage: React.FC = () => {
   const { session, loading: sessionLoading } = useSession();
   const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
   const { isClient, loadingClientCheck } = useIsClient();
+  const { status: subscriptionStatus } = useSubscriptionStatus();
+  const { isProprietario } = useIsProprietario();
+  const { isCompanyAdmin } = useIsCompanyAdmin();
+  const { isGlobalAdmin } = useIsGlobalAdmin();
+  const showPlanActivationHint =
+    !isGlobalAdmin &&
+    (isProprietario || isCompanyAdmin) &&
+    (subscriptionStatus === 'no_subscription' || subscriptionStatus === 'expired');
 
   // Redirecionar clientes para meus agendamentos (planos são apenas para profissionais)
   useEffect(() => {
@@ -636,6 +649,19 @@ const SubscriptionPlansPage: React.FC = () => {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Planos de Assinatura</h1>
+
+      {showPlanActivationHint && (
+        <Alert className="border-primary/40 bg-primary/5">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Liberação do acesso completo</AlertTitle>
+          <AlertDescription className="text-gray-700">
+            Enquanto não houver <strong>plano ativo</strong>, o menu lateral mostra apenas <strong>Planos</strong>.
+            Após a confirmação do pagamento (Mercado Pago ou ativação manual, conforme o fluxo), o restante dos menus
+            — dashboard, clientes, agenda, arena e demais itens do seu plano — fica disponível automaticamente, sem
+            precisar sair e entrar de novo.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Status da Assinatura Atual */}
       <Card className={`border-2 shadow-lg ${isCanceled || isExpired ? 'border-red-600 bg-red-50' : 'border-primary'}`}>
