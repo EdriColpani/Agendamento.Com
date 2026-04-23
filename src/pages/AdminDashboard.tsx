@@ -160,6 +160,15 @@ const AdminDashboard: React.FC = () => {
             buttonColor="bg-purple-600 hover:bg-purple-700"
             onClick={() => navigate('/admin-dashboard/menus')}
           />
+
+          <ManagementCard
+            title="Operações de Assinatura"
+            description="Monitore trocas de plano, falhas, retries e execute ações operacionais com auditoria."
+            icon={<BarChart className="h-6 w-6 text-amber-600" />}
+            buttonText="Abrir Operações"
+            buttonColor="bg-amber-600 hover:bg-amber-700"
+            onClick={() => navigate('/admin-dashboard/operacoes-assinatura')}
+          />
         </div>
 
         {/* Group Box: Configurações Globais */}
@@ -257,6 +266,15 @@ const AdminDashboard: React.FC = () => {
             buttonText="Abrir Saúde Arena"
             buttonColor="bg-amber-600 hover:bg-amber-700"
             onClick={() => navigate('/admin-dashboard/court-booking-timeout-health')}
+          />
+
+          <ManagementCard
+            title="Arena — Cancelamentos e Estornos"
+            description="Relatório operacional com cancelamentos, motivos e status de estorno da arena."
+            icon={<BarChart className="h-6 w-6 text-indigo-600" />}
+            buttonText="Abrir Relatório da Arena"
+            buttonColor="bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => navigate('/admin-dashboard/arena-cancelamentos-estornos')}
           />
 
           <ManagementCard

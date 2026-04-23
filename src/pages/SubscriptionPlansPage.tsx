@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
-import { invokeEdgeWithAuth } from '@/utils/edge-invoke';
+import { invokeEdgeWithAuth, parseEdgeInvokeError } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useIsClient } from '@/hooks/useIsClient';
@@ -45,6 +45,10 @@ interface Subscription {
   plan_id: string;
   start_date: string;
   end_date: string | null;
+  billing_cycle_start?: string | null;
+  billing_cycle_end?: string | null;
+  next_plan_id?: string | null;
+  pending_change_type?: 'upgrade' | 'downgrade' | null;
   status: 'active' | 'inactive' | 'pending' | 'canceled';
   subscription_plans: Plan;
 }
@@ -371,9 +375,51 @@ const SubscriptionPlansPage: React.FC = () => {
     const subscriptionIsExpired = currentSubscription?.end_date ? isPast(parseISO(currentSubscription.end_date)) : false;
     const hasActiveSubscription = currentSubscription && !subscriptionIsExpired && currentSubscription.status === 'active';
 
-    if (hasActiveSubscription) {
-        showError('Você já possui uma assinatura ativa. Cancele a atual antes de mudar.');
-        return;
+    if (hasActiveSubscription && currentSubscription?.plan_id !== plan.id) {
+      setLoadingData(true);
+      try {
+        const changeResponse = await invokeEdgeWithAuth('change-subscription-plan', {
+          body: {
+            companyId: primaryCompanyId,
+            targetPlanId: plan.id,
+            billingPeriod,
+          },
+        });
+
+        if (changeResponse.error) {
+          throw new Error(parseEdgeInvokeError(changeResponse));
+        }
+
+        const payload = (changeResponse.data || {}) as {
+          initPoint?: string;
+          message?: string;
+          paymentRequired?: boolean;
+          changeType?: 'upgrade' | 'downgrade';
+          amountDue?: number;
+        };
+
+        if (payload.initPoint) {
+          window.location.href = payload.initPoint;
+          return;
+        }
+
+        if (payload.changeType === 'downgrade') {
+          showSuccess(payload.message || 'Downgrade agendado para o fim do ciclo atual.');
+        } else if (payload.changeType === 'upgrade') {
+          const amount = typeof payload.amountDue === 'number' ? payload.amountDue.toFixed(2).replace('.', ',') : null;
+          showSuccess(payload.message || `Upgrade aplicado com sucesso${amount ? ` (R$ ${amount})` : ''}.`);
+        } else {
+          showSuccess(payload.message || 'Alteração de plano concluída com sucesso.');
+        }
+
+        await fetchSubscriptionData();
+      } catch (error: any) {
+        console.error('Erro ao alterar plano:', error);
+        showError(error?.message || 'Erro ao alterar plano.');
+      } finally {
+        setLoadingData(false);
+      }
+      return;
     }
 
     setLoadingData(true);
@@ -578,7 +624,6 @@ const SubscriptionPlansPage: React.FC = () => {
     }
   };
 
-
   useEffect(() => {
     fetchSubscriptionData();
   }, [fetchSubscriptionData]);
@@ -611,6 +656,9 @@ const SubscriptionPlansPage: React.FC = () => {
   
   const isCanceled = currentSubscription?.status === 'canceled';
   const isExpired = currentSubscription?.end_date ? isPast(parseISO(currentSubscription.end_date)) : false; // Nova variável
+  const scheduledNextPlanName = currentSubscription?.next_plan_id
+    ? (availablePlans.find((plan) => plan.id === currentSubscription.next_plan_id)?.name || 'Plano selecionado')
+    : null;
   const expirationDateFormatted = currentSubscription?.end_date 
     ? format(parseISO(currentSubscription.end_date), 'dd/MM/yyyy', { locale: ptBR }) 
     : 'N/A';
@@ -683,6 +731,13 @@ const SubscriptionPlansPage: React.FC = () => {
                     <p className="text-sm font-semibold text-red-800">
                         Assinatura Cancelada. Você manterá o acesso até a data de expiração: <span className="font-bold">{expirationDateFormatted}</span>.
                     </p>
+                </div>
+              )}
+              {currentSubscription?.pending_change_type === 'downgrade' && currentSubscription?.next_plan_id && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                  <p className="text-sm font-semibold text-amber-900">
+                    Downgrade agendado para <strong>{scheduledNextPlanName}</strong> no fim do ciclo atual.
+                  </p>
                 </div>
               )}
 
@@ -820,8 +875,14 @@ const SubscriptionPlansPage: React.FC = () => {
           // 3. Permite se o status for 'canceled' ou 'expired' (re-assinatura).
           const isCurrentAndActive = isCurrentPlan && displayStatus === 'active' && !isExpired;
           const buttonDisabled = loadingData || isCurrentAndActive;
-          
-          const buttonText = isCurrentPlan && displayStatus === 'active' && !isExpired ? 'Plano Atual' : 'Assinar Agora';
+
+          let buttonText = 'Assinar Agora';
+          if (isCurrentAndActive) {
+            buttonText = 'Plano Atual';
+          } else if (currentSubscription && displayStatus === 'active' && !isExpired) {
+            const currentPrice = currentSubscription.subscription_plans?.price || 0;
+            buttonText = plan.price >= currentPrice ? 'Fazer Upgrade' : 'Agendar Downgrade';
+          }
           const buttonClass = isCurrentPlan && displayStatus === 'active' && !isExpired ? 'bg-gray-400 hover:bg-gray-500 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90';
 
           // Calcular preço base baseado no período selecionado
