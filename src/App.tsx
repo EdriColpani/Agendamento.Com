@@ -90,6 +90,7 @@ import ChangePasswordPage from "./pages/ChangePasswordPage";
 import ColaboradorAgendamentosPage from "./pages/ColaboradorAgendamentosPage";
 import WaitingApprovalPage from "./pages/WaitingApprovalPage"; // Importar página de aprovação pendente
 import HelpPage from "./pages/HelpPage"; // Importar página de ajuda
+import SubscriptionChangeOpsPage from "./pages/SubscriptionChangeOpsPage";
 
 const queryClient = new QueryClient();
 
@@ -237,6 +238,8 @@ const App = () => (
             {/* NOVA ROTA: Relatório de Tentativas de Pagamento */}
             <Route path="/admin-dashboard/payment-attempts" element={<GlobalAdminProtectedRoute><PaymentAttemptsPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/court-booking-timeout-health" element={<GlobalAdminProtectedRoute><CourtBookingTimeoutHealthPage /></GlobalAdminProtectedRoute>} />
+            <Route path="/admin-dashboard/arena-cancelamentos-estornos" element={<GlobalAdminProtectedRoute><CourtBookingRefundHealthPage /></GlobalAdminProtectedRoute>} />
+            <Route path="/admin-dashboard/operacoes-assinatura" element={<GlobalAdminProtectedRoute><SubscriptionChangeOpsPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gerenciamento de Banners Globais */}
             <Route path="/admin-dashboard/global-banners" element={<GlobalAdminProtectedRoute><BannerManagementPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/arena-login-imagens" element={<GlobalAdminProtectedRoute><ArenaLoginMarketingPage /></GlobalAdminProtectedRoute>} />
@@ -290,10 +293,6 @@ const App = () => (
               <Route path="estoque/new" element={<ProtectedRoute><ProductFormPage /></ProtectedRoute>} />
               <Route path="estoque/edit/:productId" element={<ProtectedRoute><ProductFormPage /></ProtectedRoute>} />
               <Route path="relatorios" element={<ProtectedRoute><RelatoriosPage /></ProtectedRoute>} />
-              <Route
-                path="relatorios/arena-cancelamentos-estornos"
-                element={<ProtectedRoute><CourtBookingRefundHealthPage /></ProtectedRoute>}
-              />
               <Route path="fidelidade" element={<ProtectedRoute><FidelidadePage /></ProtectedRoute>} />
               <Route path="planos" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
               <Route path="config" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} /> {/* NOVA ROTA DE CONFIGURAÇÃO */}

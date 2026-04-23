@@ -274,6 +274,7 @@ async function checkAndNotifyWhatsAppPlan(supabaseAdmin: any, companyId: string,
 
 const COURTBOOK_PREFIX = "courtbook:";
 const COURTPACKAGE_PREFIX = "courtpackage:";
+const SUBSCRIPTION_CHANGE_PREFIX = "subchange:";
 
 async function tryFetchCourtPaymentWithSellerTokens(
   supabaseAdmin: ReturnType<typeof createClient>,
@@ -617,6 +618,111 @@ async function processCourtMonthlyPackagePayment(
   );
 }
 
+async function processSubscriptionPlanChangePayment(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  payment: Record<string, unknown>,
+  paymentId: string,
+): Promise<Response> {
+  const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+  const externalReference = String(payment.external_reference || "");
+  const payload = externalReference.slice(SUBSCRIPTION_CHANGE_PREFIX.length).trim();
+  const [changeRequestId, paymentAttemptId] = payload.split(":");
+
+  if (!changeRequestId || !paymentAttemptId) {
+    return new Response(JSON.stringify({ error: "Referência de troca de plano inválida." }), {
+      status: 400,
+      headers: jsonHeaders,
+    });
+  }
+
+  const mpStatus = String(payment.status || "");
+  let paymentAttemptStatus = "failed";
+  if (mpStatus === "approved") paymentAttemptStatus = "approved";
+  if (mpStatus === "pending") paymentAttemptStatus = "pending";
+  if (mpStatus === "rejected") paymentAttemptStatus = "rejected";
+
+  await supabaseAdmin
+    .from("payment_attempts")
+    .update({ status: paymentAttemptStatus, payment_gateway_reference: paymentId })
+    .eq("id", paymentAttemptId);
+
+  const { data: changeRequest, error: changeRequestError } = await supabaseAdmin
+    .from("subscription_change_requests")
+    .select("id, company_id, subscription_id, to_plan_id, status")
+    .eq("id", changeRequestId)
+    .eq("payment_attempt_id", paymentAttemptId)
+    .maybeSingle();
+
+  if (changeRequestError || !changeRequest) {
+    console.error("[mercadopago-webhook] subscription change request not found:", changeRequestError);
+    return new Response(JSON.stringify({ received: true, message: "Change request not found." }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  if (changeRequest.status === "applied") {
+    return new Response(JSON.stringify({ received: true, alreadyApplied: true }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  if (mpStatus !== "approved") {
+    const status = mpStatus === "pending" ? "pending_payment" : "failed";
+    await supabaseAdmin
+      .from("subscription_change_requests")
+      .update({
+        status,
+        payment_gateway_reference: paymentId,
+        failure_reason: mpStatus === "pending" ? null : `Pagamento ${mpStatus}`,
+      })
+      .eq("id", changeRequest.id);
+
+    return new Response(JSON.stringify({ received: true, message: `Payment status ${mpStatus}.` }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
+  }
+
+  const { error: subscriptionUpdateError } = await supabaseAdmin
+    .from("company_subscriptions")
+    .update({
+      plan_id: changeRequest.to_plan_id,
+      next_plan_id: null,
+      pending_change_type: null,
+    })
+    .eq("id", changeRequest.subscription_id);
+
+  if (subscriptionUpdateError) {
+    console.error("[mercadopago-webhook] failed to update subscription plan:", subscriptionUpdateError);
+    return new Response(JSON.stringify({ error: subscriptionUpdateError.message }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
+  }
+
+  await supabaseAdmin.rpc("sync_company_flags_from_plan", {
+    p_company_id: changeRequest.company_id,
+    p_plan_id: changeRequest.to_plan_id,
+  });
+
+  await supabaseAdmin
+    .from("subscription_change_requests")
+    .update({
+      status: "applied",
+      applied_at: new Date().toISOString(),
+      payment_gateway_reference: paymentId,
+      failure_reason: null,
+    })
+    .eq("id", changeRequest.id);
+
+  return new Response(JSON.stringify({ received: true, upgraded: true, changeRequestId: changeRequest.id }), {
+    status: 200,
+    headers: jsonHeaders,
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -684,6 +790,9 @@ serve(async (req) => {
     }
     if (externalReference.startsWith(COURTPACKAGE_PREFIX)) {
       return await processCourtMonthlyPackagePayment(supabaseAdmin, payment, String(paymentId));
+    }
+    if (externalReference.startsWith(SUBSCRIPTION_CHANGE_PREFIX)) {
+      return await processSubscriptionPlanChangePayment(supabaseAdmin, payment, String(paymentId));
     }
 
     // Assinaturas PlanoAgenda (external_reference com underscores)
@@ -791,6 +900,8 @@ serve(async (req) => {
             .update({
                 plan_id: planId,
                 end_date: finalEndDate,
+                billing_cycle_start: format(baseDate, 'yyyy-MM-dd'),
+                billing_cycle_end: finalEndDate,
                 status: 'active',
             })
             .eq('id', subscriptionId);
@@ -835,6 +946,8 @@ serve(async (req) => {
                 .update({
                     plan_id: planId,
                     end_date: finalEndDate,
+                    billing_cycle_start: format(baseDate, 'yyyy-MM-dd'),
+                    billing_cycle_end: finalEndDate,
                     status: 'active',
                 })
                 .eq('id', subscriptionId);
@@ -868,6 +981,8 @@ serve(async (req) => {
                     plan_id: planId,
                     start_date: startDate,
                     end_date: finalEndDate,
+                    billing_cycle_start: startDate,
+                    billing_cycle_end: finalEndDate,
                     status: 'active',
                 })
                 .select('id')

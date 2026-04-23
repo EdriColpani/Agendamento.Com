@@ -388,7 +388,7 @@ const MainApplication: React.FC = () => {
                   </li>
                   );
                 })}
-                
+
                 {/* Separador visual antes do item de Ajuda */}
                 {displaySidebarMenuItems.length > 0 && !restrictSidebarToPlanosOnly && (
                   <li className="my-2">

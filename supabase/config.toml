@@ -58,6 +58,9 @@ verify_jwt = false
 [functions.create-backup]
 verify_jwt = false
 
+[functions.change-subscription-plan]
+verify_jwt = false
+
 [functions.create-court-booking-checkout]
 verify_jwt = false
 
@@ -71,6 +74,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-court-booking-timeout-runs]
+verify_jwt = false
+
+[functions.get-subscription-change-report]
 verify_jwt = false
 
 [functions.get-default-guest-client]
@@ -89,6 +95,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.mercadopago-webhook]
+verify_jwt = false
+
+[functions.admin-subscription-change-actions]
 verify_jwt = false
 
 [functions.refund-court-booking-payment]
@@ -116,6 +125,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.signup-client]
+verify_jwt = false
+
+[functions.subscription-change-scheduler]
 verify_jwt = false
 
 [functions.upsert-company-payment-credentials]

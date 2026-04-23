@@ -261,6 +261,10 @@ async function handleSubscription(
             .update({ 
                 plan_id: planId,
                 end_date: finalEndDate,
+                billing_cycle_start: format(baseDate, 'yyyy-MM-dd'),
+                billing_cycle_end: finalEndDate,
+                next_plan_id: null,
+                pending_change_type: null,
                 status: 'active',
             })
             .eq('id', subscriptionId);
@@ -280,6 +284,8 @@ async function handleSubscription(
                 plan_id: planId,
                 start_date: startDate,
                 end_date: finalEndDate,
+                billing_cycle_start: startDate,
+                billing_cycle_end: finalEndDate,
                 status: 'active',
             })
             .select('id')
@@ -602,6 +608,8 @@ serve(async (req) => {
                     plan_id: planId,
                     start_date: startDate,
                     end_date: null,
+                    billing_cycle_start: startDate,
+                    billing_cycle_end: null,
                     status: 'pending',
                 })
                 .select('id')
