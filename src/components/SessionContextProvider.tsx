@@ -50,6 +50,31 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     navigate('/login', { replace: true });
   };
 
+  /** Link de e-mail (confirmação / recovery) coloca tokens no hash; getSession() pode ainda ser null nesse tick. */
+  const hasAuthCallbackInUrl = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const { hash, search } = window.location;
+    return (
+      hash.includes('access_token=') ||
+      hash.includes('type=recovery') ||
+      hash.includes('type=signup') ||
+      search.includes('code=')
+    );
+  };
+
+  const resolveSessionAfterUrl = async (first: Session | null): Promise<Session | null> => {
+    if (first) return first;
+    if (!hasAuthCallbackInUrl()) return null;
+    for (let i = 0; i < 6; i++) {
+      if (i > 0) {
+        await new Promise((r) => setTimeout(r, 80 * i));
+      }
+      const { data: { session: next } } = await supabase.auth.getSession();
+      if (next) return next;
+    }
+    return null;
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -158,36 +183,26 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       }
     );
 
-    // Restaura a sessão do localStorage após configurar o listener
-    // Esta é a fonte da verdade durante a inicialização
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+    // Restaura a sessão; se veio de link de e-mail (#access_token), reconsulta após o cliente trocar o hash pela sessão.
+    void (async () => {
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
       if (!mounted) return;
-      
-      console.log('SessionContextProvider - Initial getSession:', initialSession);
-      
-      if (initialSession?.access_token && isSessionProjectMismatch(initialSession.access_token)) {
-        handleProjectSessionMismatch().finally(() => {
-          isInitializingRef.current = false;
-          setLoading(false);
-        });
+
+      const finalSession = await resolveSessionAfterUrl(initialSession);
+
+      if (finalSession?.access_token && isSessionProjectMismatch(finalSession.access_token)) {
+        await handleProjectSessionMismatch();
+        isInitializingRef.current = false;
+        setLoading(false);
         return;
       }
 
-      // Define a sessão inicial (fonte da verdade)
-      setSession(initialSession);
-      previousSessionRef.current = initialSession;
-      
-      if (initialSession) {
-        isUserLoggedInRef.current = true;
-      } else {
-        isUserLoggedInRef.current = false;
-      }
-      
-      // Marca a inicialização como completa APENAS após getSession() terminar
-      // Isso garante que eventos do listener que ocorreram durante a inicialização sejam ignorados
+      setSession(finalSession);
+      previousSessionRef.current = finalSession;
+      isUserLoggedInRef.current = !!finalSession;
       isInitializingRef.current = false;
       setLoading(false);
-    });
+    })();
 
     return () => {
       mounted = false;
