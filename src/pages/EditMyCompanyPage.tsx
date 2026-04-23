@@ -14,6 +14,7 @@ import { formatCnpjInput, formatZipCodeInput } from '@/utils/validation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useSession } from '@/components/SessionContextProvider';
+import { isSegmentCourtModeClient } from '@/utils/segmentCourtMode';
 
 // Zod schema for company editing
 const companyEditSchema = z.object({
@@ -237,6 +238,8 @@ const EditMyCompanyPage: React.FC = () => {
         imageUrl = publicUrlData.publicUrl;
       }
 
+      const courtBookingEnabled = await isSegmentCourtModeClient(data.segment_type);
+
       const { error } = await supabase
         .from('companies')
         .update({
@@ -247,6 +250,7 @@ const EditMyCompanyPage: React.FC = () => {
           company_email: data.company_email,
           phone_number: cleanedPhoneNumber,
           segment_type: data.segment_type,
+          court_booking_enabled: courtBookingEnabled,
           address: data.address,
           number: data.number,
           neighborhood: data.neighborhood,
