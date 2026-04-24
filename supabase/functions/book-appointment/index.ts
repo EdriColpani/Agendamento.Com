@@ -7,6 +7,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 /**
  * Verifica se a empresa tem acesso ao menu WhatsApp através do plano ativo
  * @param supabase Cliente Supabase
@@ -394,20 +401,14 @@ serve(async (req) => {
     // Verify the user's session (the one calling this function)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: No Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token or user not found' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const {
@@ -426,10 +427,7 @@ serve(async (req) => {
     console.log('book-appointment: Received payload for booking:', { companyId, clientId, collaboratorId, serviceIds, appointmentDate, appointmentTime, totalDurationMinutes, totalPriceCalculated, observations });
 
     if (!clientId || !collaboratorId || !serviceIds || serviceIds.length === 0 || !appointmentDate || !appointmentTime || !companyId || totalDurationMinutes === undefined || totalPriceCalculated === undefined) {
-        return new Response(JSON.stringify({ error: 'Missing required appointment data' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ error: 'Dados obrigatórios do agendamento ausentes.' }, 400);
     }
 
     // Create a Supabase client with the service role key for admin operations
@@ -475,10 +473,7 @@ serve(async (req) => {
     // Validar formato HH:mm
     if (!/^\d{2}:\d{2}$/.test(startTimeForDb)) {
       console.error('book-appointment: Invalid time format received:', appointmentTime, 'extracted:', startTimeForDb);
-      return new Response(JSON.stringify({ error: 'Formato de horário inválido.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Formato de horário inválido.' }, 400);
     }
     
     // Criar data/hora de início na data normalizada correta
@@ -588,10 +583,7 @@ serve(async (req) => {
 
     if (insertAppointmentError) {
       console.error('book-appointment: Error inserting appointment:', insertAppointmentError.message);
-      return new Response(JSON.stringify({ error: insertAppointmentError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro ao registrar agendamento.' }, 500);
     }
 
     // 4. Link services to the appointment in appointment_services table
@@ -608,22 +600,13 @@ serve(async (req) => {
       console.error('book-appointment: Error inserting appointment services:', insertServicesError.message);
       // Consider rolling back the appointment if service linking fails
       await supabaseAdmin.from('appointments').delete().eq('id', appointment.id);
-      return new Response(JSON.stringify({ error: 'Failed to link services to appointment: ' + insertServicesError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro ao vincular serviços ao agendamento.' }, 500);
     }
 
-    return new Response(JSON.stringify({ message: 'Appointment booked successfully', appointmentId: appointment.id }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ message: 'Appointment booked successfully', appointmentId: appointment.id }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (book-appointment): Uncaught exception -', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (book-appointment): Uncaught exception -', error);
+    return jsonResponse({ error: 'Erro interno ao criar agendamento.' }, 500);
   }
 });

@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 type CancelRequestBody = {
   appointment_id?: string;
   company_id?: string;
@@ -76,10 +83,7 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -87,10 +91,7 @@ serve(async (req) => {
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Ambiente Supabase incompleto." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -102,29 +103,20 @@ serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const token = authHeader.replace("Bearer ", "");
   const { data: authData, error: authError } = await supabaseClient.auth.getUser(token);
   if (authError || !authData.user) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   let body: CancelRequestBody;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "JSON inválido no corpo." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "JSON inválido no corpo." }, 400);
   }
 
   const appointmentId = typeof body.appointment_id === "string" ? body.appointment_id.trim() : "";
@@ -135,18 +127,12 @@ serve(async (req) => {
   const cancellationReason = safeText(body.cancellation_reason, 250);
 
   if (!appointmentId || !companyId || !clientId) {
-    return new Response(JSON.stringify({ error: "appointment_id, company_id e client_id são obrigatórios." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "appointment_id, company_id e client_id são obrigatórios." }, 400);
   }
 
   const perm = await assertProprietarioOrAdmin(supabaseAdmin, authData.user.id, companyId);
   if (!perm.ok) {
-    return new Response(JSON.stringify({ error: perm.message }), {
-      status: perm.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: perm.message }, perm.status);
   }
 
   const { data: appointment, error: appointmentError } = await supabaseAdmin
@@ -156,24 +142,15 @@ serve(async (req) => {
     .maybeSingle();
 
   if (appointmentError || !appointment) {
-    return new Response(JSON.stringify({ error: "Reserva não encontrada." }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Reserva não encontrada." }, 404);
   }
 
   if (appointment.company_id !== companyId || appointment.booking_kind !== "court") {
-    return new Response(JSON.stringify({ error: "A reserva informada não pertence ao módulo de quadras desta empresa." }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "A reserva informada não pertence ao módulo de quadras desta empresa." }, 403);
   }
 
   if (appointment.status === "concluido") {
-    return new Response(JSON.stringify({ error: "Não é permitido cancelar reserva concluída." }), {
-      status: 409,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não é permitido cancelar reserva concluída." }, 409);
   }
 
   const normalizedMpStatus = String(appointment.mp_payment_status ?? "").trim().toLowerCase();
@@ -207,23 +184,14 @@ serve(async (req) => {
     .eq("company_id", companyId);
 
   if (updateError) {
-    return new Response(JSON.stringify({ error: `Falha ao cancelar: ${updateError.message}` }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Falha ao cancelar reserva de quadra." }, 500);
   }
 
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      refund_required: refundRequired,
-      message: refundRequired
-        ? "Reserva cancelada e reembolso marcado para análise manual."
-        : "Reserva cancelada com sucesso.",
-    }),
-    {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    },
-  );
+  return jsonResponse({
+    ok: true,
+    refund_required: refundRequired,
+    message: refundRequired
+      ? "Reserva cancelada e reembolso marcado para análise manual."
+      : "Reserva cancelada com sucesso.",
+  }, 200);
 });

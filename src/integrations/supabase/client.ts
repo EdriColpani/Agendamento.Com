@@ -7,8 +7,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Configuração do Supabase ausente. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
 }
 
-console.log("Supabase URL sendo usado:", supabaseUrl);
-
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

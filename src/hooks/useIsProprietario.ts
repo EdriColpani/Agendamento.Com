@@ -45,7 +45,6 @@ export function useIsProprietario() {
       
       try {
         const currentUserId = session.user.id;
-        console.log('[useIsProprietario] Iniciando verificação para user_id:', currentUserId);
         
         // MÉTODO PRINCIPAL: get_user_context (verifica user_companies.role_type)
         let isProprietarioByContext = false;
@@ -62,7 +61,6 @@ export function useIsProprietario() {
               const normalizedDesc = roleDesc.trim();
               return normalizedDesc === 'Proprietário';
             });
-            console.log('[useIsProprietario] get_user_context retornou:', isProprietarioByContext);
           }
         } catch (contextErr: any) {
           console.warn('[useIsProprietario] Exceção ao buscar get_user_context:', contextErr);
@@ -82,7 +80,6 @@ export function useIsProprietario() {
             console.warn('[useIsProprietario] Erro ao buscar type_user:', typeUserError);
           } else if (typeUserData?.cod === 'PROPRIETARIO') {
             isProprietarioByType = true;
-            console.log('[useIsProprietario] type_user.cod confirma PROPRIETARIO');
           }
         } catch (typeErr: any) {
           console.warn('[useIsProprietario] Exceção ao buscar type_user:', typeErr);
@@ -90,12 +87,6 @@ export function useIsProprietario() {
 
         // RESULTADO FINAL: usuário é proprietário se QUALQUER método retornar true
         const finalResult = isProprietarioByContext || isProprietarioByType;
-        
-        console.log('[useIsProprietario] Resultado final:', {
-          isProprietarioByContext,
-          isProprietarioByType,
-          finalResult
-        });
 
         setIsProprietario(finalResult);
 

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, DollarSign, Building, User, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { showError } from '@/utils/toast';
+import { showOperationError } from '@/utils/toast';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
@@ -57,7 +57,7 @@ const PaymentAttemptsPage: React.FC = () => {
       setPaymentAttempts(data as PaymentAttempt[]);
     } catch (error: any) {
       console.error('Erro ao carregar tentativas de pagamento:', error);
-      showError('Erro ao carregar tentativas de pagamento: ' + error.message);
+      showOperationError('Erro ao carregar pagamentos de plano.', error);
     } finally {
       setLoading(false);
     }
@@ -89,21 +89,21 @@ const PaymentAttemptsPage: React.FC = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <h1 className="text-3xl font-bold text-gray-900">Relatório de Tentativas de Pagamento</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Adesão e pagamentos de plano</h1>
       </div>
 
       <Card className="border-gray-200">
         <CardHeader>
           <CardTitle className="text-gray-900 flex items-center gap-2">
             <DollarSign className="h-6 w-6 text-primary" />
-            Todas as Tentativas de Pagamento de Planos
+            Pagamentos de adesão e renovação
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-gray-700">Carregando tentativas de pagamento...</p>
+            <p className="text-gray-700">Carregando pagamentos...</p>
           ) : paymentAttempts.length === 0 ? (
-            <p className="text-gray-600">Nenhuma tentativa de pagamento registrada ainda.</p>
+            <p className="text-gray-600">Nenhum pagamento de plano registrado ainda.</p>
           ) : (
             <ScrollArea className="h-[70vh]">
               <div className="overflow-x-auto">

@@ -61,6 +61,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 function courtExternalReference(appointmentId: string): string {
   return `courtbook:${appointmentId}`;
 }
@@ -71,10 +78,7 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -82,42 +86,24 @@ serve(async (req) => {
   const SITE_URL = Deno.env.get("SITE_URL") ?? BRAND_SITE_URL;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Ambiente Supabase incompleto." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   const master = getCompanyPaymentMasterKey();
   if (!master) {
-    return new Response(
-      JSON.stringify({
-        error:
-          "Chave COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY não configurada nas Edge Functions.",
-      }),
-      {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 503);
   }
 
   let body: { appointment_id?: string };
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "JSON inválido." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "JSON inválido." }, 400);
   }
 
   const appointmentId = typeof body.appointment_id === "string" ? body.appointment_id.trim() : "";
   if (!appointmentId) {
-    return new Response(JSON.stringify({ error: "appointment_id é obrigatório." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "appointment_id é obrigatório." }, 400);
   }
 
   const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -131,49 +117,25 @@ serve(async (req) => {
     .maybeSingle();
 
   if (apptErr || !appt) {
-    return new Response(JSON.stringify({ error: "Agendamento não encontrado." }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Agendamento não encontrado." }, 404);
   }
 
   if (appt.booking_kind !== "court" || appt.payment_method !== "mercado_pago") {
-    return new Response(
-      JSON.stringify({ error: "Este agendamento não está configurado para pagamento online Mercado Pago." }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "Este agendamento não está configurado para pagamento online Mercado Pago." }, 400);
   }
 
   if (appt.status !== "pendente") {
-    return new Response(JSON.stringify({ error: "Apenas reservas pendentes podem abrir checkout." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Apenas reservas pendentes podem abrir checkout." }, 400);
   }
 
   const createdMs = new Date(String(appt.created_at)).getTime();
   if (Number.isNaN(createdMs) || Date.now() - createdMs > 3 * 60 * 60 * 1000) {
-    return new Response(
-      JSON.stringify({ error: "Prazo para pagamento online desta reserva expirou. Refaça a reserva." }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "Prazo para pagamento online desta reserva expirou. Refaça a reserva." }, 400);
   }
 
   const total = Number(appt.total_price);
   if (Number.isNaN(total) || total < 0.5) {
-    return new Response(
-      JSON.stringify({ error: "Valor da reserva abaixo do mínimo do Mercado Pago (R$ 0,50) ou inválido." }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "Valor da reserva abaixo do mínimo do Mercado Pago (R$ 0,50) ou inválido." }, 400);
   }
 
   const { data: cred, error: credErr } = await supabaseAdmin
@@ -185,22 +147,13 @@ serve(async (req) => {
     .maybeSingle();
 
   if (credErr || !cred?.encrypted_payload) {
-    return new Response(
-      JSON.stringify({ error: "A empresa ainda não configurou o Mercado Pago para recebimentos online." }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "A empresa ainda não configurou o Mercado Pago para recebimentos online." }, 400);
   }
 
   const plain = await decryptCredentialsPayload(cred.encrypted_payload, master);
   const accessToken = plain?.access_token;
   if (typeof accessToken !== "string" || !accessToken.trim()) {
-    return new Response(JSON.stringify({ error: "Credencial Mercado Pago inválida no servidor." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Credencial Mercado Pago inválida no servidor." }, 500);
   }
 
   let courtLabel = "Quadra";
@@ -256,20 +209,14 @@ serve(async (req) => {
       /* ignore */
     }
     console.error("[create-court-booking-checkout] MP error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 502,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Falha ao criar checkout no Mercado Pago." }, 502);
   }
 
   const mpData = await mpRes.json() as { id?: string; init_point?: string; sandbox_init_point?: string };
   const prefId = mpData.id;
   const initPoint = mpData.init_point || mpData.sandbox_init_point;
   if (!prefId || !initPoint) {
-    return new Response(JSON.stringify({ error: "Resposta inválida do Mercado Pago (sem init_point)." }), {
-      status: 502,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Resposta inválida do Mercado Pago." }, 502);
   }
 
   const { error: updErr } = await supabaseAdmin
@@ -283,20 +230,11 @@ serve(async (req) => {
 
   if (updErr) {
     console.error("[create-court-booking-checkout] update appointment:", updErr);
-    return new Response(JSON.stringify({ error: "Erro ao registrar preferência na reserva." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao registrar preferência na reserva." }, 500);
   }
 
-  return new Response(
-    JSON.stringify({
-      preference_id: prefId,
-      init_point: initPoint,
-    }),
-    {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    },
-  );
+  return jsonResponse({
+    preference_id: prefId,
+    init_point: initPoint,
+  }, 200);
 });

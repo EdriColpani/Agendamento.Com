@@ -24,6 +24,13 @@ type PaymentAttemptStatusRow = {
   status: string;
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   const startedAt = new Date();
 
@@ -32,29 +39,20 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Supabase env vars ausentes." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.replace("Bearer ", "").trim();
   if (!token || token !== SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   let body: { limit?: number; stale_pending_hours?: number } = {};
@@ -143,10 +141,7 @@ serve(async (req) => {
       stalePendingMarkedFailed: 0,
       errorMessage: changesError.message,
     });
-    return new Response(JSON.stringify({ error: changesError.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro interno ao buscar trocas de plano agendadas." }, 500);
   }
 
   const changes = (changesData ?? []) as ScheduledChangeRow[];
@@ -270,7 +265,7 @@ serve(async (req) => {
     },
   });
 
-  return new Response(JSON.stringify({
+  return jsonResponse({
     ok: true,
     processed: changes.length,
     applied,
@@ -278,9 +273,6 @@ serve(async (req) => {
     stale_pending_marked_failed: stalePendingMarkedFailed,
     stale_pending_hours: stalePendingHours,
     failures,
-  }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  }, 200);
 });
 

@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showSuccess, showOperationError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
@@ -70,7 +70,7 @@ const CourtWorkingHoursPage: React.FC = () => {
       .eq('is_active', true)
       .order('display_order', { ascending: true });
     if (error) {
-      showError('Erro ao carregar quadras: ' + error.message);
+      showOperationError('Erro ao carregar quadras.', error);
       setCourts([]);
       return;
     }
@@ -94,7 +94,7 @@ const CourtWorkingHoursPage: React.FC = () => {
       .eq('court_id', courtId);
 
     if (error) {
-      showError('Erro ao carregar horários: ' + error.message);
+      showOperationError('Erro ao carregar horários.', error);
       setLoading(false);
       return;
     }
@@ -171,8 +171,7 @@ const CourtWorkingHoursPage: React.FC = () => {
       showSuccess('Horários salvos.');
       loadHours();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      showError('Erro ao salvar: ' + msg);
+      showOperationError('Erro ao salvar horários.', e);
     } finally {
       setSaving(false);
     }

@@ -86,8 +86,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         
         const isInitializing = isInitializingRef.current;
         
-        console.log('SessionContextProvider - Auth event:', event, 'Session:', currentSession, 'IsInitializing:', isInitializing);
-        
         if (currentSession?.access_token && isSessionProjectMismatch(currentSession.access_token)) {
           await handleProjectSessionMismatch();
           return;
@@ -96,7 +94,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         // Durante a inicialização, ignora TODOS os eventos do listener
         // A sessão será definida apenas pelo resultado do getSession()
         if (isInitializing) {
-          console.log('SessionContextProvider - Ignorando evento durante inicialização:', event);
           return;
         }
         
@@ -118,7 +115,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
         // Se for refresh de token ou SIGNED_IN repetido e o usuário não mudou, ignora completamente
         // para evitar re-renderizações desnecessárias que resetam a aplicação
         if ((isTokenRefresh || (isSignedIn && wasLoggedIn)) && !userChanged) {
-          console.log(`SessionContextProvider - Ignorando ${event} - usuário não mudou (já estava logado), evitando re-render`);
           // Atualiza apenas a referência da sessão sem causar re-render
           previousSessionRef.current = currentSession;
           return;

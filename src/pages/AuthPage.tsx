@@ -14,10 +14,6 @@ const AuthPage: React.FC = () => {
   const navigate = useNavigate();
   // Removendo o estado isResettingPassword daqui, será gerenciado pelo ResetPasswordForm
 
-  console.log('AuthPage - Render - window.location.href:', window.location.href);
-  console.log('AuthPage - Render - window.location.hash:', window.location.hash);
-  console.log('AuthPage - Render - window.location.search:', window.location.search);
-
   // O título da página agora depende apenas do pathname
   const pageTitle = location.pathname === '/signup'
     ? 'Cadastre-se no PlanoAgenda'

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showOperationError, showSuccess } from '@/utils/toast';
 import { Loader2, ArrowLeft, MessageSquare, Edit, CheckCircle2, XCircle, Save } from 'lucide-react';
 import {
   AlertDialog,
@@ -80,7 +80,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
       setCompanies(data || []);
     } catch (error: any) {
       console.error('Erro ao carregar empresas:', error);
-      showError('Erro ao carregar empresas: ' + error.message);
+      showOperationError('Erro ao carregar empresas.', error);
     }
   }, []);
 
@@ -105,7 +105,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
       setProviders(data || []);
     } catch (error: any) {
       console.error('Erro ao carregar provedores:', error);
-      showError('Erro ao carregar provedores: ' + error.message);
+      showOperationError('Erro ao carregar provedores.', error);
     } finally {
       setLoading(false);
     }
@@ -227,7 +227,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
       fetchProviders();
     } catch (error: any) {
       console.error('Erro ao salvar provedor:', error);
-      showError('Erro ao salvar provedor: ' + error.message);
+      showOperationError('Erro ao salvar provedor.', error);
     } finally {
       setSaving(false);
     }
@@ -250,7 +250,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
       fetchProviders();
     } catch (error: any) {
       console.error('Erro ao excluir provedor:', error);
-      showError('Erro ao excluir provedor: ' + error.message);
+      showOperationError('Erro ao excluir provedor.', error);
     } finally {
       setSaving(false);
     }

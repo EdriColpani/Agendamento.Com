@@ -60,3 +60,24 @@ Data: 2026-04-23
 2. Downgrade agendado e aplicação por scheduler.
 3. Relatório e ações em `Operações de Assinatura` no `AdminDashboard`.
 4. Bloqueio de acesso para usuário não Global Admin (esperado: 403 nas funções administrativas).
+
+---
+
+## Checkpoint — retomada (salvo para amanhã)
+
+**Data de referência:** 2026-04-23 (fim de sessão)
+
+### O que já foi feito nesta rodada (admin / UX / esclarecimentos)
+
+- **Arena — Cancelamentos e estornos** (`CourtBookingRefundHealthPage`): admin global sem empresa primária; seletor de empresa; `get-court-booking-refund-report` aceita admin global. Voltar → `/admin-dashboard`.
+- **Operações de Assinatura** (`SubscriptionChangeOpsPage`): deixou de depender só de `primaryCompanyId`; lista de empresas + seletor; botão Voltar; texto explicando que a tela é de **trocas de plano** (`subscription_change_requests`), não adesão inicial.
+- **Admin dashboard:** card **"Adesão e pagamentos de plano"** (ex-Tentativas de Pagamento) no grupo **Gerenciamento Principal**, ao lado de **Operações de Assinatura**; `PaymentAttemptsPage` com títulos alinhados.
+- **Saúde Arena — Timeout de pagamento** (`CourtBookingTimeoutHealthPage`): aviso de que **cancelamento manual** não entra nesse painel; só **auto-cancel por job de timeout**; rótulo do resumo ajustado.
+
+### Continuar amanhã (sugestão de ordem)
+
+1. **Homologação E2E** ainda pendente: troca de plano (upgrade/downgrade, scheduler) + 403 fora de admin global, se ainda não validado.
+2. Fase **medidas de segurança** (ver seção no topo deste arquivo), após fechar testes.
+3. Dúvidas de produto: onde expor “visão agregada” (várias empresas) no relatório de estornos, se for requisito.
+
+**Como retomar no chat:** *"continuar do checkpoint em `docs/MEDIDAS_DE_SEGURANCA.md`"* ou *"seguir homologação troca de plano"*.

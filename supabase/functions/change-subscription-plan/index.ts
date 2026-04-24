@@ -21,6 +21,13 @@ type ActiveSubscriptionRow = {
   billing_cycle_end: string | null;
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 const toUtcDate = (value: string): Date => new Date(`${value}T00:00:00.000Z`);
 
 function getCyclePrice(planPrice: number, period: BillingPeriod): number {
@@ -55,13 +62,13 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Não autorizado." }, 401);
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized: Invalid token or user not found" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Não autorizado." }, 401);
     }
 
     const body = await req.json();
@@ -70,7 +77,7 @@ serve(async (req) => {
     const billingPeriod = (body?.billingPeriod === "yearly" ? "yearly" : "monthly") as BillingPeriod;
 
     if (!companyId || !targetPlanId) {
-      return new Response(JSON.stringify({ error: "companyId e targetPlanId são obrigatórios." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "companyId e targetPlanId são obrigatórios." }, 400);
     }
 
     const { data: userCompany } = await supabaseAdmin
@@ -95,7 +102,7 @@ serve(async (req) => {
       .limit(1);
 
     if (!hasCompanyPermission && (!globalAdminType || globalAdminType.length === 0)) {
-      return new Response(JSON.stringify({ error: "Você não tem permissão para alterar o plano desta empresa." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Você não tem permissão para alterar o plano desta empresa." }, 403);
     }
 
     const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
@@ -110,7 +117,7 @@ serve(async (req) => {
     if (subscriptionError) throw subscriptionError;
     const subscription = subscriptionData as ActiveSubscriptionRow | null;
     if (!subscription) {
-      return new Response(JSON.stringify({ error: "Nenhuma assinatura ativa encontrada para esta empresa." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Nenhuma assinatura ativa encontrada para esta empresa." }, 400);
     }
 
     const { data: plans, error: plansError } = await supabaseAdmin
@@ -124,15 +131,15 @@ serve(async (req) => {
     const targetPlan = (plans || []).find((p) => p.id === targetPlanId) as PlanRow | undefined;
 
     if (!currentPlan || !targetPlan) {
-      return new Response(JSON.stringify({ error: "Plano atual ou plano destino não encontrado." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Plano atual ou plano destino não encontrado." }, 400);
     }
     if (targetPlan.status !== "active") {
-      return new Response(JSON.stringify({ error: "O plano selecionado não está ativo." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "O plano selecionado não está ativo." }, 400);
     }
 
     const currentPeriod = detectCurrentBillingPeriod(subscription);
     if (subscription.plan_id === targetPlanId && currentPeriod === billingPeriod) {
-      return new Response(JSON.stringify({ error: "A empresa já está neste plano e período." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "A empresa já está neste plano e período." }, 400);
     }
 
     const currentCyclePrice = getCyclePrice(Number(currentPlan.price), currentPeriod);
@@ -188,13 +195,13 @@ serve(async (req) => {
         .eq("id", subscription.id);
       if (markSubError) throw markSubError;
 
-      return new Response(JSON.stringify({
+      return jsonResponse({
         changeType: "downgrade",
         paymentRequired: false,
         amountDue: 0,
         effectiveAt,
         message: "Downgrade agendado para o fim do ciclo atual.",
-      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }, 200);
     }
 
     const { error: clearPendingChangesError } = await supabaseAdmin
@@ -235,17 +242,17 @@ serve(async (req) => {
         applied_at: now.toISOString(),
       });
 
-      return new Response(JSON.stringify({
+      return jsonResponse({
         changeType: "upgrade",
         paymentRequired: false,
         amountDue: prorationAmount,
         effectiveAt: now.toISOString(),
         message: "Upgrade aplicado imediatamente sem cobrança adicional.",
-      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }, 200);
     }
 
     if (!MERCADOPAGO_ACCESS_TOKEN) {
-      return new Response(JSON.stringify({ error: "Serviço de pagamento não configurado." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Serviço de pagamento não configurado." }, 500);
     }
 
     const { data: paymentAttempt, error: paymentAttemptError } = await supabaseAdmin
@@ -310,7 +317,7 @@ serve(async (req) => {
     await supabaseAdmin.from("payment_attempts").update({ payment_gateway_reference: String(mpData.id) }).eq("id", paymentAttempt.id);
     await supabaseAdmin.from("subscription_change_requests").update({ payment_gateway_reference: String(mpData.id) }).eq("id", changeRequest.id);
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       changeType: "upgrade",
       paymentRequired: true,
       amountDue: prorationAmount,
@@ -319,13 +326,10 @@ serve(async (req) => {
       preferenceId: mpData.id,
       changeRequestId: changeRequest.id,
       paymentAttemptId: paymentAttempt.id,
-    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (error: any) {
+    }, 200);
+  } catch (error: unknown) {
     console.error("[change-subscription-plan] error:", error);
-    return new Response(JSON.stringify({ error: error?.message ?? "Erro desconhecido ao alterar plano." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro interno ao alterar plano de assinatura." }, 500);
   }
 });
 

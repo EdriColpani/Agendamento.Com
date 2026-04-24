@@ -32,6 +32,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -52,10 +59,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('Edge Function Error (invite-collaborator): Unauthorized - No Authorization header');
-      return new Response(JSON.stringify({ error: 'Unauthorized: No Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -63,10 +67,7 @@ serve(async (req) => {
 
     if (userError || !user) {
       console.error('Edge Function Error (invite-collaborator): Auth error -', userError?.message || 'User not found');
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token or user not found' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     let requestData;
@@ -74,10 +75,7 @@ serve(async (req) => {
       requestData = await req.json();
     } catch (parseError: any) {
       console.error('Edge Function Error (invite-collaborator): Failed to parse request body:', parseError.message);
-      return new Response(JSON.stringify({ error: 'Invalid JSON in request body: ' + parseError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'JSON inválido no corpo da requisição.' }, 400);
     }
 
     const { companyId: requestedCompanyId, firstName, lastName, email, phoneNumber, hireDate, roleTypeId, commissionPercentage, status, avatarUrl } = requestData;
@@ -713,11 +711,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error: any) {
-    console.error('Edge Function Error (invite-collaborator): Uncaught exception -', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (invite-collaborator): Uncaught exception -', error);
+    return jsonResponse({ error: 'Erro interno ao convidar colaborador.' }, 500);
   }
 });

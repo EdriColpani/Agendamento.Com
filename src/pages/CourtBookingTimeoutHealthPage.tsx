@@ -88,7 +88,12 @@ const CourtBookingTimeoutHealthPage: React.FC = () => {
               Monitoramento de Timeout
             </CardTitle>
             <p className="text-sm text-gray-700 mt-1">
-              Execuções automáticas que cancelam reservas públicas sem pagamento aprovado.
+              Execuções automáticas (cron) do job que cancela reservas <strong>públicas</strong> ainda <strong>pendentes de pagamento</strong> após o tempo configurado.
+            </p>
+            <p className="text-sm text-amber-900/90 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-2">
+              <strong>Não confunda:</strong> cancelamento feito manualmente (proprietário ou cliente) <strong>não</strong> aparece aqui. Os números abaixo contam só
+              reservas encerradas <strong>automaticamente por timeout de pagamento</strong> e cada linha da tabela é uma <strong>execução do agendador</strong>, não cada reserva. Se
+              o cron ainda não rodou ou não havia pendentes expirados, tudo fica em zero.
             </p>
           </div>
           <Button
@@ -148,7 +153,7 @@ const CourtBookingTimeoutHealthPage: React.FC = () => {
               <p className="text-2xl font-semibold text-red-600">{summary?.errors_window ?? '-'}</p>
             </div>
             <div className="rounded-md border p-3 bg-white">
-              <p className="text-xs text-gray-500">Reservas canceladas (janela)</p>
+              <p className="text-xs text-gray-500">Auto-cancel. por timeout (janela)</p>
               <p className="text-2xl font-semibold text-amber-700">{summary?.cancelled_window ?? '-'}</p>
             </div>
           </div>

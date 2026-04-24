@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from 'react-router-dom';
 import { createButton } from '@/lib/dashboard-utils';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showSuccess, showOperationError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { Edit, Trash2 } from 'lucide-react'; // Importar ícones
@@ -59,8 +59,7 @@ const ServicesPage: React.FC = () => {
       .order('name', { ascending: true });
 
     if (error) {
-      showError('Erro ao carregar serviços: ' + error.message);
-      console.error('Error fetching services:', error);
+      showOperationError('Erro ao carregar serviços.', error);
       setServices([]);
     } else if (data) {
       setServices(data as Service[]);
@@ -92,8 +91,7 @@ const ServicesPage: React.FC = () => {
         .eq('company_id', primaryCompanyId); // Ensure user can only delete services from their primary company
 
       if (error) {
-        showError('Erro ao excluir serviço: ' + error.message);
-        console.error('Error deleting service:', error);
+        showOperationError('Erro ao excluir serviço.', error);
       } else {
         showSuccess('Serviço excluído com sucesso!');
         fetchServices(); // Refresh the list

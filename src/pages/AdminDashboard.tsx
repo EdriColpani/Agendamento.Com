@@ -169,6 +169,15 @@ const AdminDashboard: React.FC = () => {
             buttonColor="bg-amber-600 hover:bg-amber-700"
             onClick={() => navigate('/admin-dashboard/operacoes-assinatura')}
           />
+
+          <ManagementCard
+            title="Adesão e pagamentos de plano"
+            description="Acompanhe pagamentos de adesão e renovação de planos: status, valores e referências do gateway."
+            icon={<CreditCard className="h-6 w-6 text-indigo-600" />}
+            buttonText="Abrir relatório de pagamentos"
+            buttonColor="bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => navigate('/admin-dashboard/payment-attempts')}
+          />
         </div>
 
         {/* Group Box: Configurações Globais */}
@@ -237,16 +246,6 @@ const AdminDashboard: React.FC = () => {
             buttonText="Gerenciar Banners Globais"
             buttonColor="bg-orange-500 hover:bg-orange-600"
             onClick={() => navigate('/admin-dashboard/global-banners')}
-          />
-
-          {/* NOVO CARD: Relatório de Tentativas de Pagamento */}
-          <ManagementCard
-            title="Tentativas de Pagamento"
-            description="Monitore as tentativas de pagamento de planos, incluindo status e referências."
-            icon={<CreditCard className="h-6 w-6 text-indigo-600" />}
-            buttonText="Ver Relatório de Pagamentos"
-            buttonColor="bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => navigate('/admin-dashboard/payment-attempts')}
           />
 
           {/* NOVO CARD: Gestão de Perfis (Roles) */}

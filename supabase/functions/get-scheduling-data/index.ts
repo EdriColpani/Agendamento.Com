@@ -8,6 +8,13 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: corsHeaders,
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,10 +24,7 @@ serve(async (req) => {
     const { companyId, collaboratorId, date: rawDate, excludeAppointmentId } = await req.json();
 
     if (!companyId || !collaboratorId || !rawDate) {
-      return new Response(JSON.stringify({ error: 'Missing required parameters' }), {
-        status: 400,
-        headers: corsHeaders,
-      });
+      return jsonResponse({ error: 'Parâmetros obrigatórios ausentes.' }, 400);
     }
 
     // Parse date from YYYY-MM-DD string to avoid timezone issues
@@ -63,10 +67,7 @@ serve(async (req) => {
 
     if (wsError) {
       console.error('Edge Function Error (get-scheduling-data): Error fetching working schedules:', wsError);
-      return new Response(JSON.stringify({ error: wsError.message }), {
-        status: 500,
-        headers: corsHeaders,
-      });
+      return jsonResponse({ error: 'Erro ao carregar horários de trabalho.' }, 500);
     }
     console.log('get-scheduling-data: workingSchedules encontrados:', workingSchedules?.length || 0);
 
@@ -82,10 +83,7 @@ serve(async (req) => {
 
     if (exError) {
       console.error('Edge Function Error (get-scheduling-data): Error fetching schedule exceptions:', exError);
-      return new Response(JSON.stringify({ error: exError.message }), {
-        status: 500,
-        headers: corsHeaders,
-      });
+      return jsonResponse({ error: 'Erro ao carregar exceções de agenda.' }, 500);
     }
     console.log('get-scheduling-data: exceptions encontradas:', exceptions?.length || 0);
 
@@ -110,27 +108,18 @@ serve(async (req) => {
 
     if (appError) {
       console.error('Edge Function Error (get-scheduling-data): Error fetching existing appointments:', appError);
-      return new Response(JSON.stringify({ error: appError.message }), {
-        status: 500,
-        headers: corsHeaders,
-      });
+      return jsonResponse({ error: 'Erro ao carregar agendamentos existentes.' }, 500);
     }
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       workingSchedules,
       exceptions,
       existingAppointments,
-    }), {
-      status: 200,
-      headers: corsHeaders,
-    });
+    }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (get-scheduling-data): Uncaught exception -', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: corsHeaders,
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (get-scheduling-data): Uncaught exception -', error);
+    return jsonResponse({ error: 'Erro interno ao buscar dados de agenda.' }, 500);
   }
 });
 

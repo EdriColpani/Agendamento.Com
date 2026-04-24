@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -25,20 +32,14 @@ serve(async (req) => {
     // Verificar autenticação do usuário
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: No Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     // Verificar se o usuário é GLOBAL_ADMIN
@@ -57,10 +58,7 @@ serve(async (req) => {
       .single();
 
     if (typeUserError || typeUser?.cod !== 'GLOBAL_ADMIN') {
-      return new Response(JSON.stringify({ error: 'Forbidden: Only GLOBAL_ADMIN can create backups' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Acesso negado. Apenas administrador global pode criar backups.' }, 403);
     }
 
     // Gerar nome do arquivo com timestamp
@@ -365,21 +363,13 @@ serve(async (req) => {
         },
       });
 
-    } catch (backupError: any) {
+    } catch (backupError: unknown) {
       console.error('Erro ao criar backup:', backupError);
-      return new Response(JSON.stringify({ 
-        error: 'Erro ao criar backup: ' + backupError.message 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro interno ao gerar backup.' }, 500);
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Edge Function Error (create-backup):', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Erro interno ao processar backup.' }, 500);
   }
 });

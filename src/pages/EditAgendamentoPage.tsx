@@ -11,7 +11,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { showSuccess, showError } from '@/utils/toast';
+import { showSuccess, showError, showOperationError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
@@ -207,9 +207,8 @@ const EditAgendamentoPage: React.FC = () => {
       setTotalDurationMinutes(appointmentData.total_duration_minutes);
       setTotalPriceCalculated(appointmentData.total_price);
 
-    } catch (error: any) {
-      console.error('Erro ao carregar dados iniciais ou agendamento:', error);
-      showError('Erro ao carregar dados: ' + error.message);
+    } catch (error: unknown) {
+      showOperationError('Erro ao carregar dados.', error);
     } finally {
       setLoadingData(false);
     }
@@ -243,8 +242,7 @@ const EditAgendamentoPage: React.FC = () => {
         .eq('collaborator_id', selectedCollaboratorId)
         .eq('active', true);
       if (error) {
-        console.error('Erro ao carregar serviços permitidos:', error);
-        showError('Erro ao carregar serviços permitidos para o colaborador.');
+        showOperationError('Erro ao carregar serviços permitidos para o colaborador.', error);
         setAllowedServiceIds([]);
         return;
       }
@@ -304,9 +302,8 @@ const EditAgendamentoPage: React.FC = () => {
           });
 
           setAvailableTimeSlots(formattedSlots);
-        } catch (error: any) {
-          console.error('Erro ao buscar horários disponíveis:', error);
-          showError('Erro ao buscar horários disponíveis: ' + error.message);
+        } catch (error: unknown) {
+          showOperationError('Erro ao buscar horários disponíveis.', error);
           setAvailableTimeSlots([]);
         } finally {
           setLoading(false);
@@ -384,9 +381,8 @@ const EditAgendamentoPage: React.FC = () => {
 
       showSuccess('Agendamento atualizado com sucesso!');
       navigate(`/agendamentos/${primaryCompanyId}`);
-    } catch (error: any) {
-      console.error('Erro ao atualizar agendamento:', error);
-      showError('Erro ao atualizar agendamento: ' + error.message);
+    } catch (error: unknown) {
+      showOperationError('Erro ao atualizar agendamento.', error);
     } finally {
       setLoading(false);
     }

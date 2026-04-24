@@ -15,6 +15,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -26,10 +33,7 @@ serve(async (req) => {
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
       console.error('Edge Function Error (invite-client): Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-      return new Response(JSON.stringify({ error: 'Server misconfigured: missing Supabase credentials' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Serviço temporariamente indisponível.' }, 500);
     }
 
     const supabaseAdmin = createClient(
@@ -46,10 +50,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('Edge Function Error (invite-client): Unauthorized - No Authorization header');
-      return new Response(JSON.stringify({ error: 'Unauthorized: No Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -57,10 +58,7 @@ serve(async (req) => {
 
     if (userError || !user) {
       console.error('Edge Function Error (invite-client): Auth error -', userError?.message || 'User not found');
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token or user not found' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const { clientEmail, clientName, companyId, clientPhone, clientBirthDate, clientZipCode, clientState, clientCity, clientAddress, clientNumber, clientNeighborhood, clientComplement, clientObservations, clientStatus, clientPoints } = await req.json();
@@ -72,10 +70,7 @@ serve(async (req) => {
 
     if (!clientEmail || !clientName || !companyId || !clientPhone || !clientBirthDate || !clientZipCode || !clientState || !clientCity || !clientAddress || !clientNumber || !clientNeighborhood) {
       console.error('Edge Function Error (invite-client): Missing required client data');
-      return new Response(JSON.stringify({ error: 'Missing required client data' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Dados obrigatórios do cliente ausentes.' }, 400);
     }
 
     // Check if the calling user (user.id) is an admin/proprietor of the companyId
@@ -90,10 +85,7 @@ serve(async (req) => {
       console.error('Edge Function Error (invite-client): Role check error -', roleError?.message || 'User not authorized for this company');
       console.error('Edge Function Debug (invite-client): User ID:', user.id, 'Company ID:', companyId);
       console.error('Edge Function Debug (invite-client): Role fetch error:', roleError);
-      return new Response(JSON.stringify({ error: 'Forbidden: User not authorized for this company' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Acesso negado para esta empresa.' }, 403);
     }
 
     // Fetch role_type description to verify if it's 'Proprietário' or 'Admin'
@@ -110,10 +102,7 @@ serve(async (req) => {
     if (roleTypeFetchError || !roleTypeData || !['Proprietário', 'Admin'].includes(roleTypeData.description)) {
       console.error('Edge Function Error (invite-client): Role type description error -', roleTypeFetchError?.message || 'User does not have sufficient privileges');
       console.error('Edge Function Debug (invite-client): Role type fetch error:', roleTypeFetchError);
-      return new Response(JSON.stringify({ error: 'Forbidden: User does not have sufficient privileges for this company' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Acesso negado para esta empresa.' }, 403);
     }
 
     // Função para gerar senha temporária segura (mesmo padrão de invite-collaborator)
@@ -181,23 +170,15 @@ serve(async (req) => {
       
       if (isUserExistsError) {
         console.log('Edge Function Debug (invite-client): Usuário já existe (erro do Supabase).');
-        return new Response(JSON.stringify({ 
+        return jsonResponse({ 
           error: 'Já existe um usuário cadastrado com este e-mail. Por favor, use outro e-mail.' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+        }, 400);
       }
       
       // Outro tipo de erro na criação
       console.error('Edge Function Error (invite-client): Error creating user:', createUserErrorData);
       createUserError = createUserErrorData;
-      return new Response(JSON.stringify({ 
-        error: 'Erro ao criar usuário para cliente: ' + createUserErrorData.message 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro ao criar usuário para cliente.' }, 400);
     }
 
     // Usuário criado com sucesso
@@ -357,13 +338,10 @@ serve(async (req) => {
       console.error('Edge Function Error (invite-client): Insert client error -', insertClientError.message);
       // Se a inserção do cliente falhar, o usuário já foi criado e o email já foi enviado
       // Isso é um problema, mas não vamos reverter tudo. Apenas logamos o erro.
-      return new Response(JSON.stringify({ 
-        error: insertClientError.message,
+      return jsonResponse({ 
+        error: 'Erro ao salvar dados do cliente.',
         warning: 'Usuário criado e email enviado, mas falha ao inserir dados do cliente na tabela clients'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, 500);
     }
 
     console.log('Edge Function Debug (invite-client): Client data inserted successfully:', clientData?.id);
@@ -373,21 +351,15 @@ serve(async (req) => {
       ? 'Cliente cadastrado com sucesso. Email com credenciais foi enviado.'
       : `Cliente cadastrado com sucesso. ATENÇÃO: O email não foi enviado. ${emailError || 'Verifique os logs.'}`;
     
-    return new Response(JSON.stringify({ 
+    return jsonResponse({ 
       message: responseMessage, 
       client: clientData,
       emailSent: emailSent,
       emailError: emailError || null,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (invite-client): Uncaught exception -', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (invite-client): Uncaught exception -', error);
+    return jsonResponse({ error: 'Erro interno ao convidar cliente.' }, 500);
   }
 });

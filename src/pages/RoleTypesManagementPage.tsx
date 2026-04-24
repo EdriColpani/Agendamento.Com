@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showSuccess, showOperationError } from '@/utils/toast';
 import { Loader2, ArrowLeft, UserCog, Edit, CheckCircle2, XCircle, Save, Plus } from 'lucide-react';
 import {
   AlertDialog,
@@ -54,9 +54,8 @@ const RoleTypesManagementPage: React.FC = () => {
 
       if (error) throw error;
       setRoleTypes(data || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar tipos de perfil:', error);
-      showError('Erro ao carregar tipos de perfil: ' + error.message);
+    } catch (error: unknown) {
+      showOperationError('Erro ao carregar tipos de perfil.', error);
     } finally {
       setLoading(false);
     }
@@ -113,9 +112,8 @@ const RoleTypesManagementPage: React.FC = () => {
 
       handleCancelEdit();
       fetchRoleTypes();
-    } catch (error: any) {
-      console.error('Erro ao salvar perfil:', error);
-      showError('Erro ao salvar perfil: ' + error.message);
+    } catch (error: unknown) {
+      showOperationError('Erro ao salvar perfil.', error);
     } finally {
       setSaving(false);
     }
@@ -136,9 +134,8 @@ const RoleTypesManagementPage: React.FC = () => {
       setDeleteDialogOpen(false);
       setRoleTypeToDelete(null);
       fetchRoleTypes();
-    } catch (error: any) {
-      console.error('Erro ao excluir perfil:', error);
-      showError('Erro ao excluir perfil: ' + error.message);
+    } catch (error: unknown) {
+      showOperationError('Erro ao excluir perfil.', error);
     } finally {
       setSaving(false);
     }

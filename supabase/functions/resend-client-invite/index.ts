@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -26,10 +33,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('Edge Function Error (resend-client-invite): Unauthorized - No Authorization header');
-      return new Response(JSON.stringify({ error: 'Unauthorized: No Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -37,10 +41,7 @@ serve(async (req) => {
 
     if (userError || !user) {
       console.error('Edge Function Error (resend-client-invite): Auth error -', userError?.message || 'User not found');
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token or user not found' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const { clientEmail, companyId } = await req.json();
@@ -52,10 +53,7 @@ serve(async (req) => {
 
     if (!clientEmail || !companyId) {
       console.error('Edge Function Error (resend-client-invite): Missing required data for resend');
-      return new Response(JSON.stringify({ error: 'Missing required client email or company ID' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'clientEmail e companyId são obrigatórios.' }, 400);
     }
 
     // Create a Supabase client with the service role key for admin operations
@@ -92,10 +90,7 @@ serve(async (req) => {
       console.error('Edge Function Error (resend-client-invite): Role check error -', roleError?.message || 'User not authorized for this company');
       console.error('Edge Function Debug (resend-client-invite): User ID:', user.id, 'Company ID:', companyId);
       console.error('Edge Function Debug (resend-client-invite): Role fetch error:', roleError);
-      return new Response(JSON.stringify({ error: 'Forbidden: User not authorized for this company' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Acesso negado para esta empresa.' }, 403);
     }
 
     // Fetch role_type description to verify if it's 'Proprietário' or 'Admin'
@@ -112,10 +107,7 @@ serve(async (req) => {
     if (roleTypeFetchError || !roleTypeData || !['Proprietário', 'Admin'].includes(roleTypeData.description)) {
       console.error('Edge Function Error (resend-client-invite): Role type description error -', roleTypeFetchError?.message || 'User does not have sufficient privileges');
       console.error('Edge Function Debug (resend-client-invite): Role type fetch error:', roleTypeFetchError);
-      return new Response(JSON.stringify({ error: 'Forbidden: User does not have sufficient privileges for this company' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Acesso negado para esta empresa.' }, 403);
     }
 
     let resendOperationError = null;
@@ -191,16 +183,10 @@ serve(async (req) => {
     }
 
     console.log('Edge Function Debug (resend-client-invite): Resend operation completed successfully.');
-    return new Response(JSON.stringify({ message: resendOperationMessage }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ message: resendOperationMessage }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (resend-client-invite): Uncaught exception -', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (resend-client-invite): Uncaught exception -', error);
+    return jsonResponse({ error: 'Erro interno ao reenviar convite.' }, 500);
   }
 });

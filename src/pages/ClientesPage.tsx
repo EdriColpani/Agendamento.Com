@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getStatusColor, createButton } from '@/lib/dashboard-utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast'; // Importar showSuccess
+import { showError, showOperationError, showSuccess } from '@/utils/toast'; // Importar showSuccess
 import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
@@ -58,7 +58,7 @@ const ClientesPage: React.FC = () => {
       .order('name', { ascending: true });
 
     if (error) {
-      showError('Erro ao carregar clientes: ' + error.message);
+      showOperationError('Erro ao carregar clientes.', error);
       console.error('Error fetching clients:', error);
       setClients([]);
     } else if (data) {
@@ -95,7 +95,7 @@ const ClientesPage: React.FC = () => {
       showSuccess(`Convite reenviado para ${client.email} com sucesso!`);
     } catch (error: any) {
       console.error('Erro ao reenviar convite:', error);
-      showError('Erro ao reenviar convite: ' + (error.message || 'Erro desconhecido.'));
+      showOperationError('Erro ao reenviar convite.', error);
     } finally {
       setResendingInviteId(null);
     }

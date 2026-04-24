@@ -10,7 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { showSuccess, showError } from '@/utils/toast';
+import { showSuccess, showError, showOperationError } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/SessionContextProvider';
 import { Calendar } from "@/components/ui/calendar"; // Importar Calendar
@@ -154,9 +154,8 @@ const NovoAgendamentoPage: React.FC = () => {
       if (servicesError) throw servicesError;
       setServices(servicesData);
 
-    } catch (error: any) {
-      console.error('Erro ao carregar dados iniciais:', error);
-      showError('Erro ao carregar dados: ' + error.message);
+    } catch (error: unknown) {
+      showOperationError('Erro ao carregar dados.', error);
     } finally {
       setLoadingData(false);
     }
@@ -175,10 +174,6 @@ const NovoAgendamentoPage: React.FC = () => {
   useEffect(() => {
     const loadAllowed = async () => {
       if (!selectedCollaboratorId || !currentCompanyId) {
-        console.log('NovoAgendamentoPage.loadAllowed: sem colaborador ou companyId', {
-          selectedCollaboratorId,
-          currentCompanyId,
-        });
         setAllowedServiceIds([]);
         setCommissionByService({});
         setValue('serviceIds', [], { shouldValidate: true });
@@ -186,10 +181,6 @@ const NovoAgendamentoPage: React.FC = () => {
       }
 
       // Sempre limpa serviços selecionados ao trocar de colaborador
-      console.log('NovoAgendamentoPage.loadAllowed: carregando serviços para colaborador', {
-        selectedCollaboratorId,
-        currentCompanyId,
-      });
       setValue('serviceIds', [], { shouldValidate: true });
 
       const { data, error } = await supabase
@@ -200,16 +191,11 @@ const NovoAgendamentoPage: React.FC = () => {
         .eq('active', true);
 
       if (error) {
-        console.error('NovoAgendamentoPage.loadAllowed: erro ao carregar serviços permitidos:', error);
-        showError('Erro ao carregar serviços permitidos para o colaborador.');
+        showOperationError('Erro ao carregar serviços permitidos para o colaborador.', error);
         setAllowedServiceIds([]);
         setCommissionByService({});
         return;
       }
-
-      console.log('NovoAgendamentoPage.loadAllowed: resultado collaborator_services', {
-        raw: data,
-      });
 
       const ids = (data || []).map((d: any) => d.service_id);
       const commissionMap = (data || []).reduce<Record<string, { type?: string; value?: number }>>(
@@ -219,8 +205,6 @@ const NovoAgendamentoPage: React.FC = () => {
         },
         {}
       );
-
-      console.log('NovoAgendamentoPage.loadAllowed: ids permitidos', ids);
 
       setCommissionByService(commissionMap);
       setAllowedServiceIds(ids);
@@ -263,9 +247,8 @@ const NovoAgendamentoPage: React.FC = () => {
             return `${format(startDateTime, 'HH:mm')} às ${format(endDateTime, 'HH:mm')}`;
           });
           setAvailableTimeSlots(formattedSlots);
-        } catch (error: any) {
-          console.error('Erro ao buscar horários disponíveis:', error);
-          showError('Erro ao buscar horários disponíveis: ' + error.message);
+        } catch (error: unknown) {
+          showOperationError('Erro ao buscar horários disponíveis.', error);
           setAvailableTimeSlots([]);
         } finally {
           setLoading(false);
@@ -346,10 +329,7 @@ const NovoAgendamentoPage: React.FC = () => {
             .eq('id', data.clientId);
           
           if (updateClientError) {
-            console.warn('Falha ao associar cliente auto-registrado à empresa:', updateClientError.message);
-            // Continue, mas loga o erro
-          } else {
-            console.log('Cliente auto-registrado associado à empresa primária com sucesso.');
+            // Não interrompe o fluxo principal de criação do agendamento.
           }
         }
       }
@@ -357,9 +337,8 @@ const NovoAgendamentoPage: React.FC = () => {
 
       showSuccess('Agendamento criado com sucesso!');
       navigate(`/agendamentos/${currentCompanyId}`); // Redirect to appointments list
-    } catch (error: any) {
-      console.error('Erro ao criar agendamento:', error);
-      showError('Erro ao criar agendamento: ' + error.message);
+    } catch (error: unknown) {
+      showOperationError('Erro ao criar agendamento.', error);
     } finally {
       setLoading(false);
     }

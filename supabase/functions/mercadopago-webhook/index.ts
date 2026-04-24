@@ -68,6 +68,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 /**
  * Verifica se o plano tem o menu WhatsApp e envia email de notificação se necessário
  * @param supabaseAdmin Cliente Supabase Admin
@@ -734,7 +741,7 @@ serve(async (req) => {
 
   if (!MERCADOPAGO_ACCESS_TOKEN) {
     console.error('MERCADOPAGO_ACCESS_TOKEN not set.');
-    return new Response(JSON.stringify({ error: 'Payment service not configured.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return jsonResponse({ error: 'Serviço de pagamento temporariamente indisponível.' }, 500);
   }
 
   const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -750,7 +757,7 @@ serve(async (req) => {
     console.log('Webhook Received:', { type, data });
 
     if (type !== 'payment' || !data || !data.id) {
-      return new Response(JSON.stringify({ received: true, message: 'Non-payment notification type received or missing data ID.' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return jsonResponse({ received: true, message: 'Notificação ignorada (tipo não suportado ou sem ID).' }, 200);
     }
 
     const paymentId = data.id;
@@ -798,14 +805,14 @@ serve(async (req) => {
     // Assinaturas PlanoAgenda (external_reference com underscores)
     if (!externalReference) {
         console.error('Missing external_reference in payment data.');
-        return new Response(JSON.stringify({ error: 'Missing external reference' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return jsonResponse({ error: 'Referência externa ausente no pagamento.' }, 400);
     }
     
     const parts = externalReference.split('_');
     // Updated check for parts length to include paymentAttemptId
     if (parts.length < 5) { 
         console.error('Invalid external_reference format:', externalReference);
-        return new Response(JSON.stringify({ error: 'Invalid external reference format' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        return jsonResponse({ error: 'Formato de referência externa inválido.' }, 400);
     }
     
     const [companyId, planId, finalDurationMonthsStr, couponId, extractedPaymentAttemptId] = parts;
@@ -842,7 +849,7 @@ serve(async (req) => {
     }
 
     if (payment.status !== 'approved') {
-      return new Response(JSON.stringify({ received: true, message: `Payment status is ${payment.status}, not approved.` }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return jsonResponse({ received: true, message: `Pagamento com status ${payment.status}.` }, 200);
     }
 
     // 3. Handle Subscription Activation/Extension (only if approved)
@@ -1030,20 +1037,14 @@ serve(async (req) => {
     }
 
     // 6. Acknowledge success to Mercado Pago
-    return new Response(JSON.stringify({ success: true, subscriptionId, status: payment.status }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ success: true, subscriptionId, status: payment.status }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (mercadopago-webhook):', error.message);
+  } catch (error: unknown) {
+    console.error('Edge Function Error (mercadopago-webhook):', error);
     // --- NEW: If an error occurs after paymentAttemptId is known, mark it as failed ---
     if (paymentAttemptId) {
         await supabaseAdmin.from('payment_attempts').update({ status: 'failed' }).eq('id', paymentAttemptId);
     }
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Erro interno ao processar webhook de pagamento.' }, 500);
   }
 });

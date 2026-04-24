@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showOperationError, showSuccess } from '@/utils/toast';
 import { Loader2, ArrowLeft, Menu, Edit, CheckCircle2, XCircle, Save, Plus, Trash2, HelpCircle } from 'lucide-react';
 import {
   AlertDialog,
@@ -108,7 +108,6 @@ const MenuManagementPage: React.FC = () => {
         }
 
         if (!plansError && menuPlansData) {
-          console.log('[MenuManagementPage] Planos vinculados encontrados:', menuPlansData);
           const plansMap: Record<string, string[]> = {};
           menuPlansData.forEach((mp: any) => {
             if (!plansMap[mp.menu_id]) {
@@ -116,7 +115,6 @@ const MenuManagementPage: React.FC = () => {
             }
             plansMap[mp.menu_id].push(mp.plan_id);
           });
-          console.log('[MenuManagementPage] Mapa de planos por menu:', plansMap);
           setMenuPlans(plansMap);
         } else {
           console.warn('[MenuManagementPage] Nenhum plano vinculado encontrado ou erro na busca');
@@ -124,7 +122,7 @@ const MenuManagementPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Erro ao carregar menus:', error);
-      showError('Erro ao carregar menus: ' + error.message);
+      showOperationError('Erro ao carregar menus.', error);
     } finally {
       setLoading(false);
     }
@@ -142,7 +140,7 @@ const MenuManagementPage: React.FC = () => {
       setPlans(data || []);
     } catch (error: any) {
       console.error('Erro ao carregar planos:', error);
-      showError('Erro ao carregar planos: ' + error.message);
+      showOperationError('Erro ao carregar planos.', error);
     }
   }, []);
 
@@ -224,7 +222,7 @@ const MenuManagementPage: React.FC = () => {
       fetchMenus();
     } catch (error: any) {
       console.error('Erro ao salvar menu:', error);
-      showError('Erro ao salvar menu: ' + error.message);
+      showOperationError('Erro ao salvar menu.', error);
     } finally {
       setSaving(false);
     }
@@ -247,7 +245,7 @@ const MenuManagementPage: React.FC = () => {
       fetchMenus();
     } catch (error: any) {
       console.error('Erro ao excluir menu:', error);
-      showError('Erro ao excluir menu: ' + error.message);
+      showOperationError('Erro ao excluir menu.', error);
     } finally {
       setSaving(false);
     }
@@ -267,9 +265,6 @@ const MenuManagementPage: React.FC = () => {
 
     setSaving(true);
     try {
-      console.log('Salvando planos para menu:', menuForPlans.id);
-      console.log('Planos selecionados:', selectedPlanIds);
-
       // Deletar todas as vinculações existentes
       const { error: deleteError } = await supabase
         .from('menu_plans')
@@ -281,16 +276,12 @@ const MenuManagementPage: React.FC = () => {
         throw deleteError;
       }
 
-      console.log('Vinculações antigas deletadas com sucesso');
-
       // Inserir novas vinculações
       if (selectedPlanIds.length > 0) {
         const menuPlansToInsert = selectedPlanIds.map(planId => ({
           menu_id: menuForPlans.id,
           plan_id: planId,
         }));
-
-        console.log('Inserindo novas vinculações:', menuPlansToInsert);
 
         const { data: insertedData, error: insertError } = await supabase
           .from('menu_plans')
@@ -302,9 +293,8 @@ const MenuManagementPage: React.FC = () => {
           throw insertError;
         }
 
-        console.log('Vinculações inseridas com sucesso:', insertedData);
       } else {
-        console.log('Nenhum plano selecionado, apenas removendo vinculações existentes');
+        // Sem planos selecionados: apenas removendo vinculações existentes.
       }
 
       // Atualizar o estado local imediatamente
@@ -322,7 +312,7 @@ const MenuManagementPage: React.FC = () => {
       await fetchMenus();
     } catch (error: any) {
       console.error('Erro completo ao salvar vinculação de planos:', error);
-      showError('Erro ao salvar vinculação de planos: ' + (error.message || 'Erro desconhecido'));
+      showOperationError('Erro ao salvar vinculação de planos.', error);
     } finally {
       setSaving(false);
     }

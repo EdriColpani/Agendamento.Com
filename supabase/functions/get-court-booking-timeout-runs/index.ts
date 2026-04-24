@@ -8,16 +8,20 @@ const corsHeaders = {
 
 const GLOBAL_ADMIN_CODES = ["GLOBAL_ADMIN", "ADMIN_GLOBAL", "ADMINISTRADOR_GLOBAL", "SUPER_ADMIN"];
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -25,10 +29,7 @@ serve(async (req) => {
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Supabase env vars ausentes." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   let body: { window_hours?: number; latest_limit?: number } = {};
@@ -40,10 +41,7 @@ serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const token = authHeader.replace("Bearer ", "");
@@ -59,10 +57,7 @@ serve(async (req) => {
     error: userError,
   } = await supabaseClient.auth.getUser(token);
   if (userError || !user) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const { data: typeRows, error: roleErr } = await supabaseAdmin
@@ -70,20 +65,14 @@ serve(async (req) => {
     .select("cod")
     .eq("user_id", user.id);
   if (roleErr) {
-    return new Response(JSON.stringify({ error: "Erro ao validar papel do usuário." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao validar permissões do usuário." }, 500);
   }
 
   const isGlobalAdmin = (typeRows ?? []).some((row) =>
     row?.cod && GLOBAL_ADMIN_CODES.includes(String(row.cod).toUpperCase())
   );
   if (!isGlobalAdmin) {
-    return new Response(JSON.stringify({ error: "Acesso negado. Requer admin global." }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Acesso negado. Requer administrador global." }, 403);
   }
 
   const windowHoursRaw = Number(body.window_hours ?? 24);
@@ -103,10 +92,7 @@ serve(async (req) => {
     .limit(latestLimit);
 
   if (latestErr) {
-    return new Response(JSON.stringify({ error: latestErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao carregar execuções de timeout." }, 500);
   }
 
   const sinceIso = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
@@ -116,10 +102,7 @@ serve(async (req) => {
     .gte("started_at", sinceIso);
 
   if (aggErr) {
-    return new Response(JSON.stringify({ error: aggErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao consolidar dados de timeout." }, 500);
   }
 
   const rows = aggRows ?? [];
@@ -130,12 +113,9 @@ serve(async (req) => {
     cancelled_window: rows.reduce((acc, row) => acc + Number(row.cancelled_count ?? 0), 0),
   };
 
-  return new Response(JSON.stringify({
+  return jsonResponse({
     ok: true,
     summary,
     latest_runs: latestRuns ?? [],
-  }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  }, 200);
 });

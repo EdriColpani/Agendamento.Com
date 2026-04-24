@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createButton } from '@/lib/dashboard-utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showSuccess, showOperationError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { Edit, Trash2, Clock, Briefcase, Shield } from 'lucide-react'; // Importar ícones
@@ -76,8 +76,7 @@ const ColaboradoresPage: React.FC = () => {
       .order('first_name', { ascending: true });
 
     if (error) {
-      showError('Erro ao carregar colaboradores: ' + error.message);
-      console.error('Error fetching collaborators:', error);
+      showOperationError('Erro ao carregar colaboradores.', error);
       setCollaborators([]);
     } else if (data) {
       const formattedData: Collaborator[] = data.map(col => ({
@@ -125,8 +124,7 @@ const ColaboradoresPage: React.FC = () => {
         .eq('company_id', primaryCompanyId);
 
       if (error) {
-        showError('Erro ao excluir colaborador: ' + error.message);
-        console.error('Error deleting collaborator:', error);
+        showOperationError('Erro ao excluir colaborador.', error);
       } else {
         showSuccess('Colaborador excluído com sucesso!');
         fetchCollaborators(); // Refresh the list

@@ -16,6 +16,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 /**
  * Verifica se o plano tem o menu WhatsApp e envia email de notificação se necessário
  * @param supabaseAdmin Cliente Supabase Admin
@@ -336,13 +343,13 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') ?? '', { auth: { persistSession: false } });
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return new Response(JSON.stringify({ error: 'Unauthorized: No Authorization header' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!authHeader) return jsonResponse({ error: 'Não autorizado.' }, 401);
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !user) {
       console.error('Edge Function - Authentication error:', userError);
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token or user not found' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     let requestData;
@@ -351,10 +358,7 @@ serve(async (req) => {
       console.log('Edge Function - Received request data:', JSON.stringify(requestData, null, 2));
     } catch (jsonError: any) {
       console.error('Edge Function - JSON parse error:', jsonError);
-      return new Response(JSON.stringify({ error: 'Invalid JSON in request body: ' + (jsonError?.message || 'Unknown error') }), { 
-        status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
+      return jsonResponse({ error: 'JSON inválido no corpo da requisição.' }, 400);
     }
 
     const { planId, companyId, planName, planPrice, durationMonths, coupon } = requestData;
@@ -738,17 +742,8 @@ serve(async (req) => {
         });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Edge Function Error (apply-coupon-and-subscribe): Uncaught exception:', error);
-    const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
-    console.error('Edge Function Error - Full error details:', {
-      message: errorMessage,
-      stack: error?.stack,
-      name: error?.name,
-    });
-    return new Response(JSON.stringify({ error: 'Failed to process subscription: ' + errorMessage }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Erro interno ao processar assinatura.' }, 500);
   }
 });

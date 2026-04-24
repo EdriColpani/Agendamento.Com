@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
@@ -139,10 +146,7 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -150,10 +154,7 @@ serve(async (req) => {
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Ambiente Supabase incompleto na função." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -165,47 +166,32 @@ serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const token = authHeader.replace("Bearer ", "");
   const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
   if (userError || !user) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "JSON inválido no corpo." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "JSON inválido no corpo." }, 400);
   }
 
   const action = typeof body.action === "string" ? body.action : "upsert";
   const companyId = typeof body.company_id === "string" ? body.company_id.trim() : "";
 
   if (!companyId) {
-    return new Response(JSON.stringify({ error: "company_id é obrigatório." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "company_id é obrigatório." }, 400);
   }
 
   const perm = await assertProprietarioOrAdmin(supabaseAdmin, user.id, companyId);
   if (!perm.ok) {
-    return new Response(JSON.stringify({ error: perm.message }), {
-      status: perm.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: perm.message }, perm.status);
   }
 
   if (action === "status") {
@@ -216,31 +202,19 @@ serve(async (req) => {
 
     if (error) {
       console.error("[upsert-company-payment-credentials] status select:", error);
-      return new Response(JSON.stringify({ error: "Erro ao consultar status." }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Erro ao consultar status." }, 500);
     }
 
-    return new Response(JSON.stringify({ data: data ?? [] }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ data: data ?? [] }, 200);
   }
 
   if (action !== "upsert") {
-    return new Response(JSON.stringify({ error: "action inválida. Use upsert ou status." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "action inválida. Use upsert ou status." }, 400);
   }
 
   const provider = typeof body.provider === "string" ? body.provider.trim() : "";
   if (provider !== "mercadopago") {
-    return new Response(JSON.stringify({ error: 'provider deve ser "mercadopago".' }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: 'provider deve ser "mercadopago".' }, 400);
   }
 
   const creds = body.credentials;
@@ -251,32 +225,20 @@ serve(async (req) => {
       : "";
 
   if (!accessToken) {
-    return new Response(JSON.stringify({ error: "credentials.access_token é obrigatório." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "credentials.access_token é obrigatório." }, 400);
   }
 
   const encKey = await getEncryptionKey();
   if (!encKey) {
-    return new Response(
-      JSON.stringify({
-        error:
-          "Chave de cifrado não configurada no servidor (COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY, base64 de 32 bytes).",
-      }),
-      {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+    return jsonResponse(
+      { error: "Serviço temporariamente indisponível." },
+      503,
     );
   }
 
   const mp = await validateMercadoPagoToken(accessToken);
   if (!mp.ok) {
-    return new Response(JSON.stringify({ error: mp.message }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: mp.message }, 400);
   }
 
   const encrypted_payload = await encryptCredentialsJson(
@@ -300,22 +262,13 @@ serve(async (req) => {
 
   if (upsertError) {
     console.error("[upsert-company-payment-credentials] upsert:", upsertError);
-    return new Response(JSON.stringify({ error: "Erro ao gravar credenciais." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao gravar credenciais." }, 500);
   }
 
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      provider,
-      is_active: true,
-      provider_account_id: mp.userId,
-    }),
-    {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    },
-  );
+  return jsonResponse({
+    ok: true,
+    provider,
+    is_active: true,
+    provider_account_id: mp.userId,
+  }, 200);
 });

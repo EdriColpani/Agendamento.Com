@@ -9,6 +9,13 @@ const corsHeaders = {
 
 type TimeoutRunStatus = "running" | "success" | "error";
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   const startedAt = new Date();
 
@@ -17,30 +24,21 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Supabase env vars ausentes." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   // Segurança: só aceitar chamadas internas com service role.
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.replace("Bearer ", "").trim();
   if (!token || token !== SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   let body: { timeout_minutes?: number; limit?: number } = {};
@@ -145,10 +143,7 @@ serve(async (req) => {
       status: "error",
       errorMessage: staleErr.message,
     });
-    return new Response(JSON.stringify({ error: staleErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro interno ao buscar reservas expiradas." }, 500);
   }
 
   const ids = (staleRows ?? []).map((r) => r.id);
@@ -192,10 +187,7 @@ serve(async (req) => {
       errorMessage: updErr.message,
       cancelledIds: ids.slice(0, 20),
     });
-    return new Response(JSON.stringify({ error: updErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro interno ao cancelar reservas expiradas." }, 500);
   }
 
   if (ids.length >= alertThreshold) {
@@ -216,15 +208,12 @@ serve(async (req) => {
     cancelledIds: ids.slice(0, 50),
   });
 
-  return new Response(JSON.stringify({
+  return jsonResponse({
     ok: true,
     timeout_minutes: timeoutMinutes,
     limit,
     processed: ids.length,
     alert_threshold: alertThreshold,
     cancelled_ids: ids,
-  }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  }, 200);
 });

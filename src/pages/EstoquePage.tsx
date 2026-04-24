@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from 'react-router-dom';
 import { createButton } from '@/lib/dashboard-utils';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showOperationError, showSuccess } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { Edit, Trash2, Package } from 'lucide-react';
@@ -48,7 +48,7 @@ const EstoquePage: React.FC = () => {
       .order('name', { ascending: true });
 
     if (error) {
-      showError('Erro ao carregar produtos: ' + error.message);
+      showOperationError('Erro ao carregar produtos.', error);
       console.error('Error fetching products:', error);
       setProducts([]);
     } else if (data) {
@@ -78,7 +78,7 @@ const EstoquePage: React.FC = () => {
         .eq('company_id', primaryCompanyId);
 
       if (error) {
-        showError('Erro ao excluir produto: ' + error.message);
+        showOperationError('Erro ao excluir produto.', error);
         console.error('Error deleting product:', error);
       } else {
         showSuccess('Produto excluído com sucesso!');

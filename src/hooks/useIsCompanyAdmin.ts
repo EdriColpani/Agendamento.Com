@@ -13,12 +13,10 @@ export function useIsCompanyAdmin() {
   useEffect(() => {
     const checkCompanyAdminStatus = async () => {
       if (sessionLoading) {
-        console.log('useIsCompanyAdmin: Session still loading, returning.');
         return; // Wait for session to load
       }
 
       if (!session?.user) {
-        console.log('useIsCompanyAdmin: No session user, not a company admin.');
         setIsCompanyAdmin(false);
         setLoadingCompanyAdminCheck(false);
         return;
@@ -26,7 +24,6 @@ export function useIsCompanyAdmin() {
 
       setLoadingCompanyAdminCheck(true);
       try {
-        console.log(`useIsCompanyAdmin: Checking user_companies for user ID: ${session.user.id}`);
         // Fetch user's roles from user_companies table using the get_user_context function
         const { data, error } = await supabase
           .rpc('get_user_context', { p_user_id: session.user.id });
@@ -47,7 +44,6 @@ export function useIsCompanyAdmin() {
           ].includes(desc);
         });
         setIsCompanyAdmin(userIsCompanyAdmin);
-        console.log(`useIsCompanyAdmin: User ${session.user.id} (email: ${session.user.email}) is Company Admin: ${userIsCompanyAdmin}`);
 
       } catch (error: any) {
         console.error('Error checking company admin status:', error);
@@ -55,7 +51,6 @@ export function useIsCompanyAdmin() {
         setIsCompanyAdmin(false);
       } finally {
         setLoadingCompanyAdminCheck(false);
-        console.log('useIsCompanyAdmin: Finished checking company admin status.');
       }
     };
 

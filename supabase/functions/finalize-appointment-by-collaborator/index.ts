@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -25,29 +32,20 @@ serve(async (req) => {
     // Verify the user's session
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: No Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token or user not found' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Não autorizado.' }, 401);
     }
 
     const { appointmentId, collaboratorId, paymentMethod } = await req.json();
 
     if (!appointmentId || !collaboratorId) {
-      return new Response(JSON.stringify({ error: 'Missing required data: appointmentId and collaboratorId are required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'appointmentId e collaboratorId são obrigatórios.' }, 400);
     }
 
     // Validar paymentMethod se fornecido
@@ -76,10 +74,7 @@ serve(async (req) => {
       .single();
 
     if (collaboratorError || !collaboratorData) {
-      return new Response(JSON.stringify({ error: 'Forbidden: Collaborator not found or not authorized' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Acesso negado para finalizar este agendamento.' }, 403);
     }
 
     // Buscar o agendamento e verificar se pertence ao colaborador
@@ -103,26 +98,17 @@ serve(async (req) => {
       .single();
 
     if (appointmentError || !appointmentData) {
-      return new Response(JSON.stringify({ error: 'Appointment not found or not authorized for this collaborator' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Agendamento não encontrado ou sem permissão.' }, 404);
     }
 
     // Verificar se o agendamento já foi finalizado
     if (appointmentData.status === 'concluido') {
-      return new Response(JSON.stringify({ error: 'Este agendamento já foi finalizado' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Este agendamento já foi finalizado.' }, 400);
     }
 
     // Verificar se o status permite finalização
     if (appointmentData.status !== 'pendente' && appointmentData.status !== 'confirmado') {
-      return new Response(JSON.stringify({ error: `Não é possível finalizar um agendamento com status: ${appointmentData.status}` }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: `Não é possível finalizar um agendamento com status: ${appointmentData.status}` }, 400);
     }
 
     // 1. Atualizar status do agendamento para 'concluido' e salvar payment_method
@@ -136,10 +122,7 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Error updating appointment status:', updateError);
-      return new Response(JSON.stringify({ error: 'Failed to update appointment status: ' + updateError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro ao finalizar agendamento.' }, 500);
     }
 
     // O agradecimento WhatsApp é criado pelo trigger handle_appointment_completion_whatsapp (UPDATE status = concluido).
@@ -262,22 +245,16 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ 
+    return jsonResponse({ 
       success: true,
       message: 'Agendamento finalizado com sucesso',
       commission: totalCommission,
       commissionDetails,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (finalize-appointment-by-collaborator): Uncaught exception:', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (finalize-appointment-by-collaborator): Uncaught exception:', error);
+    return jsonResponse({ error: 'Erro interno ao finalizar agendamento.' }, 500);
   }
 });
 

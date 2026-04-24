@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showOperationError, showSuccess } from '@/utils/toast';
 import { Loader2, ArrowLeft, Shield, Save } from 'lucide-react';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useSession } from '@/components/SessionContextProvider';
@@ -59,7 +59,7 @@ const MenuPermissionsPage: React.FC = () => {
       // 1. Buscar plano ativo da empresa
       const { data: subscriptionData, error: subError } = await supabase
         .from('company_subscriptions')
-        .select('plan_id, subscription_plans(id, name)')
+        .select('plan_id')
         .eq('company_id', primaryCompanyId)
         .eq('status', 'active')
         .order('start_date', { ascending: false })
@@ -129,7 +129,7 @@ const MenuPermissionsPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);
-      showError('Erro ao carregar dados: ' + error.message);
+      showOperationError('Erro ao carregar dados de permissões.', error);
     } finally {
       setLoading(false);
     }
@@ -194,7 +194,7 @@ const MenuPermissionsPage: React.FC = () => {
       fetchData(); // Recarregar para garantir sincronização
     } catch (error: any) {
       console.error('Erro ao salvar permissões:', error);
-      showError('Erro ao salvar permissões: ' + error.message);
+      showOperationError('Erro ao salvar permissões.', error);
     } finally {
       setSaving(false);
     }
