@@ -903,11 +903,19 @@ serve(async (req) => {
       now_BR: nowBR.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     });
 
+    const dueThreshold = new Date(nowTime + TOLERANCE_MS).toISOString();
+
     const { data: allPending, error: pendingError } = await supabaseAdmin
       .from<MessageSendLogRow>('message_send_log')
       .select('*')
       .eq('status', 'PENDING')
-      .limit(500);
+      // Ordenar por scheduled_for evita starvation de mensagens antigas
+      // quando a fila cresce.
+      .order('scheduled_for', { ascending: true })
+      // Buscar apenas o que ja esta no ponto de envio reduz carga e evita
+      // depender de filtro em memoria para filas muito grandes.
+      .lte('scheduled_for', dueThreshold)
+      .limit(2000);
 
     if (pendingError) {
       console.error('❌ ERRO ao buscar logs pendentes para envio:', pendingError);
