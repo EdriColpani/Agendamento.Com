@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showOperationError, showSuccess } from '@/utils/toast';
 import { invokeEdgeWithAuth, parseEdgeInvokeError } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
@@ -221,7 +221,7 @@ const SubscriptionPlansPage: React.FC = () => {
 
     } catch (error: any) {
       console.error('Erro ao carregar dados de planos/assinatura:', error);
-      showError('Erro ao carregar dados de planos: ' + error.message);
+      showOperationError('Erro ao carregar dados de planos.', error);
     } finally {
       setLoadingData(false);
     }
@@ -415,7 +415,7 @@ const SubscriptionPlansPage: React.FC = () => {
         await fetchSubscriptionData();
       } catch (error: any) {
         console.error('Erro ao alterar plano:', error);
-        showError(error?.message || 'Erro ao alterar plano.');
+        showOperationError('Erro ao alterar plano.', error);
       } finally {
         setLoadingData(false);
       }
@@ -570,7 +570,7 @@ const SubscriptionPlansPage: React.FC = () => {
 
     } catch (error: any) {
         console.error('Erro ao iniciar pagamento:', error);
-        showError('Erro ao iniciar pagamento: ' + (error.message || 'Erro desconhecido.'));
+        showOperationError('Erro ao iniciar pagamento.', error);
     } finally {
         setLoadingData(false);
     }
@@ -618,7 +618,7 @@ const SubscriptionPlansPage: React.FC = () => {
       setIsCancelModalOpen(false);
     } catch (error: any) {
       console.error('Erro ao cancelar assinatura via Edge Function:', error);
-      showError('Erro ao cancelar assinatura: ' + (error.message || 'Erro desconhecido.'));
+      showOperationError('Erro ao cancelar assinatura.', error);
     } finally {
       setCancelling(false);
     }

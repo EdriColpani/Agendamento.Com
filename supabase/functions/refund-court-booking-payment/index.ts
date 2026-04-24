@@ -142,31 +142,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
   const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Ambiente Supabase incompleto." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   const master = getCompanyPaymentMasterKey();
   if (!master) {
-    return new Response(JSON.stringify({ error: "Chave COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY não configurada." }), {
-      status: 503,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 503);
   }
 
   const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
@@ -174,29 +172,20 @@ serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const token = authHeader.replace("Bearer ", "");
   const { data: authData, error: authError } = await supabaseClient.auth.getUser(token);
   if (authError || !authData.user) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   let body: RefundRequestBody;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "JSON inválido no corpo." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "JSON inválido no corpo." }, 400);
   }
 
   const appointmentId = typeof body.appointment_id === "string" ? body.appointment_id.trim() : "";
@@ -207,18 +196,12 @@ serve(async (req) => {
   const cancellationReason = safeText(body.cancellation_reason, 250);
 
   if (!appointmentId || !companyId || !clientId) {
-    return new Response(JSON.stringify({ error: "appointment_id, company_id e client_id são obrigatórios." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "appointment_id, company_id e client_id são obrigatórios." }, 400);
   }
 
   const perm = await assertProprietarioOrAdmin(supabaseAdmin, authData.user.id, companyId);
   if (!perm.ok) {
-    return new Response(JSON.stringify({ error: perm.message }), {
-      status: perm.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: perm.message }, perm.status);
   }
 
   const { data: appointment, error: appointmentError } = await supabaseAdmin
@@ -228,36 +211,21 @@ serve(async (req) => {
     .maybeSingle();
 
   if (appointmentError || !appointment) {
-    return new Response(JSON.stringify({ error: "Reserva não encontrada." }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Reserva não encontrada." }, 404);
   }
   if (appointment.company_id !== companyId || appointment.booking_kind !== "court") {
-    return new Response(JSON.stringify({ error: "Reserva fora do módulo de quadras desta empresa." }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Reserva fora do módulo de quadras desta empresa." }, 403);
   }
   if (appointment.status === "concluido") {
-    return new Response(JSON.stringify({ error: "Não é permitido cancelar reserva concluída." }), {
-      status: 409,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não é permitido cancelar reserva concluída." }, 409);
   }
   if (appointment.payment_method !== "mercado_pago" || !appointment.mp_payment_id) {
-    return new Response(JSON.stringify({ error: "Reserva sem pagamento online elegível para estorno automático." }), {
-      status: 409,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Reserva sem pagamento online elegível para estorno automático." }, 409);
   }
 
   const accessToken = await getSellerAccessToken(supabaseAdmin, companyId, master);
   if (!accessToken) {
-    return new Response(JSON.stringify({ error: "Credencial Mercado Pago da empresa não está válida/ativa." }), {
-      status: 409,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Credencial Mercado Pago da empresa não está válida/ativa." }, 409);
   }
 
   const idempotencyKey = crypto.randomUUID();

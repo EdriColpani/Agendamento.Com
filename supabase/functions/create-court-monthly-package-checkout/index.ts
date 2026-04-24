@@ -60,6 +60,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 function packageExternalReference(packageId: string): string {
   return `courtpackage:${packageId}`;
 }
@@ -70,10 +77,7 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -82,19 +86,13 @@ serve(async (req) => {
   const SITE_URL = Deno.env.get("SITE_URL") ?? BRAND_SITE_URL;
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Ambiente Supabase incompleto." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.replace("Bearer ", "").trim();
   if (!token) {
-    return new Response(JSON.stringify({ error: "Token ausente." }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -107,28 +105,19 @@ serve(async (req) => {
 
   const { data: authData, error: authErr } = await supabaseUser.auth.getUser();
   if (authErr || !authData?.user) {
-    return new Response(JSON.stringify({ error: "Não autenticado." }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   let body: { package_id?: string };
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "JSON inválido." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "JSON inválido." }, 400);
   }
 
   const packageId = typeof body.package_id === "string" ? body.package_id.trim() : "";
   if (!packageId) {
-    return new Response(JSON.stringify({ error: "package_id é obrigatório." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "package_id é obrigatório." }, 400);
   }
 
   const { data: pkg, error: pkgErr } = await supabaseAdmin
@@ -138,10 +127,7 @@ serve(async (req) => {
     .maybeSingle();
 
   if (pkgErr || !pkg) {
-    return new Response(JSON.stringify({ error: "Pacote mensal não encontrado." }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Pacote mensal não encontrado." }, 404);
   }
 
   const { data: perm } = await supabaseAdmin
@@ -153,48 +139,25 @@ serve(async (req) => {
     .maybeSingle();
   const roleDescription = String((perm as { role_types?: { description?: string } } | null)?.role_types?.description || "");
   if (roleDescription !== "Proprietário" && roleDescription !== "Admin") {
-    return new Response(JSON.stringify({ error: "Sem permissão para gerar checkout deste pacote." }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Sem permissão para gerar checkout deste pacote." }, 403);
   }
 
   if (pkg.payment_method !== "mercado_pago") {
-    return new Response(JSON.stringify({ error: "Este pacote não está configurado para pagamento online." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Este pacote não está configurado para pagamento online." }, 400);
   }
 
   if (pkg.status !== "pending_payment") {
-    return new Response(JSON.stringify({ error: "Apenas pacotes pendentes podem abrir checkout." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Apenas pacotes pendentes podem abrir checkout." }, 400);
   }
 
   const total = Number(pkg.total_amount);
   if (Number.isNaN(total) || total < 0.5) {
-    return new Response(
-      JSON.stringify({ error: "Valor do pacote abaixo do mínimo do Mercado Pago (R$ 0,50) ou inválido." }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "Valor do pacote abaixo do mínimo do Mercado Pago (R$ 0,50) ou inválido." }, 400);
   }
 
   const master = getCompanyPaymentMasterKey();
   if (!master) {
-    return new Response(
-      JSON.stringify({
-        error: "Chave COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY não configurada nas Edge Functions.",
-      }),
-      {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 503);
   }
 
   const { data: cred, error: credErr } = await supabaseAdmin
@@ -206,22 +169,13 @@ serve(async (req) => {
     .maybeSingle();
 
   if (credErr || !cred?.encrypted_payload) {
-    return new Response(
-      JSON.stringify({ error: "A empresa ainda não configurou o Mercado Pago para recebimentos online." }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return jsonResponse({ error: "A empresa ainda não configurou o Mercado Pago para recebimentos online." }, 400);
   }
 
   const plain = await decryptCredentialsPayload(cred.encrypted_payload, master);
   const accessToken = plain?.access_token;
   if (typeof accessToken !== "string" || !accessToken.trim()) {
-    return new Response(JSON.stringify({ error: "Credencial Mercado Pago inválida no servidor." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Credencial Mercado Pago inválida no servidor." }, 500);
   }
 
   let courtLabel = "Quadra";
@@ -277,20 +231,14 @@ serve(async (req) => {
       // ignore
     }
     console.error("[create-court-monthly-package-checkout] MP error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 502,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Falha ao criar checkout no Mercado Pago." }, 502);
   }
 
   const mpData = await mpRes.json() as { id?: string; init_point?: string; sandbox_init_point?: string };
   const prefId = mpData.id;
   const initPoint = mpData.init_point || mpData.sandbox_init_point;
   if (!prefId || !initPoint) {
-    return new Response(JSON.stringify({ error: "Resposta inválida do Mercado Pago (sem init_point)." }), {
-      status: 502,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Resposta inválida do Mercado Pago." }, 502);
   }
 
   const { error: updErr } = await supabaseAdmin
@@ -304,20 +252,11 @@ serve(async (req) => {
 
   if (updErr) {
     console.error("[create-court-monthly-package-checkout] update package:", updErr);
-    return new Response(JSON.stringify({ error: "Erro ao registrar preferência no pacote." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao registrar preferência no pacote." }, 500);
   }
 
-  return new Response(
-    JSON.stringify({
-      preference_id: prefId,
-      init_point: initPoint,
-    }),
-    {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    },
-  );
+  return jsonResponse({
+    preference_id: prefId,
+    init_point: initPoint,
+  }, 200);
 });

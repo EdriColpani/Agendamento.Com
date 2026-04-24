@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Building, CheckCircle, XCircle, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showOperationError, showSuccess } from '@/utils/toast';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -70,7 +70,7 @@ const CompanyManagementPage: React.FC = () => {
       setCompanies(processedCompanies);
     } catch (error: any) {
       console.error('Error fetching companies:', error);
-      showError('Erro ao carregar empresas: ' + error.message);
+      showOperationError('Erro ao carregar empresas.', error);
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ const CompanyManagementPage: React.FC = () => {
       fetchCompanies(); // Refresh list
     } catch (error: any) {
       console.error('Error toggling company status:', error);
-      showError('Erro ao atualizar status da empresa: ' + error.message);
+      showOperationError('Erro ao atualizar status da empresa.', error);
     } finally {
       setLoading(false);
     }

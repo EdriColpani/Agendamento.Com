@@ -16,6 +16,13 @@ type ScheduledChangeRow = {
   to_plan_id: string;
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 async function applyScheduledDowngrades(
   supabaseAdmin: ReturnType<typeof createClient>,
   companyId: string,
@@ -116,10 +123,7 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -132,19 +136,13 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Não autorizado." }, 401);
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized: Invalid token or user not found" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Não autorizado." }, 401);
     }
 
     const body = await req.json();
@@ -159,16 +157,10 @@ serve(async (req) => {
     const maxRetries = Number.isFinite(maxRetriesRaw) && maxRetriesRaw >= 1 ? Math.min(Math.floor(maxRetriesRaw), 10) : 3;
 
     if (!companyId || !action) {
-      return new Response(JSON.stringify({ error: "companyId e action são obrigatórios." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "companyId e action são obrigatórios." }, 400);
     }
     if (!reason) {
-      return new Response(JSON.stringify({ error: "Motivo da ação é obrigatório para auditoria." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Motivo da ação é obrigatório para auditoria." }, 400);
     }
 
     const { data: globalAdminRows } = await supabaseAdmin
@@ -180,10 +172,7 @@ serve(async (req) => {
     const isGlobalAdmin = !!globalAdminRows?.length;
 
     if (!isGlobalAdmin) {
-      return new Response(JSON.stringify({ error: "Ação permitida apenas para Administrador Global." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Ação permitida apenas para Administrador Global." }, 403);
     }
 
     if (action === "retry_failed") {
@@ -205,15 +194,12 @@ serve(async (req) => {
         return retryCount < maxRetries;
       });
       if (!retryable.length) {
-        return new Response(JSON.stringify({
+        return jsonResponse({
           ok: true,
           action,
           retried: 0,
           message: "Nenhuma falha recuperável encontrada para downgrade dentro da política de retry.",
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        }, 200);
       }
 
       const nowIso = new Date().toISOString();
@@ -239,41 +225,29 @@ serve(async (req) => {
         }
       }
 
-      return new Response(JSON.stringify({
+      return jsonResponse({
         ok: true,
         action,
         retried: retriedIds.length,
         max_retries: maxRetries,
         reason,
         message: "Falhas de downgrade reenfileiradas para reprocessamento.",
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      }, 200);
     }
 
     if (action === "run_scheduler") {
       const result = await applyScheduledDowngrades(supabaseAdmin, companyId, limit, user.id, reason);
-      return new Response(JSON.stringify({
+      return jsonResponse({
         ok: true,
         action,
         reason,
         ...result,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      }, 200);
     }
 
-    return new Response(JSON.stringify({ error: "Ação inválida. Use retry_failed ou run_scheduler." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error?.message ?? "Erro ao executar ação administrativa." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Ação inválida. Use retry_failed ou run_scheduler." }, 400);
+  } catch {
+    return jsonResponse({ error: "Erro interno ao executar ação administrativa de assinatura." }, 500);
   }
 });
 

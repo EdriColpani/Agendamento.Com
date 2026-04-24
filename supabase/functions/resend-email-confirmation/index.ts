@@ -44,6 +44,13 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
@@ -62,10 +69,7 @@ serve(async (req) => {
     const { email } = await req.json();
 
     if (!email) {
-      return new Response(JSON.stringify({ error: 'Email é obrigatório.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Email é obrigatório.' }, 400);
     }
 
     // Sempre produção no e-mail transacional (evita localhost vindo de secrets/dashboard).
@@ -102,25 +106,16 @@ serve(async (req) => {
     const confirmationLink = buildVerifyLinkWithRedirect(linkData?.properties?.action_link, forcedRedirectTo);
 
     if (!confirmationLink) {
-      return new Response(JSON.stringify({ 
+      return jsonResponse({ 
         error: 'Não foi possível gerar o link de confirmação. Tente novamente mais tarde.' 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, 500);
     }
 
     // 2. ENVIAR EMAIL DIRETAMENTE VIA RESEND API (FUNCIONA DE VERDADE)
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
     if (!RESEND_API_KEY) {
-      return new Response(JSON.stringify({ 
-        error: 'RESEND_API_KEY não configurada. Configure no Supabase: Edge Functions > resend-email-confirmation > Settings > Secrets. Adicione: RESEND_API_KEY = sua-api-key-do-resend.com',
-        note: 'Crie conta gratuita em https://resend.com e obtenha a API Key'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Serviço de envio de email temporariamente indisponível.' }, 500);
     }
 
     const emailHtml = `
@@ -174,44 +169,24 @@ serve(async (req) => {
       
       // Erro 403 = modo de teste, só permite enviar para email próprio
       if (resendData.statusCode === 403 && resendData.message?.includes('testing emails')) {
-        return new Response(JSON.stringify({ 
-          error: 'Resend está em modo de teste. Você só pode enviar emails para o email da sua conta do Resend.',
-          solution: 'Para enviar para qualquer email: 1) Acesse resend.com > Domains > Add Domain, 2) Verifique seu domínio, 3) Use seu domínio no campo "from" (ex: noreply@seudominio.com)',
-          currentEmail: email,
-          note: 'Enquanto isso, use o email da sua conta do Resend para testar'
-        }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return jsonResponse({ 
+          error: 'Serviço de envio de email em modo restrito no momento.'
+        }, 403);
       }
       
-      return new Response(JSON.stringify({ 
-        error: 'Erro ao enviar email: ' + (resendData.message || 'Erro desconhecido'),
-        details: resendData
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro ao enviar email de confirmação.' }, 500);
     }
 
     console.log('Email sent successfully via Resend API:', resendData);
 
-    return new Response(JSON.stringify({ 
+    return jsonResponse({ 
       message: 'E-mail de confirmação enviado com sucesso! Verifique sua caixa de entrada e spam.',
       success: true,
       emailId: resendData.id
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }, 200);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Erro ao processar solicitação: ' + error.message
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Erro interno ao reenviar confirmação de email.' }, 500);
   }
 });

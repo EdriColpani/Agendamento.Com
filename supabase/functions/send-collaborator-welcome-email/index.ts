@@ -13,6 +13,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,10 +38,7 @@ serve(async (req) => {
         hasTemporaryPassword: !!temporaryPassword,
         hasLoginUrl: !!loginUrl,
       });
-      return new Response(JSON.stringify({ error: 'Missing required data for email' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Dados obrigatórios ausentes para envio de email.' }, 400);
     }
 
     // Tipo de usuário: 'cliente' ou 'colaborador' (padrão)
@@ -51,13 +55,10 @@ serve(async (req) => {
 
     if (!RESEND_API_KEY) {
       console.warn('Edge Function Warning (send-collaborator-welcome-email): RESEND_API_KEY não configurada. Email não será enviado.');
-      return new Response(JSON.stringify({ 
+      return jsonResponse({ 
         success: false, 
         message: 'Email service not configured' 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, 200);
     }
 
     const emailHtml = `
@@ -125,13 +126,10 @@ serve(async (req) => {
 
     if (resendResponse.ok) {
       console.log('Edge Function Debug (send-collaborator-welcome-email): Email de boas-vindas enviado com sucesso via Resend API para:', email);
-      return new Response(JSON.stringify({ 
+      return jsonResponse({ 
         success: true, 
         message: 'Email sent successfully' 
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, 200);
     } else {
       console.error('Edge Function Error (send-collaborator-welcome-email): Resend API error:', resendData);
       
@@ -139,25 +137,19 @@ serve(async (req) => {
         console.warn('Edge Function Warning (send-collaborator-welcome-email): Resend está em modo de teste. Você só pode enviar emails para o email da sua conta do Resend.');
       }
       
-      return new Response(JSON.stringify({ 
+      return jsonResponse({ 
         success: false, 
         message: 'Failed to send email',
         error: resendData 
-      }), {
-        status: 200, // Retorna 200 para não quebrar o fluxo, mas indica falha
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, 200); // Retorna 200 para não quebrar o fluxo, mas indica falha
     }
 
-  } catch (error: any) {
-    console.error('Edge Function Error (send-collaborator-welcome-email): Uncaught exception:', error.message);
-    return new Response(JSON.stringify({ 
+  } catch (error: unknown) {
+    console.error('Edge Function Error (send-collaborator-welcome-email): Uncaught exception:', error);
+    return jsonResponse({ 
       success: false, 
-      error: error.message 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+      error: 'Erro interno ao enviar email de boas-vindas.' 
+    }, 500);
   }
 });
 

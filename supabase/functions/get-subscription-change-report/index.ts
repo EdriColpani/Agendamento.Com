@@ -11,16 +11,20 @@ const GLOBAL_ADMIN_CODES = ["GLOBAL_ADMIN", "ADMIN_GLOBAL", "ADMINISTRADOR_GLOBA
 
 type SummaryStatus = "pending_payment" | "scheduled" | "applied" | "failed" | "cancelled";
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -33,19 +37,13 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Não autorizado." }, 401);
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized: Invalid token or user not found" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Não autorizado." }, 401);
     }
 
     let body: { companyId?: string; days?: number; statusFilter?: SummaryStatus | "all"; page?: number; pageSize?: number } = {};
@@ -57,10 +55,7 @@ serve(async (req) => {
 
     const companyId = String(body.companyId ?? "").trim();
     if (!companyId) {
-      return new Response(JSON.stringify({ error: "companyId é obrigatório." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "companyId é obrigatório." }, 400);
     }
 
     const daysRaw = Number(body.days ?? 30);
@@ -86,10 +81,7 @@ serve(async (req) => {
     const isGlobalAdmin = !!globalAdminRows?.length;
 
     if (!isGlobalAdmin) {
-      return new Response(JSON.stringify({ error: "Relatório disponível apenas para Administrador Global." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Relatório disponível apenas para Administrador Global." }, 403);
     }
 
     const statuses: SummaryStatus[] = ["pending_payment", "scheduled", "applied", "failed", "cancelled"];
@@ -152,7 +144,7 @@ serve(async (req) => {
       summary[entry.status] = entry.count;
     }
 
-    return new Response(JSON.stringify({
+    return jsonResponse({
       company_id: companyId,
       period_days: days,
       from: fromIso,
@@ -168,15 +160,9 @@ serve(async (req) => {
       recent_requests: recentRequests ?? [],
       recent_requests_total: recentRequestsCount ?? 0,
       recent_requests_has_more: (recentRequestsCount ?? 0) > (fromIndex + pageSize),
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error?.message ?? "Erro ao gerar relatório." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }, 200);
+  } catch {
+    return jsonResponse({ error: "Erro interno ao gerar relatório de trocas de plano." }, 500);
   }
 });
 

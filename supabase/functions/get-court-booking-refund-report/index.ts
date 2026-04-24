@@ -6,11 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const GLOBAL_ADMIN_CODES = ["GLOBAL_ADMIN", "ADMIN_GLOBAL", "ADMINISTRADOR_GLOBAL", "SUPER_ADMIN"];
+
 type Body = {
   window_hours?: number;
   latest_limit?: number;
   company_id?: string;
 };
+
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 function normalizeRole(input: string): string {
   return input.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -50,23 +59,31 @@ async function assertProprietarioOrAdmin(
   return { ok: true };
 }
 
+async function isGlobalAdmin(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("type_user")
+    .select("cod")
+    .eq("user_id", userId)
+    .in("cod", GLOBAL_ADMIN_CODES)
+    .limit(1);
+  if (error || !data?.length) return false;
+  return true;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
   const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Supabase env vars ausentes." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   let body: Body = {};
@@ -86,18 +103,12 @@ serve(async (req) => {
     : 30;
   const companyIdFilter = typeof body.company_id === "string" ? body.company_id.trim() : "";
   if (!companyIdFilter) {
-    return new Response(JSON.stringify({ error: "company_id é obrigatório." }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "company_id é obrigatório." }, 400);
   }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized: No Authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const token = authHeader.replace("Bearer ", "");
@@ -110,18 +121,18 @@ serve(async (req) => {
 
   const { data: authData, error: authError } = await supabaseClient.auth.getUser(token);
   if (authError || !authData.user) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
-  const perm = await assertProprietarioOrAdmin(supabaseAdmin, authData.user.id, companyIdFilter);
-  if (!perm.ok) {
-    return new Response(JSON.stringify({ error: perm.message }), {
-      status: perm.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  const userIsGlobalAdmin = await isGlobalAdmin(supabaseAdmin, authData.user.id);
+  if (!userIsGlobalAdmin) {
+    const perm = await assertProprietarioOrAdmin(supabaseAdmin, authData.user.id, companyIdFilter);
+    if (!perm.ok) {
+      return new Response(JSON.stringify({ error: perm.message }), {
+        status: perm.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   const sinceIso = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
@@ -134,10 +145,7 @@ serve(async (req) => {
     .gte("cancelled_at", sinceIso)
     .limit(3000);
   if (cancelledErr) {
-    return new Response(JSON.stringify({ error: cancelledErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao carregar cancelamentos de quadra." }, 500);
   }
 
   const { data: latestAttempts, error: attemptsErr } = await supabaseAdmin
@@ -148,10 +156,7 @@ serve(async (req) => {
     .order("attempted_at", { ascending: false })
     .limit(latestLimit);
   if (attemptsErr) {
-    return new Response(JSON.stringify({ error: attemptsErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro ao carregar tentativas de estorno." }, 500);
   }
 
   // Esta tabela de runs é global (sem company_id). Para evitar vazamento entre empresas,
@@ -188,15 +193,12 @@ serve(async (req) => {
     no_reason_count: rows.filter((r) => !r.cancellation_reason || !r.cancellation_reason.trim()).length,
   };
 
-  return new Response(JSON.stringify({
+  return jsonResponse({
     ok: true,
     summary,
     top_reasons: topReasons,
     payment_type_counts: paymentTypeCounts,
     latest_attempts: attemptRows,
     latest_reconciliation_runs: runRows ?? [],
-  }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  }, 200);
 });

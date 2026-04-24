@@ -15,6 +15,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,10 +36,7 @@ serve(async (req) => {
 
     if (!email || !firstName || !lastName || !password) {
       console.error('Edge Function Error (signup-client): Missing required data');
-      return new Response(JSON.stringify({ error: 'Missing required data: email, firstName, lastName, password' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Dados obrigatórios ausentes: email, firstName, lastName e password.' }, 400);
     }
 
     // Create a Supabase client with the service role key for admin operations
@@ -84,23 +88,15 @@ serve(async (req) => {
       
       if (isUserExistsError) {
         console.log('Edge Function Debug (signup-client): Usuário já existe (erro do Supabase).');
-        return new Response(JSON.stringify({ 
+        return jsonResponse({ 
           error: 'Já existe um usuário cadastrado com este e-mail. Por favor, use outro e-mail.' 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        }, 400);
       }
       
       // Outro tipo de erro na criação
       console.error('Edge Function Error (signup-client): Error creating user:', createUserErrorData);
       createUserError = createUserErrorData;
-      return new Response(JSON.stringify({ 
-        error: 'Erro ao criar usuário: ' + createUserErrorData.message 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro ao criar usuário.' }, 400);
     }
 
     // Usuário criado com sucesso
@@ -252,13 +248,10 @@ serve(async (req) => {
       console.error('Edge Function Error (signup-client): Insert client error -', insertClientError.message);
       // Se a inserção do cliente falhar, o usuário já foi criado e o email já foi enviado
       // Isso é um problema, mas não vamos reverter tudo. Apenas logamos o erro.
-      return new Response(JSON.stringify({ 
-        error: insertClientError.message,
+      return jsonResponse({ 
+        error: 'Erro ao salvar dados do cliente.',
         warning: 'Usuário criado e email enviado, mas falha ao inserir dados do cliente na tabela clients'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, 500);
     }
 
     console.log('Edge Function Debug (signup-client): Client data inserted successfully:', clientData?.id);
@@ -268,22 +261,16 @@ serve(async (req) => {
       ? 'Cadastro realizado com sucesso. Email de confirmação foi enviado.'
       : `Cadastro realizado com sucesso. ATENÇÃO: O email não foi enviado. ${emailError || 'Verifique os logs.'}`;
     
-    return new Response(JSON.stringify({ 
+    return jsonResponse({ 
       message: responseMessage, 
       client: clientData,
       emailSent: emailSent,
       emailError: emailError || null,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (signup-client): Uncaught exception -', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (signup-client): Uncaught exception -', error);
+    return jsonResponse({ error: 'Erro interno ao cadastrar cliente.' }, 500);
   }
 });
 

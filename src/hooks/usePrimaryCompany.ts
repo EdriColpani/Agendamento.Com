@@ -41,7 +41,6 @@ export function usePrimaryCompany() {
 
       setLoadingPrimaryCompany(true);
       try {
-        console.log('usePrimaryCompany: Buscando contexto do usuário para user_id:', session.user.id);
         const { data, error } = await supabase
           .rpc('get_user_context', { p_user_id: session.user.id });
 
@@ -50,7 +49,6 @@ export function usePrimaryCompany() {
           throw error;
         }
 
-        console.log('usePrimaryCompany: Dados retornados do get_user_context:', data);
         const primaryCompany = data.find((company: UserCompanyContext) => company.is_primary);
 
         let foundCompanyId: string | null = null;
@@ -59,20 +57,17 @@ export function usePrimaryCompany() {
         if (primaryCompany) {
           foundCompanyId = primaryCompany.company_id;
           foundCompanyName = primaryCompany.company_name;
-          console.log('usePrimaryCompany: Empresa primária encontrada em user_companies:', foundCompanyId, foundCompanyName);
         } else {
           // Se não encontrou empresa primária em user_companies, buscar qualquer empresa
           const anyCompany = data.find((company: UserCompanyContext) => company.company_id);
           if (anyCompany) {
             foundCompanyId = anyCompany.company_id;
             foundCompanyName = anyCompany.company_name;
-            console.log('usePrimaryCompany: Empresa (não primária) encontrada em user_companies:', foundCompanyId, foundCompanyName);
           }
         }
 
         // Se não encontrou em user_companies, buscar em collaborators (para colaboradores)
         if (!foundCompanyId) {
-          console.log('usePrimaryCompany: Buscando em collaborators...');
           const { data: collaboratorData, error: collaboratorError } = await supabase
             .from('collaborators')
             .select('company_id')
@@ -87,7 +82,6 @@ export function usePrimaryCompany() {
 
           if (collaboratorData?.company_id) {
             foundCompanyId = collaboratorData.company_id;
-            console.log('usePrimaryCompany: ✅ Empresa encontrada em collaborators:', foundCompanyId);
           }
         }
 
@@ -97,7 +91,6 @@ export function usePrimaryCompany() {
           // Se já temos o nome da empresa (de user_companies), usar diretamente
           if (foundCompanyName) {
             setPrimaryCompanyName(foundCompanyName);
-            console.log('usePrimaryCompany: Nome da empresa carregado de user_companies:', foundCompanyName);
           } else {
             // Se não temos o nome, buscar na tabela companies
             const { data: companyNameData, error: companyNameError } = await supabase
@@ -111,11 +104,9 @@ export function usePrimaryCompany() {
               setPrimaryCompanyName(null);
             } else {
               setPrimaryCompanyName(companyNameData.name);
-              console.log('usePrimaryCompany: Nome da empresa carregado de companies:', companyNameData.name);
             }
           }
         } else {
-          console.warn('usePrimaryCompany: ⚠️ Nenhuma empresa encontrada (nem em user_companies nem em collaborators)');
           setPrimaryCompanyId(null);
           setPrimaryCompanyName(null);
         }

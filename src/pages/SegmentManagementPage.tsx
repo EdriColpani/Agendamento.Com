@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { showSuccess, showError } from '@/utils/toast';
+import { showSuccess, showError, showOperationError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,7 +81,7 @@ const SegmentManagementPage: React.FC = () => {
       .order('name', { ascending: true });
 
     if (error) {
-      showError('Erro ao carregar áreas de atuação: ' + error.message);
+      showOperationError('Erro ao carregar áreas de atuação.', error);
       console.error('Error fetching areas:', error);
     } else if (data) {
       setAreas(data);
@@ -109,7 +109,7 @@ const SegmentManagementPage: React.FC = () => {
       .order('name', { ascending: true });
 
     if (error) {
-      showError('Erro ao carregar segmentos: ' + error.message);
+      showOperationError('Erro ao carregar segmentos.', error);
       console.error('Error fetching segments:', error);
     } else if (data) {
       const normalized = (data as Record<string, unknown>[]).map((row) => ({
@@ -158,7 +158,7 @@ const SegmentManagementPage: React.FC = () => {
         .eq('user_id', session.user.id);
 
       if (error) {
-        showError('Erro ao excluir segmento: ' + error.message);
+        showOperationError('Erro ao excluir segmento.', error);
         console.error('Error deleting segment:', error);
       } else {
         showSuccess('Segmento excluído com sucesso!');
@@ -203,7 +203,7 @@ const SegmentManagementPage: React.FC = () => {
     }
 
     if (error) {
-      showError('Erro ao ' + (editingSegment ? 'atualizar' : 'cadastrar') + ' segmento: ' + error.message);
+      showOperationError(`Erro ao ${editingSegment ? 'atualizar' : 'cadastrar'} segmento.`, error);
       console.error('Error saving segment:', error);
     } else {
       showSuccess('Segmento ' + (editingSegment ? 'atualizado' : 'cadastrado') + ' com sucesso!');

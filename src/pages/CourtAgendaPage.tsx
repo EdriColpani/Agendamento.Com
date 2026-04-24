@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError, showSuccess, showOperationError, sanitizeErrorMessage } from '@/utils/toast';
 import { createCourtBooking } from '@/services/courtBookingService';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
@@ -129,7 +129,7 @@ const CourtAgendaPage: React.FC = () => {
       .eq('is_active', true)
       .order('display_order', { ascending: true });
     if (error) {
-      showError('Erro ao carregar quadras: ' + error.message);
+      showOperationError('Erro ao carregar quadras.', error);
       setCourts([]);
       return;
     }
@@ -144,7 +144,7 @@ const CourtAgendaPage: React.FC = () => {
       .eq('company_id', primaryCompanyId)
       .order('name', { ascending: true });
     if (error) {
-      showError('Erro ao carregar clientes: ' + error.message);
+      showOperationError('Erro ao carregar clientes.', error);
       setClients([]);
       return;
     }
@@ -218,7 +218,10 @@ const CourtAgendaPage: React.FC = () => {
             error: null,
           };
         } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e);
+          const msg = sanitizeErrorMessage(
+            e instanceof Error ? e.message : String(e),
+            'Não foi possível carregar a agenda da quadra.',
+          );
           nextAgendas[court.id] = {
             workingStart: null,
             workingEnd: null,
@@ -328,8 +331,7 @@ const CourtAgendaPage: React.FC = () => {
       setBookingContext(null);
       await refreshAgenda();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      showError(msg);
+      showOperationError('Não foi possível criar a reserva.', e);
     } finally {
       setBookingSubmitting(false);
     }

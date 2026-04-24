@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 // E-mail de destino padrão (pode ser substituído pelo e-mail do GLOBAL_ADMIN)
 const DEFAULT_ADMIN_EMAIL = 'admin@tipagenda.com'; 
 
@@ -25,10 +32,7 @@ serve(async (req) => {
     const { name, email, phone_number, description } = await req.json();
 
     if (!name || !email || !phone_number) {
-      return new Response(JSON.stringify({ error: 'Missing required contact data' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Dados obrigatórios de contato ausentes.' }, 400);
     }
 
     // 1. Encontrar o e-mail do Administrador Global (ou usar o padrão)
@@ -105,16 +109,10 @@ serve(async (req) => {
         // Não lançamos erro 500, pois a inserção no DB já ocorreu no frontend.
     }
 
-    return new Response(JSON.stringify({ message: 'Contact request processed and email sent.' }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ message: 'Solicitação de contato processada.' }, 200);
 
-  } catch (error: any) {
-    console.error('Edge Function Error (send-contact-request-email): Uncaught exception -', error.message);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: unknown) {
+    console.error('Edge Function Error (send-contact-request-email): Uncaught exception -', error);
+    return jsonResponse({ error: 'Erro interno ao processar solicitação de contato.' }, 500);
   }
 });

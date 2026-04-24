@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, User, Trash2, CheckCircle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showOperationError, showSuccess } from '@/utils/toast';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, parseISO } from 'date-fns';
@@ -39,7 +39,7 @@ const ContactRequestsPage: React.FC = () => {
       setRequests(data as ContactRequest[]);
     } catch (error: any) {
       console.error('Erro ao carregar solicitações de contato:', error);
-      showError('Erro ao carregar solicitações: ' + error.message);
+      showOperationError('Erro ao carregar solicitações.', error);
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ const ContactRequestsPage: React.FC = () => {
       fetchRequests();
     } catch (error: any) {
       console.error('Erro ao atualizar status:', error);
-      showError('Erro ao atualizar status: ' + error.message);
+      showOperationError('Erro ao atualizar status da solicitação.', error);
     } finally {
       setUpdatingId(null);
     }

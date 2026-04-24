@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Zap, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { showError } from '@/utils/toast';
+import { showOperationError } from '@/utils/toast';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -113,7 +113,7 @@ const UserManagementPage: React.FC = () => {
       setUsers(processedUsers);
     } catch (error: any) {
       console.error('[UserManagementPage] Erro ao carregar usuários:', error);
-      showError('Erro ao carregar usuários: ' + error.message);
+      showOperationError('Erro ao carregar usuários.', error);
     } finally {
       setLoading(false);
     }

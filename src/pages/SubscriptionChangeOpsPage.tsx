@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertTriangle, BarChart3, Download, RefreshCcw } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { AlertTriangle, ArrowLeft, BarChart3, Download, RefreshCcw } from 'lucide-react';
 import { parseISO, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
+import { supabase } from '@/integrations/supabase/client';
 import { invokeEdgeWithAuth, parseEdgeInvokeError } from '@/utils/edge-invoke';
 import { showError, showSuccess } from '@/utils/toast';
 
@@ -36,11 +38,17 @@ interface SubscriptionChangeReport {
   recent_requests_has_more?: boolean;
 }
 
+type CompanyOption = { id: string; name: string };
+
 const SubscriptionChangeOpsPage: React.FC = () => {
-  const { primaryCompanyId } = usePrimaryCompany();
-  const { isGlobalAdmin } = useIsGlobalAdmin();
+  const navigate = useNavigate();
+  const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
 
   const canManage = isGlobalAdmin;
+
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   const [report, setReport] = useState<SubscriptionChangeReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,13 +60,42 @@ const SubscriptionChangeOpsPage: React.FC = () => {
   const [actionTarget, setActionTarget] = useState<'retry_failed' | 'run_scheduler' | null>(null);
   const [actionReason, setActionReason] = useState('');
 
+  useEffect(() => {
+    if (!canManage || loadingGlobalAdminCheck) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingCompanies(true);
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        const list = (data ?? []).map((c) => ({ id: c.id, name: c.name || 'Sem nome' }));
+        if (cancelled) return;
+        setCompanies(list);
+        if (list.length > 0) {
+          setSelectedCompanyId((prev) => (prev && list.some((x) => x.id === prev) ? prev : list[0].id));
+        }
+      } catch (e: unknown) {
+        showError(e instanceof Error ? e.message : 'Erro ao carregar empresas.');
+        setCompanies([]);
+      } finally {
+        if (!cancelled) setLoadingCompanies(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canManage, loadingGlobalAdminCheck]);
+
   const loadReport = useCallback(async () => {
-    if (!primaryCompanyId || !canManage) return;
+    if (!selectedCompanyId || !canManage) return;
     setLoading(true);
     try {
       const response = await invokeEdgeWithAuth('get-subscription-change-report', {
         body: {
-          companyId: primaryCompanyId,
+          companyId: selectedCompanyId,
           days: reportDays,
           statusFilter,
           page,
@@ -74,13 +111,13 @@ const SubscriptionChangeOpsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [primaryCompanyId, canManage, reportDays, statusFilter, page]);
+  }, [selectedCompanyId, canManage, reportDays, statusFilter, page]);
 
   useEffect(() => {
-    if (canManage && primaryCompanyId) {
-      loadReport();
+    if (canManage && selectedCompanyId) {
+      void loadReport();
     }
-  }, [canManage, primaryCompanyId, loadReport]);
+  }, [canManage, selectedCompanyId, loadReport]);
 
   useEffect(() => {
     setPage(1);
@@ -93,7 +130,7 @@ const SubscriptionChangeOpsPage: React.FC = () => {
   };
 
   const executeAction = async () => {
-    if (!primaryCompanyId || !actionTarget) return;
+    if (!selectedCompanyId || !actionTarget) return;
     const reason = actionReason.trim();
     if (!reason) {
       showError('Informe um motivo para auditoria antes de continuar.');
@@ -104,7 +141,7 @@ const SubscriptionChangeOpsPage: React.FC = () => {
     try {
       const response = await invokeEdgeWithAuth('admin-subscription-change-actions', {
         body: {
-          companyId: primaryCompanyId,
+          companyId: selectedCompanyId,
           action: actionTarget,
           reason,
           days: 7,
@@ -192,21 +229,91 @@ const SubscriptionChangeOpsPage: React.FC = () => {
     );
   }
 
+  if (loadingGlobalAdminCheck) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <p className="text-gray-700">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (loadingCompanies) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <p className="text-gray-700">Carregando empresas...</p>
+      </div>
+    );
+  }
+
+  if (companies.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" className="!rounded-button" onClick={() => navigate('/admin-dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+          <h1 className="text-3xl font-bold text-gray-900">Operações de Assinatura</h1>
+        </div>
+        <Alert>
+          <AlertDescription>Nenhuma empresa cadastrada. Cadastre empresas no sistema para acompanhar operações de troca de plano.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-3xl font-bold text-gray-900">Operações de Assinatura</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="ghost" className="!rounded-button" onClick={() => navigate('/admin-dashboard')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Operações de Assinatura</h1>
+          </div>
+          <p className="text-sm text-gray-600 max-w-3xl">
+            Este painel exibe <strong>operações de troca de plano</strong> (upgrade, downgrade, pagamento proporcional, fila e reconciliador) registradas em{' '}
+            <code className="text-xs">subscription_change_requests</code>. Não exibe a primeira adesão ao plano nem faturamento geral — isso fica no fluxo de
+            assinatura/cupom e no gateway.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button variant="outline" className="!rounded-button whitespace-nowrap" onClick={exportCsv}>
             <Download className="h-4 w-4 mr-2" />
             Exportar CSV
           </Button>
-          <Button variant="outline" className="!rounded-button whitespace-nowrap" onClick={loadReport} disabled={loading || runningAction}>
+          <Button
+            variant="outline"
+            className="!rounded-button whitespace-nowrap"
+            onClick={() => void loadReport()}
+            disabled={loading || runningAction || !selectedCompanyId}
+          >
             <RefreshCcw className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
         </div>
       </div>
+
+      {selectedCompanyId && (
+        <div className="max-w-md space-y-2">
+          <Label htmlFor="sub-ops-company">Empresa</Label>
+          <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+            <SelectTrigger id="sub-ops-company" className="w-full">
+              <SelectValue placeholder="Selecione a empresa" />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-gray-500">Os números e o histórico abaixo referem-se apenas à empresa selecionada.</p>
+        </div>
+      )}
 
       <Card className="border-gray-200">
         <CardHeader>

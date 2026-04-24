@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createButton, createCard } from '@/lib/dashboard-utils';
 import { supabase } from '@/integrations/supabase/client';
-import { showError } from '@/utils/toast';
+import { showOperationError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useMenuItems } from '@/hooks/useMenuItems';
@@ -76,7 +76,7 @@ const FinanceiroPage: React.FC = () => {
 
     } catch (error: any) {
       console.error('Erro ao carregar transações financeiras:', error);
-      showError('Erro ao carregar dados financeiros: ' + error.message);
+      showOperationError('Erro ao carregar dados financeiros.', error);
       setTransactions([]);
     } finally {
       setLoadingTransactions(false);

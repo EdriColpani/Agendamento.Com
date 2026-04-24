@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getStatusColor, createButton } from '@/lib/dashboard-utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { showError } from '@/utils/toast';
+import { showError, showOperationError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parse, addMinutes, parseISO, addWeeks, subWeeks, addMonths, subMonths, isSameWeek, isSameMonth } from 'date-fns';
@@ -65,13 +65,6 @@ const AgendamentosPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [collaboratorsList, setCollaboratorsList] = useState<CollaboratorFilter[]>([]);
   const [selectedCollaboratorFilter, setSelectedCollaboratorFilter] = useState('all');
-
-  console.log('AgendamentosPage: session', session);
-  console.log('AgendamentosPage: sessionLoading', sessionLoading);
-  console.log('AgendamentosPage: companyIdFromUrl', companyIdFromUrl);
-  console.log('AgendamentosPage: primaryCompanyId', primaryCompanyId);
-  console.log('AgendamentosPage: currentCompanyId', currentCompanyId);
-  console.log('AgendamentosPage: loadingCompanyId', loadingCompanyId);
 
   // Estados para o modal de checkout
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
@@ -202,7 +195,7 @@ const AgendamentosPage: React.FC = () => {
       setAppointments(processedAppointments);
     } catch (error: any) {
       console.error('Erro ao carregar agendamentos:', error);
-      showError('Erro ao carregar agendamentos: ' + error.message);
+      showOperationError('Erro ao carregar agendamentos.', error);
       setAppointments([]);
     } finally {
       setLoadingAppointments(false);
@@ -295,7 +288,6 @@ const AgendamentosPage: React.FC = () => {
             showError('Não foi possível identificar a empresa para o novo agendamento.');
             return;
           }
-          console.log("Botão 'Novo Agendamento' clicado. Navegando para /novo-agendamento/:companyId", currentCompanyId);
           navigate(`/novo-agendamento/${currentCompanyId}`);
         }, 'fas fa-plus', 'Novo Agendamento')}
       </div>

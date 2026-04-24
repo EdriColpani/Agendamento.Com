@@ -1,5 +1,6 @@
 import { supabase, supabaseAnonKey, supabaseUrl } from '@/integrations/supabase/client';
 import { requireCurrentAccessToken } from '@/utils/edge-auth';
+import { sanitizeErrorMessage } from '@/utils/toast';
 
 type InvokeResponse = {
   data?: unknown;
@@ -22,27 +23,29 @@ export function parseEdgeInvokeError(response: InvokeResponse): string {
 
   if (contextData && typeof contextData === 'object' && 'error' in (contextData as Record<string, unknown>)) {
     const nested = (contextData as { error?: unknown }).error;
-    if (typeof nested === 'string' && nested.trim()) return nested;
+    if (typeof nested === 'string' && nested.trim()) return sanitizeErrorMessage(nested);
   }
 
   if (typeof contextData === 'string' && contextData.trim()) {
     try {
       const parsed = JSON.parse(contextData) as { error?: unknown };
-      if (typeof parsed.error === 'string' && parsed.error.trim()) return parsed.error;
-      return contextData;
+      if (typeof parsed.error === 'string' && parsed.error.trim()) {
+        return sanitizeErrorMessage(parsed.error);
+      }
+      return sanitizeErrorMessage(contextData);
     } catch {
-      return contextData;
+      return sanitizeErrorMessage(contextData);
     }
   }
 
   const dataError = extractDataError(response.data);
-  if (dataError) return dataError;
+  if (dataError) return sanitizeErrorMessage(dataError);
 
   if (response.error?.message && response.error.message.trim()) {
-    return response.error.message;
+    return sanitizeErrorMessage(response.error.message);
   }
 
-  return 'Erro desconhecido na chamada da Edge Function.';
+  return 'Não foi possível concluir a operação no momento. Tente novamente.';
 }
 
 type InvokeWithAuthOptions = {

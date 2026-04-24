@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -22,10 +29,7 @@ serve(async (req) => {
     const { user_ids } = await req.json();
 
     if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
-      return new Response(JSON.stringify({ error: 'Missing or invalid user_ids array' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Parâmetro user_ids é obrigatório.' }, 400);
     }
 
     // Buscar dados de auth.users usando service role (que tem acesso direto)
@@ -49,17 +53,11 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ data: authData }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ data: authData }, 200);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[get-user-auth-data] Erro:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: 'Erro interno ao buscar dados de autenticação.' }, 500);
   }
 });
 

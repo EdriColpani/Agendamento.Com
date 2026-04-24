@@ -13,12 +13,10 @@ export function useIsGlobalAdmin() {
   useEffect(() => {
     const checkGlobalAdminStatus = async () => {
       if (sessionLoading) {
-        console.log('useIsGlobalAdmin: Session still loading, returning.');
         return; // Wait for session to load
       }
 
       if (!session?.user) {
-        console.log('useIsGlobalAdmin: No session user, not a global admin.');
         setIsGlobalAdmin(false);
         setLoadingGlobalAdminCheck(false);
         return;
@@ -26,7 +24,6 @@ export function useIsGlobalAdmin() {
 
       setLoadingGlobalAdminCheck(true);
       try {
-        console.log(`useIsGlobalAdmin: Checking type_user for user ID: ${session.user.id}`);
         // Usar maybeSingle() para evitar erro 406
         const { data, error } = await supabase
           .from('type_user')
@@ -51,7 +48,6 @@ export function useIsGlobalAdmin() {
         ].includes(cod) || metadataRole === 'GLOBAL_ADMIN';
 
         setIsGlobalAdmin(userIsGlobalAdmin);
-        console.log(`useIsGlobalAdmin: user=${session.user.id}, email=${session.user.email}, cod=${data?.cod}, metadataRole=${session.user.user_metadata?.role}, isGlobalAdmin=${userIsGlobalAdmin}`);
 
       } catch (error: any) {
         console.error('Error checking global admin status:', error);
@@ -59,7 +55,6 @@ export function useIsGlobalAdmin() {
         setIsGlobalAdmin(false);
       } finally {
         setLoadingGlobalAdminCheck(false);
-        console.log('useIsGlobalAdmin: Finished checking global admin status.');
       }
     };
 

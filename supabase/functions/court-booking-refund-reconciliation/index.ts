@@ -7,6 +7,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+function jsonResponse(payload: unknown, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 function base64ToBytes(b64: string): Uint8Array {
   const binary = atob(b64);
   const out = new Uint8Array(binary.length);
@@ -52,36 +59,24 @@ serve(async (req) => {
   const startedAt = new Date();
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Método não permitido." }, 405);
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Supabase env vars ausentes." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.replace("Bearer ", "").trim();
   if (!token || token !== SUPABASE_SERVICE_ROLE_KEY) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Não autorizado." }, 401);
   }
 
   const master = getCompanyPaymentMasterKey();
   if (!master) {
-    return new Response(JSON.stringify({ error: "COMPANY_PAYMENT_CREDENTIALS_ENCRYPTION_KEY ausente/inválida." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Serviço temporariamente indisponível." }, 500);
   }
 
   let body: { limit?: number; max_retries?: number } = {};
@@ -142,10 +137,7 @@ serve(async (req) => {
 
   if (scanErr) {
     await finishRunLog({ status: "error", error_message: scanErr.message, scanned_count: 0 });
-    return new Response(JSON.stringify({ error: scanErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Erro interno ao reconciliar estornos pendentes." }, 500);
   }
 
   const targets = rows ?? [];
@@ -306,19 +298,13 @@ serve(async (req) => {
     reconciled_appointment_ids: reconciledIds.slice(0, 80),
   });
 
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      scanned: targets.length,
-      refund_success_count: refundSuccessCount,
-      manual_required_count: manualRequiredCount,
-      errors_count: errorsCount,
-      alert_threshold: alertThreshold,
-      warning_message: warningMessage,
-    }),
-    {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    },
-  );
+  return jsonResponse({
+    ok: true,
+    scanned: targets.length,
+    refund_success_count: refundSuccessCount,
+    manual_required_count: manualRequiredCount,
+    errors_count: errorsCount,
+    alert_threshold: alertThreshold,
+    warning_message: warningMessage,
+  }, 200);
 });

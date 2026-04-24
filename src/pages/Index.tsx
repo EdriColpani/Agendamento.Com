@@ -64,7 +64,6 @@ const IndexPage: React.FC = () => {
     // Se não tiver vínculo, redirecionar para página de aprovação
     // EXCEÇÃO: Global Admin não precisa de vínculo com empresa
     if (!hasValidLink && !isGlobalAdmin) {
-      console.log('[IndexPage] Usuário sem vínculo válido - redirecionando para /waiting-approval');
       hasRedirectedRef.current = true;
       navigate('/waiting-approval', { replace: true });
       return;
@@ -83,7 +82,6 @@ const IndexPage: React.FC = () => {
 
     // PRIORIDADE 1: PROPRIETÁRIO (MÁXIMA PRIORIDADE - SEMPRE redirecionar para /dashboard)
     if (isProprietario === true) {
-      console.log('[IndexPage] PROPRIETÁRIO detectado - redirecionando para /dashboard');
       hasRedirectedRef.current = true;
       navigate('/dashboard', { replace: true });
       return;
@@ -91,7 +89,6 @@ const IndexPage: React.FC = () => {
 
     // PRIORIDADE 2: Global Admin
     if (isGlobalAdmin === true) {
-      console.log('[IndexPage] GLOBAL_ADMIN detectado - redirecionando para /admin-dashboard');
       hasRedirectedRef.current = true;
       navigate('/admin-dashboard', { replace: true });
       return;
@@ -99,7 +96,6 @@ const IndexPage: React.FC = () => {
 
     // PRIORIDADE 3: Company Admin
     if (isCompanyAdmin === true) {
-      console.log('[IndexPage] CompanyAdmin detectado - redirecionando para /dashboard');
       hasRedirectedRef.current = true;
       navigate('/dashboard', { replace: true });
       return;
@@ -111,16 +107,8 @@ const IndexPage: React.FC = () => {
       // Para colaboradores, também precisamos aguardar os menus dinâmicos,
       // pois o redirecionamento passa a respeitar as permissões de menu
       if (loadingMenus) {
-        console.log('[IndexPage] Aguardando carregamento de menus para colaborador antes de redirecionar...');
         return;
       }
-
-      console.log('[IndexPage] Menus carregados para colaborador:', dynamicMenuItems.map(m => ({
-        id: m.id,
-        key: m.menu_key,
-        label: m.label,
-        path: m.path,
-      })));
 
       const checkCollaboratorRole = async () => {
         try {
@@ -168,16 +156,10 @@ const IndexPage: React.FC = () => {
             // 2) Caso contrário, usar o primeiro menu permitido como rota inicial
             const firstAllowedMenuPath = dashboardMenu?.path || dynamicMenuItems[0]?.path || '/colaborador/agendamentos';
 
-            console.log('[IndexPage] COLABORADOR com role_type detectado - redirecionando para rota permitida:', {
-              hasDashboardMenu: !!dashboardMenu,
-              targetPath: firstAllowedMenuPath,
-            });
-
             hasRedirectedRef.current = true;
             navigate(firstAllowedMenuPath, { replace: true });
           } else {
             // Se não tem role_type em nenhum lugar, é um colaborador básico
-            console.log('[IndexPage] COLABORADOR sem role_type detectado - redirecionando para /colaborador/agendamentos');
             hasRedirectedRef.current = true;
             navigate('/colaborador/agendamentos', { replace: true });
           }
@@ -195,7 +177,6 @@ const IndexPage: React.FC = () => {
 
     // PRIORIDADE 5: Cliente
     if (isClient === true) {
-      console.log('[IndexPage] Cliente detectado - redirecionando para /meus-agendamentos');
       hasRedirectedRef.current = true;
       navigate('/meus-agendamentos', { replace: true });
       return;
@@ -203,7 +184,6 @@ const IndexPage: React.FC = () => {
 
     // Se chegou aqui, usuário está logado mas não tem role definido
     // Não redirecionar automaticamente - deixar na LandingPage
-    console.log('[IndexPage] Usuário logado mas sem role definido - permanecendo na LandingPage');
     hasRedirectedRef.current = false;
   }, [session, sessionLoading, loadingValidation, hasValidLink, loadingRoles, isGlobalAdmin, isProprietario, isCompanyAdmin, isClient, isCollaborator, navigate]);
 
