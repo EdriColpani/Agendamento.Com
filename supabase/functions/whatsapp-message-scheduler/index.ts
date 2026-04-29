@@ -81,6 +81,7 @@ type MessageSendLogRow = {
   scheduled_for: string;
   sent_at: string | null;
   status: 'PENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
+  provider_response?: any;
 };
 
 function addOffsetToDate(base: Date, value: number, unit: 'MINUTES' | 'HOURS' | 'DAYS'): Date {
@@ -973,11 +974,50 @@ serve(async (req) => {
       return null;
     };
 
+    const CLAIM_TIMEOUT_MS = 8 * 60 * 1000;
+    const claimThresholdMs = Date.now() - CLAIM_TIMEOUT_MS;
+
+    const claimInfo = (responseBody: any): { claimedAtMs: number | null } => {
+      if (!responseBody || typeof responseBody !== 'object') return { claimedAtMs: null };
+      if (!('claim_execution_id' in responseBody)) return { claimedAtMs: null };
+      const claimedAtRaw = responseBody?.claimed_at;
+      if (!claimedAtRaw || typeof claimedAtRaw !== 'string') return { claimedAtMs: null };
+      const claimedDate = new Date(claimedAtRaw);
+      if (isNaN(claimedDate.getTime())) return { claimedAtMs: null };
+      return { claimedAtMs: claimedDate.getTime() };
+    };
+
     const invalidScheduledLogs = (allPending || []).filter((log) => !parseScheduledDate(log.scheduled_for));
+
+    // Recupera pendencias travadas por claim antigo.
+    const staleClaimLogs = (allPending || []).filter((log) => {
+      const info = claimInfo(log.provider_response);
+      return info.claimedAtMs !== null && info.claimedAtMs < claimThresholdMs;
+    });
+
+    for (const staleLog of staleClaimLogs) {
+      const { error: clearClaimError } = await supabaseAdmin
+        .from('message_send_log')
+        .update({ provider_response: null })
+        .eq('id', staleLog.id)
+        .eq('status', 'PENDING');
+
+      if (clearClaimError) {
+        console.error('Erro ao limpar claim expirado', staleLog.id, clearClaimError);
+      }
+    }
+
     const pendingLogsToProcess = (allPending || []).filter((log) => {
       const scheduledDate = parseScheduledDate(log.scheduled_for);
       if (!scheduledDate) return false;
-      return scheduledDate.getTime() <= (nowTime + TOLERANCE_MS);
+      if (scheduledDate.getTime() > (nowTime + TOLERANCE_MS)) return false;
+
+      const info = claimInfo(log.provider_response);
+      if (info.claimedAtMs !== null && info.claimedAtMs >= claimThresholdMs) {
+        return false;
+      }
+
+      return true;
     });
     pendingLogsToProcess.forEach((log) => {
       if (!log.scheduled_for) return;
@@ -1073,6 +1113,32 @@ serve(async (req) => {
     const updates: any[] = [];
 
     for (const log of pendingLogsToProcess) {
+      // Claim atomico sem depender de mudanca de schema.
+      // Evita envio duplicado com execucoes paralelas.
+      const claimPayload = {
+        claim_execution_id: executionId,
+        claimed_at: new Date().toISOString(),
+      };
+
+      const { data: claimedRow, error: claimError } = await supabaseAdmin
+        .from('message_send_log')
+        .update({ provider_response: claimPayload })
+        .eq('id', log.id)
+        .eq('status', 'PENDING')
+        .is('sent_at', null)
+        .is('provider_response', null)
+        .select('id')
+        .maybeSingle();
+
+      if (claimError) {
+        console.error(`Erro ao claimar log ${log.id}:`, claimError);
+        continue;
+      }
+
+      if (!claimedRow) {
+        continue;
+      }
+
       const client = log.client_id ? clientsMap.get(log.client_id) : null;
       const template =
         templatesByCompanyAndKind.get(`${log.company_id}_${log.message_kind_id}`) || null;
