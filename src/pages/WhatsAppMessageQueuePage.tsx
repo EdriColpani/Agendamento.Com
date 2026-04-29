@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { showError, showSuccess } from '@/utils/toast';
-import { Loader2, MessageCircle, XCircle, ListChecks } from 'lucide-react';
+import { Loader2, MessageCircle, XCircle, ListChecks, Activity } from 'lucide-react';
 
 type MessageStatus = 'PENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
 
@@ -55,6 +55,16 @@ interface QueueHealth {
   oldest_pending_due_minutes: number;
   last_worker_status: WorkerHealthStatus;
   last_worker_execution_time: string | null;
+}
+
+interface WorkerExecutionLog {
+  execution_time: string;
+  status: string;
+  messages_processed: number;
+  messages_sent: number;
+  messages_failed: number;
+  execution_duration_ms: number | null;
+  error_message: string | null;
 }
 
 const formatDateTimeBR = (iso: string) => {
@@ -151,6 +161,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [queueHealth, setQueueHealth] = useState<QueueHealth | null>(null);
+  const [workerRuns, setWorkerRuns] = useState<WorkerExecutionLog[]>([]);
   const effectiveCompanyId = isGlobalAdmin ? selectedCompanyId : primaryCompanyId;
 
   const fetchCompaniesForGlobalAdmin = useCallback(async () => {
@@ -233,6 +244,21 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     }
   }, [effectiveCompanyId]);
 
+  const fetchWorkerRuns = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('worker_execution_logs')
+        .select('execution_time, status, messages_processed, messages_sent, messages_failed, execution_duration_ms, error_message')
+        .order('execution_time', { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+      setWorkerRuns((data || []) as WorkerExecutionLog[]);
+    } catch (error) {
+      console.error('Erro ao carregar histórico do worker:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (!loadingGlobalAdminCheck && isGlobalAdmin) {
       fetchCompaniesForGlobalAdmin();
@@ -243,18 +269,21 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     if (!loadingPrimaryCompany && !loadingGlobalAdminCheck && effectiveCompanyId) {
       fetchMessages();
       fetchQueueHealth();
+      fetchWorkerRuns();
     }
-  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchMessages, fetchQueueHealth]);
+  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchMessages, fetchQueueHealth, fetchWorkerRuns]);
 
   useEffect(() => {
     if (!loadingPrimaryCompany && !loadingGlobalAdminCheck && effectiveCompanyId) {
       const id = window.setInterval(() => {
         fetchQueueHealth();
+        fetchWorkerRuns();
+        fetchMessages();
       }, 60_000);
       return () => window.clearInterval(id);
     }
     return undefined;
-  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchQueueHealth]);
+  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchQueueHealth, fetchWorkerRuns, fetchMessages]);
 
   const todayYmdBR = useMemo(() => {
     return toYmdInSaoPaulo(new Date().toISOString());
@@ -408,6 +437,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     setRefreshing(true);
     await fetchMessages();
     await fetchQueueHealth();
+    await fetchWorkerRuns();
   };
 
   const pendingDueAlertThresholdMinutes = 3;
@@ -643,6 +673,49 @@ const WhatsAppMessageQueuePage: React.FC = () => {
               </p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Filtros */}
+      <Card className="border-gray-200">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            Últimas execuções do worker
+          </CardTitle>
+          <CardDescription>
+            Histórico recente para identificar interrupções e falhas do envio automático.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {workerRuns.length === 0 ? (
+            <p className="text-sm text-gray-500">Sem execuções registradas.</p>
+          ) : (
+            <div className="space-y-2">
+              {workerRuns.map((run, idx) => (
+                <div
+                  key={`${run.execution_time}-${idx}`}
+                  className="rounded border border-gray-200 px-3 py-2 text-sm flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+                >
+                  <div className="text-gray-700">
+                    <span className="font-medium">{formatDateTimeBR(run.execution_time)}</span>
+                    <span className="text-gray-500"> • duração: {run.execution_duration_ms ?? 0} ms</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className={run.status === 'SUCCESS' ? 'bg-green-500 text-white' : run.status === 'PARTIAL' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'}>
+                      {run.status}
+                    </Badge>
+                    <span className="text-xs text-gray-600">proc: {run.messages_processed}</span>
+                    <span className="text-xs text-green-700">env: {run.messages_sent}</span>
+                    <span className="text-xs text-red-700">falha: {run.messages_failed}</span>
+                  </div>
+                  {run.error_message ? (
+                    <p className="text-xs text-red-700">{run.error_message}</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
