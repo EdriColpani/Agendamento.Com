@@ -79,10 +79,8 @@ type MessageSendLogRow = {
   template_id: string | null;
   provider_id: string | null;
   scheduled_for: string;
-  created_at?: string;
   sent_at: string | null;
   status: 'PENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
-  provider_response?: any;
 };
 
 function addOffsetToDate(base: Date, value: number, unit: 'MINUTES' | 'HOURS' | 'DAYS'): Date {
@@ -462,22 +460,6 @@ serve(async (req) => {
   
   console.log(`✅ Autenticação válida. Execution ID: ${executionId}`);
 
-  // Payload opcional para controle de orquestração (ex.: backup via GitHub).
-  let requestPayload: any = {};
-  try {
-    const rawBody = await req.text();
-    if (rawBody && rawBody.trim().length > 0) {
-      requestPayload = JSON.parse(rawBody);
-    }
-  } catch (parseError) {
-    console.warn('⚠️ Body inválido; seguindo com payload padrão.', parseError);
-  }
-
-  const source =
-    requestPayload && typeof requestPayload.source === 'string'
-      ? requestPayload.source
-      : 'unknown';
-
   // IMPORTANTE: Trabalhar sempre com horário de BRASÍLIA
   // Obter hora atual em Brasília
   const nowBR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
@@ -513,42 +495,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } },
     );
-
-    // Backup condicionado: quando o GitHub disparar, só executa de fato
-    // se não houve execução recente do worker (primário: pg_cron).
-    if (source === 'github_schedule_backup') {
-      const minGap = Number(requestPayload?.min_gap_minutes ?? 4);
-      const safeGap = Number.isFinite(minGap) && minGap > 0 ? minGap : 4;
-      const cutoff = new Date(Date.now() - safeGap * 60 * 1000).toISOString();
-
-      const { data: recentWorker, error: recentWorkerError } = await supabaseAdmin
-        .from('worker_execution_logs')
-        .select('execution_time, status')
-        .gte('execution_time', cutoff)
-        .order('execution_time', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!recentWorkerError && recentWorker) {
-        return new Response(
-          JSON.stringify({
-            message: 'Backup do GitHub pulado: execução recente detectada.',
-            source,
-            recent_execution_time: recentWorker.execution_time,
-            recent_execution_status: recentWorker.status,
-            min_gap_minutes: safeGap,
-          }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          },
-        );
-      }
-
-      if (recentWorkerError) {
-        console.warn('⚠️ Falha ao consultar worker_execution_logs no backup GitHub; prosseguindo.', recentWorkerError);
-      }
-    }
 
     console.log('1) Buscando empresas com whatsapp_messaging_enabled = true...');
     // 1) Buscar empresas com módulo habilitado (incluindo nome para templates)
@@ -1027,103 +973,12 @@ serve(async (req) => {
       return null;
     };
 
-    const CLAIM_TIMEOUT_MS = 8 * 60 * 1000;
-    const claimThresholdMs = Date.now() - CLAIM_TIMEOUT_MS;
-
-    const claimInfo = (responseBody: any): { claimedAtMs: number | null } => {
-      if (!responseBody || typeof responseBody !== 'object') return { claimedAtMs: null };
-      if (!('claim_execution_id' in responseBody)) return { claimedAtMs: null };
-      const claimedAtRaw = responseBody?.claimed_at;
-      if (!claimedAtRaw || typeof claimedAtRaw !== 'string') return { claimedAtMs: null };
-      const claimedDate = new Date(claimedAtRaw);
-      if (isNaN(claimedDate.getTime())) return { claimedAtMs: null };
-      return { claimedAtMs: claimedDate.getTime() };
-    };
-
     const invalidScheduledLogs = (allPending || []).filter((log) => !parseScheduledDate(log.scheduled_for));
-
-    // Recupera pendencias travadas por claim antigo.
-    const staleClaimLogs = (allPending || []).filter((log) => {
-      const info = claimInfo(log.provider_response);
-      return info.claimedAtMs !== null && info.claimedAtMs < claimThresholdMs;
-    });
-
-    for (const staleLog of staleClaimLogs) {
-      const { error: clearClaimError } = await supabaseAdmin
-        .from('message_send_log')
-        .update({ provider_response: null })
-        .eq('id', staleLog.id)
-        .eq('status', 'PENDING');
-
-      if (clearClaimError) {
-        console.error('Erro ao limpar claim expirado', staleLog.id, clearClaimError);
-      }
-    }
-
-    const pendingLogsToProcessRaw = (allPending || []).filter((log) => {
+    const pendingLogsToProcess = (allPending || []).filter((log) => {
       const scheduledDate = parseScheduledDate(log.scheduled_for);
       if (!scheduledDate) return false;
-      if (scheduledDate.getTime() > (nowTime + TOLERANCE_MS)) return false;
-
-      const info = claimInfo(log.provider_response);
-      if (info.claimedAtMs !== null && info.claimedAtMs >= claimThresholdMs) {
-        return false;
-      }
-
-      return true;
+      return scheduledDate.getTime() <= (nowTime + TOLERANCE_MS);
     });
-
-    // Blindagem anti-duplicidade: se existirem multiplos PENDING para a mesma
-    // chave logica, processa apenas o mais antigo e cancela os demais.
-    const byKey = new Map<string, MessageSendLogRow[]>();
-    for (const log of pendingLogsToProcessRaw) {
-      const dedupeKey = [
-        log.company_id,
-        log.appointment_id ?? '',
-        log.message_kind_id,
-        log.channel,
-        log.scheduled_for,
-      ].join('|');
-      const group = byKey.get(dedupeKey) || [];
-      group.push(log);
-      byKey.set(dedupeKey, group);
-    }
-
-    const duplicateIdsToCancel: string[] = [];
-    const pendingLogsToProcess: MessageSendLogRow[] = [];
-    for (const group of byKey.values()) {
-      group.sort((a, b) => {
-        const aTime = new Date(a.created_at || 0).getTime();
-        const bTime = new Date(b.created_at || 0).getTime();
-        return aTime - bTime;
-      });
-      pendingLogsToProcess.push(group[0]);
-      if (group.length > 1) {
-        duplicateIdsToCancel.push(...group.slice(1).map((g) => g.id));
-      }
-    }
-
-    if (duplicateIdsToCancel.length > 0) {
-      for (const duplicateId of duplicateIdsToCancel) {
-        const { error: cancelDupError } = await supabaseAdmin
-          .from('message_send_log')
-          .update({
-            status: 'CANCELLED',
-            sent_at: new Date().toISOString(),
-            provider_response: {
-              type: 'DUPLICATE_PENDING_SUPPRESSED',
-              reason: 'Log duplicado suprimido pelo worker',
-              execution_id: executionId,
-            },
-          })
-          .eq('id', duplicateId)
-          .eq('status', 'PENDING');
-        if (cancelDupError) {
-          console.error('Erro ao cancelar duplicado', duplicateId, cancelDupError);
-        }
-      }
-    }
-
     pendingLogsToProcess.forEach((log) => {
       if (!log.scheduled_for) return;
       const scheduledDate = parseScheduledDate(log.scheduled_for);
@@ -1218,32 +1073,6 @@ serve(async (req) => {
     const updates: any[] = [];
 
     for (const log of pendingLogsToProcess) {
-      // Claim atomico sem depender de mudanca de schema.
-      // Evita envio duplicado com execucoes paralelas.
-      const claimPayload = {
-        claim_execution_id: executionId,
-        claimed_at: new Date().toISOString(),
-      };
-
-      const { data: claimedRow, error: claimError } = await supabaseAdmin
-        .from('message_send_log')
-        .update({ provider_response: claimPayload })
-        .eq('id', log.id)
-        .eq('status', 'PENDING')
-        .is('sent_at', null)
-        .is('provider_response', null)
-        .select('id')
-        .maybeSingle();
-
-      if (claimError) {
-        console.error(`Erro ao claimar log ${log.id}:`, claimError);
-        continue;
-      }
-
-      if (!claimedRow) {
-        continue;
-      }
-
       const client = log.client_id ? clientsMap.get(log.client_id) : null;
       const template =
         templatesByCompanyAndKind.get(`${log.company_id}_${log.message_kind_id}`) || null;
