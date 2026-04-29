@@ -1,7 +1,9 @@
 name: WhatsApp Message Scheduler (1/min)
 
 on:
-  # Temporariamente manual: automacao principal volta para pg_cron (1/min) no banco.
+  schedule:
+    # Redundancia operacional: GitHub a cada 5 min como backup do pg_cron.
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 jobs:

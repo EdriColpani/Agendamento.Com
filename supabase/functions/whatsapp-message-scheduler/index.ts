@@ -81,6 +81,8 @@ type MessageSendLogRow = {
   scheduled_for: string;
   sent_at: string | null;
   status: 'PENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
+  processing_started_at?: string | null;
+  processing_by?: string | null;
 };
 
 function addOffsetToDate(base: Date, value: number, unit: 'MINUTES' | 'HOURS' | 'DAYS'): Date {
@@ -1071,8 +1073,33 @@ serve(async (req) => {
     // Reaproveitar templates map
 
     const updates: any[] = [];
+    const claimThresholdIso = new Date(Date.now() - 8 * 60 * 1000).toISOString();
 
     for (const log of pendingLogsToProcess) {
+      // Claim atomico com timeout: permite redundancia de schedulers
+      // sem duplicar envio e sem deixar pendencia travada para sempre.
+      const { data: claimedRow, error: claimError } = await supabaseAdmin
+        .from('message_send_log')
+        .update({
+          processing_started_at: new Date().toISOString(),
+          processing_by: executionId,
+        })
+        .eq('id', log.id)
+        .eq('status', 'PENDING')
+        .is('sent_at', null)
+        .or(`processing_started_at.is.null,processing_started_at.lt.${claimThresholdIso}`)
+        .select('id')
+        .maybeSingle();
+
+      if (claimError) {
+        console.error(`Erro ao fazer claim do log ${log.id}:`, claimError);
+        continue;
+      }
+
+      if (!claimedRow) {
+        continue;
+      }
+
       const client = log.client_id ? clientsMap.get(log.client_id) : null;
       const template =
         templatesByCompanyAndKind.get(`${log.company_id}_${log.message_kind_id}`) || null;
@@ -1085,6 +1112,8 @@ serve(async (req) => {
           id: log.id,
           status: 'FAILED',
           sent_at: new Date().toISOString(),
+          processing_started_at: null,
+          processing_by: null,
           provider_response: { error: 'Nenhum provedor WhatsApp configurado para esta empresa' },
         });
         continue;
@@ -1104,6 +1133,8 @@ serve(async (req) => {
           id: log.id,
           status: 'FAILED',
           sent_at: new Date().toISOString(),
+          processing_started_at: null,
+          processing_by: null,
           provider_response: { error: 'Telefone inválido ou ausente' },
         });
         continue;
@@ -1161,6 +1192,8 @@ serve(async (req) => {
           id: log.id,
           status: sendResult.ok ? 'SENT' : 'FAILED',
           sent_at: new Date().toISOString(),
+          processing_started_at: null,
+          processing_by: null,
           provider_response: sendResult.responseBody,
         });
       } catch (sendError) {
@@ -1170,6 +1203,8 @@ serve(async (req) => {
           id: log.id,
           status: 'FAILED',
           sent_at: new Date().toISOString(),
+          processing_started_at: null,
+          processing_by: null,
           provider_response: {
             error: sendError instanceof Error ? sendError.message : String(sendError),
             type: 'SEND_EXCEPTION',
@@ -1187,6 +1222,8 @@ serve(async (req) => {
           .update({
             status: u.status,
             sent_at: u.sent_at,
+            processing_started_at: u.processing_started_at ?? null,
+            processing_by: u.processing_by ?? null,
             provider_response: u.provider_response,
           })
           .eq('id', u.id);
