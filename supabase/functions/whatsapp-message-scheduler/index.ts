@@ -79,6 +79,7 @@ type MessageSendLogRow = {
   template_id: string | null;
   provider_id: string | null;
   scheduled_for: string;
+  created_at?: string;
   sent_at: string | null;
   status: 'PENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
   provider_response?: any;
@@ -1007,7 +1008,7 @@ serve(async (req) => {
       }
     }
 
-    const pendingLogsToProcess = (allPending || []).filter((log) => {
+    const pendingLogsToProcessRaw = (allPending || []).filter((log) => {
       const scheduledDate = parseScheduledDate(log.scheduled_for);
       if (!scheduledDate) return false;
       if (scheduledDate.getTime() > (nowTime + TOLERANCE_MS)) return false;
@@ -1019,6 +1020,58 @@ serve(async (req) => {
 
       return true;
     });
+
+    // Blindagem anti-duplicidade: se existirem multiplos PENDING para a mesma
+    // chave logica, processa apenas o mais antigo e cancela os demais.
+    const byKey = new Map<string, MessageSendLogRow[]>();
+    for (const log of pendingLogsToProcessRaw) {
+      const dedupeKey = [
+        log.company_id,
+        log.appointment_id ?? '',
+        log.message_kind_id,
+        log.channel,
+        log.scheduled_for,
+      ].join('|');
+      const group = byKey.get(dedupeKey) || [];
+      group.push(log);
+      byKey.set(dedupeKey, group);
+    }
+
+    const duplicateIdsToCancel: string[] = [];
+    const pendingLogsToProcess: MessageSendLogRow[] = [];
+    for (const group of byKey.values()) {
+      group.sort((a, b) => {
+        const aTime = new Date(a.created_at || 0).getTime();
+        const bTime = new Date(b.created_at || 0).getTime();
+        return aTime - bTime;
+      });
+      pendingLogsToProcess.push(group[0]);
+      if (group.length > 1) {
+        duplicateIdsToCancel.push(...group.slice(1).map((g) => g.id));
+      }
+    }
+
+    if (duplicateIdsToCancel.length > 0) {
+      for (const duplicateId of duplicateIdsToCancel) {
+        const { error: cancelDupError } = await supabaseAdmin
+          .from('message_send_log')
+          .update({
+            status: 'CANCELLED',
+            sent_at: new Date().toISOString(),
+            provider_response: {
+              type: 'DUPLICATE_PENDING_SUPPRESSED',
+              reason: 'Log duplicado suprimido pelo worker',
+              execution_id: executionId,
+            },
+          })
+          .eq('id', duplicateId)
+          .eq('status', 'PENDING');
+        if (cancelDupError) {
+          console.error('Erro ao cancelar duplicado', duplicateId, cancelDupError);
+        }
+      }
+    }
+
     pendingLogsToProcess.forEach((log) => {
       if (!log.scheduled_for) return;
       const scheduledDate = parseScheduledDate(log.scheduled_for);
