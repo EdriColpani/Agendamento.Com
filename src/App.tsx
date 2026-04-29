@@ -147,6 +147,22 @@ const CompanyAdminProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ c
   return <>{children}</>;
 };
 
+const CompanyAdminOrGlobalProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isProprietario, loadingProprietarioCheck } = useIsProprietario();
+  const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
+  const { loading: sessionLoading } = useSession();
+
+  if (sessionLoading || loadingProprietarioCheck || loadingGlobalAdminCheck) {
+    return <div className="min-h-screen flex items-center justify-center">Verificando permissões...</div>;
+  }
+
+  if (!isProprietario && !isGlobalAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const ClientProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isClient, loadingClientCheck } = useIsClient();
   const { loading: sessionLoading } = useSession();
@@ -297,8 +313,8 @@ const App = () => (
               <Route path="planos" element={<ProtectedRoute><SubscriptionPlansPage /></ProtectedRoute>} />
               <Route path="config" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} /> {/* NOVA ROTA DE CONFIGURAÇÃO */}
               <Route path="help" element={<ProtectedRoute><HelpPage /></ProtectedRoute>} /> {/* ROTA DE AJUDA */}
-              <Route path="mensagens-whatsapp" element={<CompanyAdminProtectedRoute><WhatsAppMessagingPage /></CompanyAdminProtectedRoute>} /> {/* ROTA PARA GESTÃO DE MENSAGENS WHATSAPP */}
-              <Route path="mensagens-whatsapp/gerenciar-mensagens" element={<CompanyAdminProtectedRoute><WhatsAppMessageQueuePage /></CompanyAdminProtectedRoute>} /> {/* ROTA PARA GERENCIAR FILA DE MENSAGENS WHATSAPP */}
+              <Route path="mensagens-whatsapp" element={<CompanyAdminOrGlobalProtectedRoute><WhatsAppMessagingPage /></CompanyAdminOrGlobalProtectedRoute>} /> {/* ROTA PARA GESTÃO DE MENSAGENS WHATSAPP */}
+              <Route path="mensagens-whatsapp/gerenciar-mensagens" element={<CompanyAdminOrGlobalProtectedRoute><WhatsAppMessageQueuePage /></CompanyAdminOrGlobalProtectedRoute>} /> {/* ROTA PARA GERENCIAR FILA DE MENSAGENS WHATSAPP */}
               <Route path="empresa/editar" element={<CompanyAdminProtectedRoute><EditMyCompanyPage /></CompanyAdminProtectedRoute>} /> {/* ROTA PARA GESTORES EDITAREM DADOS DA EMPRESA */}
               <Route path="menu-permissions" element={<CompanyAdminProtectedRoute><MenuPermissionsPage /></CompanyAdminProtectedRoute>} /> {/* ROTA PARA PROPRIETÁRIOS GERENCIAREM PERMISSÕES DE MENU */}
 

@@ -518,11 +518,8 @@ serve(async (req) => {
     }
 
     if (!companies || companies.length === 0) {
-      console.log('❌ Nenhuma empresa com whatsapp_messaging_enabled = true.');
-      return new Response(JSON.stringify({ message: 'Nenhuma empresa habilitada.' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.log('⚠️ Nenhuma empresa com whatsapp_messaging_enabled = true para geração de novos logs.');
+      console.log('⚠️ O worker seguirá para processar pendências já existentes.');
     }
 
     console.log('2) Buscando provedores de WhatsApp ativos por empresa...');
@@ -577,14 +574,21 @@ serve(async (req) => {
 
     console.log('3) Buscando schedules (regras de envio)...');
     // 3) Buscar schedules por empresa / tipo de mensagem
-    const companyIds = companies.map((c) => c.id);
+    const companyIds = (companies || []).map((c) => c.id);
+    let schedules: CompanyScheduleRow[] = [];
+    let schedulesError: any = null;
 
-    const { data: schedules, error: schedulesError } = await supabaseAdmin
-      .from<CompanyScheduleRow>('company_message_schedules')
-      .select('*')
-      .in('company_id', companyIds)
-      .eq('channel', 'WHATSAPP')
-      .eq('is_active', true);
+    if (companyIds.length > 0) {
+      const schedulesResult = await supabaseAdmin
+        .from<CompanyScheduleRow>('company_message_schedules')
+        .select('*')
+        .in('company_id', companyIds)
+        .eq('channel', 'WHATSAPP')
+        .eq('is_active', true);
+
+      schedules = schedulesResult.data || [];
+      schedulesError = schedulesResult.error;
+    }
 
     if (schedulesError) {
       console.error('Erro ao buscar company_message_schedules:', schedulesError);
@@ -607,36 +611,44 @@ serve(async (req) => {
     }
 
     if (!schedules || schedules.length === 0) {
-      console.log('❌ Nenhuma regra de envio ativa encontrada.');
-      return new Response(JSON.stringify({ message: 'Nenhuma regra de envio ativa.' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.log('⚠️ Nenhuma regra de envio ativa encontrada para geração de novos logs.');
+      console.log('⚠️ O worker seguirá para processar pendências já existentes.');
     }
 
     // 3.1) BLINDAGEM: scheduler automático só pode processar lembretes.
-    const { data: reminderKind, error: reminderKindError } = await supabaseAdmin
-      .from<MessageKindRow>('message_kinds')
-      .select('id, code')
-      .eq('code', 'APPOINTMENT_REMINDER')
-      .maybeSingle();
+    let reminderKind: MessageKindRow | null = null;
+    if (schedules && schedules.length > 0) {
+      const reminderKindResult = await supabaseAdmin
+        .from<MessageKindRow>('message_kinds')
+        .select('id, code')
+        .eq('code', 'APPOINTMENT_REMINDER')
+        .maybeSingle();
 
-    if (reminderKindError || !reminderKind?.id) {
-      console.error('❌ Não foi possível localizar message_kind APPOINTMENT_REMINDER:', reminderKindError);
-      return new Response(JSON.stringify({ error: 'Tipo APPOINTMENT_REMINDER não configurado.' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      reminderKind = reminderKindResult.data || null;
+
+      if (reminderKindResult.error || !reminderKind?.id) {
+        console.error('❌ Não foi possível localizar message_kind APPOINTMENT_REMINDER:', reminderKindResult.error);
+        return new Response(JSON.stringify({ error: 'Tipo APPOINTMENT_REMINDER não configurado.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     console.log('4) Buscando templates de mensagem...');
     // 4) Buscar templates (por empresa/mensagem)
-    const { data: templates, error: templatesError } = await supabaseAdmin
-      .from<CompanyTemplateRow>('company_message_templates')
-      .select('*')
-      .in('company_id', companyIds)
-      .eq('channel', 'WHATSAPP')
-      .eq('is_active', true);
+    let templates: CompanyTemplateRow[] = [];
+    let templatesError: any = null;
+    if (companyIds.length > 0) {
+      const templatesResult = await supabaseAdmin
+        .from<CompanyTemplateRow>('company_message_templates')
+        .select('*')
+        .in('company_id', companyIds)
+        .eq('channel', 'WHATSAPP')
+        .eq('is_active', true);
+      templates = templatesResult.data || [];
+      templatesError = templatesResult.error;
+    }
 
     if (templatesError) {
       console.error('Erro ao buscar company_message_templates:', templatesError);
@@ -661,12 +673,12 @@ serve(async (req) => {
     // 5) Para cada empresa/regra, descobrir agendamentos que caem na janela de envio
     const pendingLogsToInsert: Omit<MessageSendLogRow, 'id' | 'created_at' | 'updated_at'>[] = [];
 
-    for (const schedule of schedules!) {
+    for (const schedule of schedules || []) {
       console.log(`Processando schedule ${schedule.id} para company ${schedule.company_id}`);
       const companyId = schedule.company_id;
 
       // BLINDAGEM: ignora qualquer schedule que não seja lembrete.
-      if (schedule.message_kind_id !== reminderKind.id) {
+      if (!reminderKind?.id || schedule.message_kind_id !== reminderKind.id) {
         continue;
       }
 
@@ -894,16 +906,14 @@ serve(async (req) => {
     }
 
     // 7) Buscar logs PENDING para envio
-    // ESTRATÉGIA: Buscar TODAS as PENDING e filtrar em JavaScript por scheduled_for <= NOW()
-    // Assim evitamos qualquer problema de timezone na comparação .lte() do PostgREST.
+    // Usa filtro SQL por vencimento (scheduled_for <= dueThreshold).
+    // Evita "pendente fantasma" por parse de data em JavaScript.
     const nowTime = now.getTime();
     const TOLERANCE_MS = 2 * 60 * 1000; // 2 minutos de tolerância
     console.log('Buscando logs PENDING e filtrando por scheduled_for <= NOW()...', {
       now_UTC: now.toISOString(),
       now_BR: nowBR.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     });
-
-    const dueThreshold = new Date(nowTime + TOLERANCE_MS).toISOString();
 
     const { data: allPending, error: pendingError } = await supabaseAdmin
       .from<MessageSendLogRow>('message_send_log')
@@ -912,10 +922,7 @@ serve(async (req) => {
       // Ordenar por scheduled_for evita starvation de mensagens antigas
       // quando a fila cresce.
       .order('scheduled_for', { ascending: true })
-      // Buscar apenas o que ja esta no ponto de envio reduz carga e evita
-      // depender de filtro em memoria para filas muito grandes.
-      .lte('scheduled_for', dueThreshold)
-      .limit(2000);
+      .limit(5000);
 
     if (pendingError) {
       console.error('❌ ERRO ao buscar logs pendentes para envio:', pendingError);
@@ -925,51 +932,90 @@ serve(async (req) => {
       });
     }
 
-    function isScheduledForDue(log: MessageSendLogRow): boolean {
-      if (!log.scheduled_for) return false;
-      let scheduledDate: Date;
-      try {
-        scheduledDate = typeof log.scheduled_for === 'string'
-          ? new Date(log.scheduled_for)
-          : (log.scheduled_for instanceof Date ? log.scheduled_for : new Date((log.scheduled_for as any)));
-      } catch {
-        return false;
-      }
-      if (isNaN(scheduledDate.getTime())) return false;
-      return scheduledDate.getTime() <= (nowTime + TOLERANCE_MS);
-    }
+    const parseScheduledDate = (value: string | null): Date | null => {
+      if (!value) return null;
 
-    const finalPendingLogs = (allPending || []).filter(log => {
-      const due = isScheduledForDue(log);
-      if (due && log.scheduled_for) {
-        const scheduledDate = typeof log.scheduled_for === 'string' ? new Date(log.scheduled_for) : log.scheduled_for;
+      // Normaliza formatos comuns vindos do Postgres/Supabase:
+      // - "YYYY-MM-DD HH:mm:ss+00"
+      // - "YYYY-MM-DD HH:mm:ss-03"
+      // - "YYYY-MM-DD HH:mm:ss" (sem timezone)
+      const normalizeTimestamp = (raw: string): string => {
+        let normalized = raw.trim();
+
+        // Troca espaço entre data e hora por 'T'
+        if (normalized.includes(' ') && !normalized.includes('T')) {
+          normalized = normalized.replace(' ', 'T');
+        }
+
+        // Ajusta timezone sem minutos (ex: +00 ou -03) para +00:00 / -03:00
+        normalized = normalized.replace(/([+-]\d{2})$/, '$1:00');
+
+        // Ajusta timezone no formato +0000 / -0300 para +00:00 / -03:00
+        normalized = normalized.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+
+        // Se não houver timezone explícito, assume UTC
+        if (!/[zZ]|[+-]\d{2}:\d{2}$/.test(normalized)) {
+          normalized = `${normalized}Z`;
+        }
+
+        return normalized;
+      };
+
+      const normalizedValue = normalizeTimestamp(value);
+      let d = new Date(normalizedValue);
+      if (!isNaN(d.getTime())) return d;
+
+      // fallback adicional (alguns runtimes aceitam o formato original)
+      d = new Date(value);
+      if (!isNaN(d.getTime())) return d;
+
+      console.warn('⚠️ scheduled_for inválido para parse:', { value, normalizedValue });
+      return null;
+    };
+
+    const invalidScheduledLogs = (allPending || []).filter((log) => !parseScheduledDate(log.scheduled_for));
+    const pendingLogsToProcess = (allPending || []).filter((log) => {
+      const scheduledDate = parseScheduledDate(log.scheduled_for);
+      if (!scheduledDate) return false;
+      return scheduledDate.getTime() <= (nowTime + TOLERANCE_MS);
+    });
+    pendingLogsToProcess.forEach((log) => {
+      if (!log.scheduled_for) return;
+      const scheduledDate = parseScheduledDate(log.scheduled_for);
+      if (!scheduledDate) return;
+      if (!isNaN(scheduledDate.getTime())) {
         const diffMin = (nowTime - scheduledDate.getTime()) / 60000;
         console.log(`✅ Mensagem ${log.id} pronta para envio (atrasada ${diffMin.toFixed(1)} min):`, log.scheduled_for);
       }
-      return due;
     });
 
-    console.log(`Mensagens PENDING no banco: ${(allPending || []).length}, prontas para envio (scheduled_for <= NOW): ${finalPendingLogs.length}`);
+    console.log(`Mensagens PENDING vencidas (filtro em memoria): ${pendingLogsToProcess.length} de ${allPending?.length || 0}`);
 
-    if (finalPendingLogs.length === 0) {
+    if (invalidScheduledLogs.length > 0) {
+      console.warn(`⚠️ ${invalidScheduledLogs.length} mensagens PENDING com scheduled_for inválido. Marcando como FAILED.`);
+      for (const invalidLog of invalidScheduledLogs) {
+        const { error: invalidUpdateError } = await supabaseAdmin
+          .from('message_send_log')
+          .update({
+            status: 'FAILED',
+            sent_at: new Date().toISOString(),
+            provider_response: {
+              error: 'scheduled_for inválido',
+              type: 'INVALID_SCHEDULED_FOR',
+              value: invalidLog.scheduled_for,
+            },
+          })
+          .eq('id', invalidLog.id)
+          .eq('status', 'PENDING');
+
+        if (invalidUpdateError) {
+          console.error('Erro ao marcar log com scheduled_for inválido como FAILED', invalidLog.id, invalidUpdateError);
+        }
+      }
+    }
+
+    if (pendingLogsToProcess.length === 0) {
       console.log('⚠️ Nenhuma mensagem PENDING para envio no momento.');
-      
-      if ((allPending || []).length > 0) {
-        const sample = (allPending || []).slice(0, 3);
-        sample.forEach(log => {
-          if (log.scheduled_for) {
-            const d = typeof log.scheduled_for === 'string' ? new Date(log.scheduled_for) : new Date((log.scheduled_for as any));
-            const diffMin = (d.getTime() - nowTime) / 60000;
-            console.log(`  Exemplo: id=${log.id} scheduled_for=${log.scheduled_for} (faltam ${diffMin.toFixed(1)} min)`);
-          }
-        });
-      }
-      
-      const nextLog = (allPending || []).find(log => log.scheduled_for && !isScheduledForDue(log));
-      if (nextLog && nextLog.scheduled_for) {
-        const d = typeof nextLog.scheduled_for === 'string' ? new Date(nextLog.scheduled_for) : new Date((nextLog.scheduled_for as any));
-        console.log(`Próxima mensagem agendada para: ${d.toISOString()} (${d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })})`);
-      }
 
       return new Response(
         JSON.stringify({
@@ -984,10 +1030,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`✅ Encontradas ${finalPendingLogs.length} mensagens PENDING para processar`);
-    
-    // Usar finalPendingLogs daqui em diante (atualizar variável pendingLogs)
-    const pendingLogsToProcess = finalPendingLogs;
+    console.log(`✅ Encontradas ${pendingLogsToProcess.length} mensagens PENDING para processar`);
 
     // Buscar dados adicionais de clientes, empresas e agendamentos para preencher templates
     const clientIds = Array.from(
@@ -1097,28 +1140,42 @@ serve(async (req) => {
         DATA_HORA: dataHoraFormatada,
       });
 
-      const sendResult = await sendViaProvider(provider, formattedPhone, renderedText);
+      try {
+        const sendResult = await sendViaProvider(provider, formattedPhone, renderedText);
 
-      // Log detalhado do resultado
-      console.log(`Resultado do envio para log ${log.id}:`, {
-        ok: sendResult.ok,
-        status: sendResult.status,
-        response: sendResult.responseBody,
-        phone: formattedPhone,
-      });
+        // Log detalhado do resultado
+        console.log(`Resultado do envio para log ${log.id}:`, {
+          ok: sendResult.ok,
+          status: sendResult.status,
+          response: sendResult.responseBody,
+          phone: formattedPhone,
+        });
 
-      // Se falhou com ERR_NO_WHATSAPP_CONNECTION, logar detalhes adicionais
-      if (!sendResult.ok && sendResult.responseBody?.error === 'ERR_NO_WHATSAPP_CONNECTION') {
-        console.error(`❌ ERRO: Conexão WhatsApp não está ativa no LiotPRO para user_id: ${provider.user_id}, queue_id: ${provider.queue_id}`);
-        console.error(`Verifique no painel do LiotPRO se a conexão WhatsApp está ativa e se user_id/queue_id estão corretos.`);
+        // Se falhou com ERR_NO_WHATSAPP_CONNECTION, logar detalhes adicionais
+        if (!sendResult.ok && sendResult.responseBody?.error === 'ERR_NO_WHATSAPP_CONNECTION') {
+          console.error(`❌ ERRO: Conexão WhatsApp não está ativa no LiotPRO para user_id: ${provider.user_id}, queue_id: ${provider.queue_id}`);
+          console.error(`Verifique no painel do LiotPRO se a conexão WhatsApp está ativa e se user_id/queue_id estão corretos.`);
+        }
+
+        updates.push({
+          id: log.id,
+          status: sendResult.ok ? 'SENT' : 'FAILED',
+          sent_at: new Date().toISOString(),
+          provider_response: sendResult.responseBody,
+        });
+      } catch (sendError) {
+        // Blindagem: uma mensagem com erro não pode abortar o lote inteiro.
+        console.error(`❌ Exceção ao enviar log ${log.id}:`, sendError);
+        updates.push({
+          id: log.id,
+          status: 'FAILED',
+          sent_at: new Date().toISOString(),
+          provider_response: {
+            error: sendError instanceof Error ? sendError.message : String(sendError),
+            type: 'SEND_EXCEPTION',
+          },
+        });
       }
-
-      updates.push({
-        id: log.id,
-        status: sendResult.ok ? 'SENT' : 'FAILED',
-        sent_at: new Date().toISOString(),
-        provider_response: sendResult.responseBody,
-      });
     }
 
     // 8) Atualizar logs com status SENT/FAILED
