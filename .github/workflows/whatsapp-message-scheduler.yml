@@ -1,8 +1,8 @@
 name: WhatsApp Message Scheduler (1/min)
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
+  # Scheduler único oficial: cron-job.org (externo).
+  # Este workflow fica somente para disparo manual.
   workflow_dispatch: {}
 
 jobs:
