@@ -1,7 +1,8 @@
 name: WhatsApp Message Scheduler (1/min)
 
 on:
-  # Mantido apenas manual. Automação oficial: pg_cron no banco.
+  schedule:
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 jobs:
