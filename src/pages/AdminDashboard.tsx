@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { showError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { performSignOut } from '@/utils/auth-state';
+import { supabase } from '@/integrations/supabase/client';
 import { Users, Building, DollarSign, FileText, Tags, LogOut, Key, MailCheck, Tag, BarChart, Zap, CreditCard, Image as ImageIcon, MessageSquare, UserCog, Menu, Database, AlertTriangle } from 'lucide-react'; // Importando ícones do dashboard
 import RecentAuditLogs from '@/components/RecentAuditLogs';
 
@@ -43,6 +44,37 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { session, loading: sessionLoading } = useSession();
   const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
+  const [whatsAppPendingDue, setWhatsAppPendingDue] = useState(0);
+  const [lastWorkerStatus, setLastWorkerStatus] = useState<string>('NO_RUN');
+
+  const fetchWhatsAppOperationalHealth = useCallback(async () => {
+    try {
+      const [{ count, error: pendingError }, { data: workerData, error: workerError }] = await Promise.all([
+        supabase
+          .from('message_send_log')
+          .select('*', { count: 'exact', head: true })
+          .eq('channel', 'WHATSAPP')
+          .eq('status', 'PENDING')
+          .lte('scheduled_for', new Date().toISOString()),
+        supabase
+          .from('worker_execution_logs')
+          .select('status, execution_time')
+          .order('execution_time', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (!pendingError) {
+        setWhatsAppPendingDue(count ?? 0);
+      }
+
+      if (!workerError) {
+        setLastWorkerStatus(workerData?.status ?? 'NO_RUN');
+      }
+    } catch {
+      // dashboard não deve quebrar por erro de telemetria
+    }
+  }, []);
 
   useEffect(() => {
     if (!sessionLoading && !loadingGlobalAdminCheck) {
@@ -52,6 +84,12 @@ const AdminDashboard: React.FC = () => {
       }
     }
   }, [session, sessionLoading, isGlobalAdmin, loadingGlobalAdminCheck, navigate]);
+
+  useEffect(() => {
+    if (!sessionLoading && !loadingGlobalAdminCheck && isGlobalAdmin) {
+      fetchWhatsAppOperationalHealth();
+    }
+  }, [sessionLoading, loadingGlobalAdminCheck, isGlobalAdmin, fetchWhatsAppOperationalHealth]);
 
   const handleLogout = async () => {
     try {
@@ -92,6 +130,91 @@ const AdminDashboard: React.FC = () => {
           Bem-vindo, Administrador Global! Aqui você pode gerenciar as configurações de alto nível do sistema.
         </p>
 
+        <Card className={whatsAppPendingDue > 0 ? "border-red-300 bg-red-50 dark:bg-red-950/30" : "border-gray-200 dark:border-gray-700 dark:bg-gray-800"}>
+            <CardContent className="pt-6">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    {whatsAppPendingDue > 0 ? (
+                      <>
+                        <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                          Alerta operacional WhatsApp
+                        </p>
+                        <p className="text-sm text-red-700/90 dark:text-red-300/90 mt-1">
+                          Existem {whatsAppPendingDue} mensagem(ns) vencida(s) pendente(s). Último status do worker: {lastWorkerStatus}.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Saúde operacional WhatsApp
+                        </p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                          Nenhuma pendência vencida no momento. Último status do worker: {lastWorkerStatus}.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      className={`!rounded-button whitespace-nowrap text-white ${whatsAppPendingDue > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+                      onClick={() => navigate('/mensagens-whatsapp/gerenciar-mensagens')}
+                    >
+                      Ver fila WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="!rounded-button"
+                      onClick={fetchWhatsAppOperationalHealth}
+                    >
+                      Atualizar diagnóstico
+                    </Button>
+                  </div>
+                </div>
+
+                <div className={`rounded-md border p-3 ${whatsAppPendingDue > 0 ? 'border-red-200 bg-white/70 dark:bg-gray-900/40' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/30'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${whatsAppPendingDue > 0 ? 'text-red-700 dark:text-red-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                    Runbook rápido (ação imediata)
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="text-xs text-gray-700 dark:text-gray-300">
+                      <span className="font-semibold">1)</span> Abrir fila e confirmar quais mensagens estão vencidas e pendentes.
+                    </div>
+                    <div className="text-xs text-gray-700 dark:text-gray-300">
+                      <span className="font-semibold">2)</span> Validar se o provedor WhatsApp da empresa está ativo e com credenciais corretas.
+                    </div>
+                    <div className="text-xs text-gray-700 dark:text-gray-300">
+                      <span className="font-semibold">3)</span> Após correção, atualizar a tela e verificar redução das pendências vencidas.
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      className={`!rounded-button ${whatsAppPendingDue > 0 ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                      onClick={() => navigate('/mensagens-whatsapp/gerenciar-mensagens')}
+                    >
+                      Abrir fila
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className={`!rounded-button ${whatsAppPendingDue > 0 ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                      onClick={() => navigate('/admin-dashboard/whatsapp-providers')}
+                    >
+                      Ver provedores
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className={`!rounded-button ${whatsAppPendingDue > 0 ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                      onClick={fetchWhatsAppOperationalHealth}
+                    >
+                      Atualizar diagnóstico
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
         {/* Group Box: Gerenciamento Principal */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ManagementCard
@@ -123,7 +246,7 @@ const AdminDashboard: React.FC = () => {
 
           {/* Card: Provedores WhatsApp */}
           <ManagementCard
-            title="Provedores WhatsApp"
+            title={whatsAppPendingDue > 0 ? `Provedores WhatsApp (${whatsAppPendingDue} alerta)` : "Provedores WhatsApp"}
             description="Configure os provedores de WhatsApp que serão usados para envio automático de mensagens."
             icon={<MessageSquare className="h-6 w-6 text-green-600" />}
             buttonText="Gerenciar Provedores"

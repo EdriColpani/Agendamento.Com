@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from '@/integrations/supabase/client';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
+import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { showError, showSuccess } from '@/utils/toast';
 import { Loader2, MessageCircle, XCircle, ListChecks } from 'lucide-react';
 
@@ -40,6 +41,21 @@ interface MessageLog {
 }
 
 type StatusFilter = 'ALL' | MessageStatus;
+type WorkerHealthStatus = 'SUCCESS' | 'PARTIAL' | 'ERROR' | 'NO_RUN' | string;
+interface CompanyOption {
+  id: string;
+  name: string;
+}
+
+interface QueueHealth {
+  pending_due: number;
+  pending_total: number;
+  sent_24h: number;
+  failed_24h: number;
+  oldest_pending_due_minutes: number;
+  last_worker_status: WorkerHealthStatus;
+  last_worker_execution_time: string | null;
+}
 
 const formatDateTimeBR = (iso: string) => {
   if (!iso) return '-';
@@ -52,6 +68,25 @@ const formatDateTimeBR = (iso: string) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const toYmdInSaoPaulo = (iso: string) => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === 'year')?.value ?? '';
+  const month = parts.find((p) => p.type === 'month')?.value ?? '';
+  const day = parts.find((p) => p.type === 'day')?.value ?? '';
+
+  if (!year || !month || !day) return '';
+  return `${year}-${month}-${day}`;
 };
 
 const getMessageTypeLabel = (kind?: MessageKind | null): string => {
@@ -104,17 +139,41 @@ const getStatusBadgeVariant = (status: MessageStatus): string => {
 const WhatsAppMessageQueuePage: React.FC = () => {
   const navigate = useNavigate();
   const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
+  const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
 
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<MessageLog[]>([]);
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [queueHealth, setQueueHealth] = useState<QueueHealth | null>(null);
+  const effectiveCompanyId = isGlobalAdmin ? selectedCompanyId : primaryCompanyId;
+
+  const fetchCompaniesForGlobalAdmin = useCallback(async () => {
+    if (!isGlobalAdmin) return;
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name')
+        .eq('ativo', true)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      const list = (data || []) as CompanyOption[];
+      setCompanies(list);
+      if (!selectedCompanyId && list.length > 0) {
+        setSelectedCompanyId(list[0].id);
+      }
+    } catch (error: any) {
+      showError('Erro ao carregar empresas: ' + (error.message || 'Erro desconhecido.'));
+    }
+  }, [isGlobalAdmin, selectedCompanyId]);
 
   const fetchMessages = useCallback(async () => {
-    if (!primaryCompanyId) return;
+    if (!effectiveCompanyId) return;
 
     setLoading(true);
     try {
@@ -133,7 +192,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
           clients ( id, name, phone ),
           message_kinds ( id, code, description )
         `)
-        .eq('company_id', primaryCompanyId)
+        .eq('company_id', effectiveCompanyId)
         .eq('channel', 'WHATSAPP')
         .order('scheduled_for', { ascending: true });
 
@@ -147,20 +206,48 @@ const WhatsAppMessageQueuePage: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [primaryCompanyId]);
+  }, [effectiveCompanyId]);
+
+  const fetchQueueHealth = useCallback(async () => {
+    if (!effectiveCompanyId) return;
+    try {
+      const { data, error } = await supabase.rpc('get_whatsapp_queue_health', {
+        p_company_id: effectiveCompanyId,
+      });
+
+      if (error) throw error;
+      const firstRow = Array.isArray(data) ? data[0] : null;
+      if (firstRow) {
+        setQueueHealth({
+          pending_due: Number(firstRow.pending_due ?? 0),
+          pending_total: Number(firstRow.pending_total ?? 0),
+          sent_24h: Number(firstRow.sent_24h ?? 0),
+          failed_24h: Number(firstRow.failed_24h ?? 0),
+          oldest_pending_due_minutes: Number(firstRow.oldest_pending_due_minutes ?? 0),
+          last_worker_status: firstRow.last_worker_status ?? 'NO_RUN',
+          last_worker_execution_time: firstRow.last_worker_execution_time ?? null,
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro ao carregar saúde da fila WhatsApp:', error);
+    }
+  }, [effectiveCompanyId]);
 
   useEffect(() => {
-    if (!loadingPrimaryCompany && primaryCompanyId) {
-      fetchMessages();
+    if (!loadingGlobalAdminCheck && isGlobalAdmin) {
+      fetchCompaniesForGlobalAdmin();
     }
-  }, [loadingPrimaryCompany, primaryCompanyId, fetchMessages]);
+  }, [loadingGlobalAdminCheck, isGlobalAdmin, fetchCompaniesForGlobalAdmin]);
+
+  useEffect(() => {
+    if (!loadingPrimaryCompany && !loadingGlobalAdminCheck && effectiveCompanyId) {
+      fetchMessages();
+      fetchQueueHealth();
+    }
+  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchMessages, fetchQueueHealth]);
 
   const todayYmdBR = useMemo(() => {
-    const nowBR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    const year = nowBR.getFullYear();
-    const month = String(nowBR.getMonth() + 1).padStart(2, '0');
-    const day = String(nowBR.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return toYmdInSaoPaulo(new Date().toISOString());
   }, []);
 
   const filteredMessages = useMemo(() => {
@@ -172,9 +259,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
 
       if (selectedDate) {
         if (!msg.scheduled_for) return false;
-        const scheduledBR = new Date(msg.scheduled_for).toLocaleDateString('en-CA', {
-          timeZone: 'America/Sao_Paulo',
-        }); // yyyy-MM-dd
+        const scheduledBR = toYmdInSaoPaulo(msg.scheduled_for);
         if (scheduledBR !== selectedDate) return false;
       }
 
@@ -207,9 +292,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   const metrics = useMemo(() => {
     const forToday = messages.filter((m) => {
       if (m.status !== 'PENDING' || !m.scheduled_for) return false;
-      const dateBR = new Date(m.scheduled_for).toLocaleDateString('en-CA', {
-        timeZone: 'America/Sao_Paulo',
-      }); // yyyy-MM-dd
+      const dateBR = toYmdInSaoPaulo(m.scheduled_for);
       return dateBR === todayYmdBR;
     }).length;
 
@@ -241,7 +324,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   };
 
   const handleDeleteSelected = async () => {
-    if (!primaryCompanyId) return;
+    if (!effectiveCompanyId) return;
     if (selectedIds.size === 0) {
       showError('Nenhuma mensagem selecionada para excluir.');
       return;
@@ -255,7 +338,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     try {
       const ids = Array.from(selectedIds);
       const { data, error } = await supabase.rpc('delete_whatsapp_messages_for_company', {
-        p_company_id: primaryCompanyId,
+        p_company_id: effectiveCompanyId,
         p_ids: ids,
       });
 
@@ -273,7 +356,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   };
 
   const handleDeleteAllFiltered = async () => {
-    if (!primaryCompanyId) return;
+    if (!effectiveCompanyId) return;
     if (filteredMessages.length === 0) {
       showError('Não há mensagens na lista atual para excluir.');
       return;
@@ -290,7 +373,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
 
     try {
       const { data, error } = await supabase.rpc('delete_whatsapp_messages_for_company', {
-        p_company_id: primaryCompanyId,
+        p_company_id: effectiveCompanyId,
         p_ids: null,
         p_status: statusFilter === 'ALL' ? null : statusFilter,
         p_date: selectedDate || null,
@@ -314,7 +397,13 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchMessages();
+    await fetchQueueHealth();
   };
+
+  const pendingDueAlertThresholdMinutes = 3;
+  const hasCriticalPendingDue =
+    (queueHealth?.pending_due ?? 0) > 0 &&
+    (queueHealth?.oldest_pending_due_minutes ?? 0) >= pendingDueAlertThresholdMinutes;
 
   const handleCancelMessage = async (id: string) => {
     if (!primaryCompanyId) return;
@@ -350,7 +439,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     }
   };
 
-  if (loadingPrimaryCompany || loading) {
+  if (loadingPrimaryCompany || loadingGlobalAdminCheck || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -358,19 +447,27 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     );
   }
 
-  if (!primaryCompanyId) {
+  if (!effectiveCompanyId) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <p className="text-gray-700 text-center mb-4">
-          Você precisa ter uma empresa primária cadastrada para gerenciar a fila de mensagens WhatsApp.
-        </p>
-        <Button
-          className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => navigate('/register-company')}
-        >
-          <i className="fas fa-building mr-2"></i>
-          Cadastrar Empresa
-        </Button>
+        {isGlobalAdmin ? (
+          <p className="text-gray-700 text-center mb-4">
+            Nenhuma empresa ativa encontrada para seleção.
+          </p>
+        ) : (
+          <>
+            <p className="text-gray-700 text-center mb-4">
+              Você precisa ter uma empresa primária cadastrada para gerenciar a fila de mensagens WhatsApp.
+            </p>
+            <Button
+              className="!rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => navigate('/register-company')}
+            >
+              <i className="fas fa-building mr-2"></i>
+              Cadastrar Empresa
+            </Button>
+          </>
+        )}
       </div>
     );
   }
@@ -387,6 +484,26 @@ const WhatsAppMessageQueuePage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          {isGlobalAdmin && (
+            <Select
+              value={selectedCompanyId || ''}
+              onValueChange={(value) => {
+                setSelectedCompanyId(value);
+                setSelectedIds(new Set());
+              }}
+            >
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Selecionar empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button
             variant="outline"
             className="!rounded-button"
@@ -452,6 +569,56 @@ const WhatsAppMessageQueuePage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Saúde operacional */}
+      <Card className={`border ${hasCriticalPendingDue ? 'border-red-400 bg-red-50/60' : queueHealth?.pending_due ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200'}`}>
+        <CardHeader>
+          <CardTitle className="text-lg">Saúde da Automação</CardTitle>
+          <CardDescription>
+            Monitoramento da fila e do worker nas últimas 24 horas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-sm text-gray-600">Pendências vencidas</p>
+            <p className={`text-2xl font-bold ${queueHealth?.pending_due ? 'text-red-600' : 'text-gray-900'}`}>
+              {queueHealth?.pending_due ?? 0}
+            </p>
+            {(queueHealth?.pending_due ?? 0) > 0 && (
+              <p className="text-xs text-red-600 mt-1">
+                Mais antiga há {queueHealth?.oldest_pending_due_minutes ?? 0} min
+              </p>
+            )}
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Pendências totais</p>
+            <p className="text-2xl font-bold text-gray-900">{queueHealth?.pending_total ?? 0}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Enviadas (24h)</p>
+            <p className="text-2xl font-bold text-green-600">{queueHealth?.sent_24h ?? 0}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Falhas (24h)</p>
+            <p className="text-2xl font-bold text-red-600">{queueHealth?.failed_24h ?? 0}</p>
+          </div>
+          <div className="md:col-span-4">
+            <p className="text-sm text-gray-600">
+              Última execução do worker:{' '}
+              <span className="font-medium text-gray-900">{queueHealth?.last_worker_status ?? 'NO_RUN'}</span>
+              {queueHealth?.last_worker_execution_time ? (
+                <span className="text-gray-500"> em {formatDateTimeBR(queueHealth.last_worker_execution_time)}</span>
+              ) : null}
+            </p>
+            {hasCriticalPendingDue && (
+              <p className="text-sm font-medium text-red-700 mt-2">
+                Alerta: há pendências vencidas há mais de {pendingDueAlertThresholdMinutes} minutos.
+                Verifique execução automática e fila imediatamente.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filtros */}
       <Card className="border-gray-200">

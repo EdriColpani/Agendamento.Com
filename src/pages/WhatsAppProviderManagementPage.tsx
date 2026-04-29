@@ -179,7 +179,7 @@ const WhatsAppProviderManagementPage: React.FC = () => {
     try {
       const payloadTemplateJson = JSON.parse(formData.payload_template);
 
-      if (editingProvider) {
+      if (editingProvider?.id) {
         // Atualizar provedor existente
         const { error } = await supabase
           .from('messaging_providers')
