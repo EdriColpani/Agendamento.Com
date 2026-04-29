@@ -46,6 +46,7 @@ const AdminDashboard: React.FC = () => {
   const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
   const [whatsAppPendingDue, setWhatsAppPendingDue] = useState(0);
   const [lastWorkerStatus, setLastWorkerStatus] = useState<string>('NO_RUN');
+  const [lastWorkerExecutionTime, setLastWorkerExecutionTime] = useState<string | null>(null);
 
   const fetchWhatsAppOperationalHealth = useCallback(async () => {
     try {
@@ -70,6 +71,7 @@ const AdminDashboard: React.FC = () => {
 
       if (!workerError) {
         setLastWorkerStatus(workerData?.status ?? 'NO_RUN');
+        setLastWorkerExecutionTime(workerData?.execution_time ?? null);
       }
     } catch {
       // dashboard não deve quebrar por erro de telemetria
@@ -90,6 +92,24 @@ const AdminDashboard: React.FC = () => {
       fetchWhatsAppOperationalHealth();
     }
   }, [sessionLoading, loadingGlobalAdminCheck, isGlobalAdmin, fetchWhatsAppOperationalHealth]);
+
+  useEffect(() => {
+    if (!sessionLoading && !loadingGlobalAdminCheck && isGlobalAdmin) {
+      const id = window.setInterval(() => {
+        fetchWhatsAppOperationalHealth();
+      }, 60_000);
+      return () => window.clearInterval(id);
+    }
+    return undefined;
+  }, [sessionLoading, loadingGlobalAdminCheck, isGlobalAdmin, fetchWhatsAppOperationalHealth]);
+
+  const lastExecutionAgeMinutes = lastWorkerExecutionTime
+    ? Math.floor((Date.now() - new Date(lastWorkerExecutionTime).getTime()) / 60000)
+    : null;
+
+  const isWorkerStale = lastExecutionAgeMinutes !== null && lastExecutionAgeMinutes >= 10;
+  const healthLevel: 'OK' | 'ATENCAO' | 'CRITICO' =
+    whatsAppPendingDue > 0 || isWorkerStale ? (whatsAppPendingDue > 0 && isWorkerStale ? 'CRITICO' : 'ATENCAO') : 'OK';
 
   const handleLogout = async () => {
     try {
@@ -135,13 +155,14 @@ const AdminDashboard: React.FC = () => {
               <div className="flex flex-col gap-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    {whatsAppPendingDue > 0 ? (
+                    {healthLevel !== 'OK' ? (
                       <>
                         <p className="text-sm font-semibold text-red-700 dark:text-red-300">
-                          Alerta operacional WhatsApp
+                          Alerta operacional WhatsApp ({healthLevel})
                         </p>
                         <p className="text-sm text-red-700/90 dark:text-red-300/90 mt-1">
                           Existem {whatsAppPendingDue} mensagem(ns) vencida(s) pendente(s). Último status do worker: {lastWorkerStatus}.
+                          {isWorkerStale ? ` Sem execução recente há ${lastExecutionAgeMinutes} min.` : ''}
                         </p>
                       </>
                     ) : (
@@ -151,6 +172,7 @@ const AdminDashboard: React.FC = () => {
                         </p>
                         <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
                           Nenhuma pendência vencida no momento. Último status do worker: {lastWorkerStatus}.
+                          {lastExecutionAgeMinutes !== null ? ` Última execução há ${lastExecutionAgeMinutes} min.` : ''}
                         </p>
                       </>
                     )}

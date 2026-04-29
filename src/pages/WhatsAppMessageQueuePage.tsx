@@ -246,6 +246,16 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     }
   }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchMessages, fetchQueueHealth]);
 
+  useEffect(() => {
+    if (!loadingPrimaryCompany && !loadingGlobalAdminCheck && effectiveCompanyId) {
+      const id = window.setInterval(() => {
+        fetchQueueHealth();
+      }, 60_000);
+      return () => window.clearInterval(id);
+    }
+    return undefined;
+  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchQueueHealth]);
+
   const todayYmdBR = useMemo(() => {
     return toYmdInSaoPaulo(new Date().toISOString());
   }, []);
@@ -401,9 +411,20 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   };
 
   const pendingDueAlertThresholdMinutes = 3;
+  const staleWorkerThresholdMinutes = 10;
+  const lastWorkerExecutionAgeMinutes = queueHealth?.last_worker_execution_time
+    ? Math.floor((Date.now() - new Date(queueHealth.last_worker_execution_time).getTime()) / 60000)
+    : null;
+  const isWorkerStale =
+    lastWorkerExecutionAgeMinutes !== null && lastWorkerExecutionAgeMinutes >= staleWorkerThresholdMinutes;
   const hasCriticalPendingDue =
     (queueHealth?.pending_due ?? 0) > 0 &&
     (queueHealth?.oldest_pending_due_minutes ?? 0) >= pendingDueAlertThresholdMinutes;
+  const automationHealthLabel = hasCriticalPendingDue || isWorkerStale
+    ? 'CRÍTICO'
+    : (queueHealth?.pending_due ?? 0) > 0
+      ? 'ATENÇÃO'
+      : 'OK';
 
   const handleCancelMessage = async (id: string) => {
     if (!primaryCompanyId) return;
@@ -571,9 +592,9 @@ const WhatsAppMessageQueuePage: React.FC = () => {
       </div>
 
       {/* Saúde operacional */}
-      <Card className={`border ${hasCriticalPendingDue ? 'border-red-400 bg-red-50/60' : queueHealth?.pending_due ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200'}`}>
+      <Card className={`border ${hasCriticalPendingDue || isWorkerStale ? 'border-red-400 bg-red-50/60' : queueHealth?.pending_due ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200'}`}>
         <CardHeader>
-          <CardTitle className="text-lg">Saúde da Automação</CardTitle>
+          <CardTitle className="text-lg">Saúde da Automação ({automationHealthLabel})</CardTitle>
           <CardDescription>
             Monitoramento da fila e do worker nas últimas 24 horas.
           </CardDescription>
@@ -610,10 +631,15 @@ const WhatsAppMessageQueuePage: React.FC = () => {
                 <span className="text-gray-500"> em {formatDateTimeBR(queueHealth.last_worker_execution_time)}</span>
               ) : null}
             </p>
-            {hasCriticalPendingDue && (
+            {lastWorkerExecutionAgeMinutes !== null && (
+              <p className={`text-sm mt-2 ${isWorkerStale ? 'font-medium text-red-700' : 'text-gray-600'}`}>
+                Última execução há {lastWorkerExecutionAgeMinutes} min.
+                {isWorkerStale ? ` Acima do limite de ${staleWorkerThresholdMinutes} min.` : ''}
+              </p>
+            )}
+            {(hasCriticalPendingDue || isWorkerStale) && (
               <p className="text-sm font-medium text-red-700 mt-2">
-                Alerta: há pendências vencidas há mais de {pendingDueAlertThresholdMinutes} minutos.
-                Verifique execução automática e fila imediatamente.
+                Alerta: verifique execução automática e fila imediatamente.
               </p>
             )}
           </div>
