@@ -1073,35 +1073,6 @@ serve(async (req) => {
     const updates: any[] = [];
 
     for (const log of pendingLogsToProcess) {
-      // Claim atomico: evita envio duplicado quando dois schedulers rodam em paralelo
-      // (ex.: GitHub Actions + pg_cron). Somente quem fizer o claim processa o log.
-      const claimPayload = {
-        claim_execution_id: executionId,
-        claimed_at: new Date().toISOString(),
-      };
-
-      const { data: claimedRow, error: claimError } = await supabaseAdmin
-        .from('message_send_log')
-        .update({
-          provider_response: claimPayload,
-        })
-        .eq('id', log.id)
-        .eq('status', 'PENDING')
-        .is('sent_at', null)
-        .is('provider_response', null)
-        .select('id')
-        .maybeSingle();
-
-      if (claimError) {
-        console.error(`Erro ao fazer claim do log ${log.id}:`, claimError);
-        continue;
-      }
-
-      if (!claimedRow) {
-        console.log(`Log ${log.id} ja foi claimado por outra execucao. Pulando.`);
-        continue;
-      }
-
       const client = log.client_id ? clientsMap.get(log.client_id) : null;
       const template =
         templatesByCompanyAndKind.get(`${log.company_id}_${log.message_kind_id}`) || null;
