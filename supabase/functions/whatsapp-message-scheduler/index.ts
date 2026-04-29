@@ -462,6 +462,22 @@ serve(async (req) => {
   
   console.log(`✅ Autenticação válida. Execution ID: ${executionId}`);
 
+  // Payload opcional para controle de orquestração (ex.: backup via GitHub).
+  let requestPayload: any = {};
+  try {
+    const rawBody = await req.text();
+    if (rawBody && rawBody.trim().length > 0) {
+      requestPayload = JSON.parse(rawBody);
+    }
+  } catch (parseError) {
+    console.warn('⚠️ Body inválido; seguindo com payload padrão.', parseError);
+  }
+
+  const source =
+    requestPayload && typeof requestPayload.source === 'string'
+      ? requestPayload.source
+      : 'unknown';
+
   // IMPORTANTE: Trabalhar sempre com horário de BRASÍLIA
   // Obter hora atual em Brasília
   const nowBR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
@@ -497,6 +513,42 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } },
     );
+
+    // Backup condicionado: quando o GitHub disparar, só executa de fato
+    // se não houve execução recente do worker (primário: pg_cron).
+    if (source === 'github_schedule_backup') {
+      const minGap = Number(requestPayload?.min_gap_minutes ?? 4);
+      const safeGap = Number.isFinite(minGap) && minGap > 0 ? minGap : 4;
+      const cutoff = new Date(Date.now() - safeGap * 60 * 1000).toISOString();
+
+      const { data: recentWorker, error: recentWorkerError } = await supabaseAdmin
+        .from('worker_execution_logs')
+        .select('execution_time, status')
+        .gte('execution_time', cutoff)
+        .order('execution_time', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!recentWorkerError && recentWorker) {
+        return new Response(
+          JSON.stringify({
+            message: 'Backup do GitHub pulado: execução recente detectada.',
+            source,
+            recent_execution_time: recentWorker.execution_time,
+            recent_execution_status: recentWorker.status,
+            min_gap_minutes: safeGap,
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          },
+        );
+      }
+
+      if (recentWorkerError) {
+        console.warn('⚠️ Falha ao consultar worker_execution_logs no backup GitHub; prosseguindo.', recentWorkerError);
+      }
+    }
 
     console.log('1) Buscando empresas com whatsapp_messaging_enabled = true...');
     // 1) Buscar empresas com módulo habilitado (incluindo nome para templates)
