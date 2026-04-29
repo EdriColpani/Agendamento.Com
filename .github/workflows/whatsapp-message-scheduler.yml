@@ -1,10 +1,8 @@
 name: WhatsApp Message Scheduler (1/min)
 
 on:
-  schedule:
-    # GitHub Actions tem limitação de intervalo mínimo efetivo ~5 minutos para schedule.
-    # Cron do GitHub executa em UTC.
-    - cron: '*/5 * * * *'
+  # Desativado temporariamente para teste de duplicidade de envio.
+  workflow_dispatch: {}
 
 jobs:
   run:
