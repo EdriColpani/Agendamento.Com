@@ -1,9 +1,7 @@
 name: WhatsApp Message Scheduler (1/min)
 
 on:
-  schedule:
-    # Redundancia operacional: GitHub a cada 5 min como backup do pg_cron.
-    - cron: '*/5 * * * *'
+  # Mantido apenas manual. Automação oficial: pg_cron no banco.
   workflow_dispatch: {}
 
 jobs:
@@ -22,6 +20,6 @@ jobs:
           curl -sS --fail --retry 3 --retry-delay 10 --connect-timeout 10 --max-time 30 -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${WHATSAPP_CRON_SECRET}" \
-            -d '{"source":"github_schedule_backup","min_gap_minutes":4}' \
+            -d '{"source":"github_manual"}' \
             "https://ocawpokndruxakzmhzsa.supabase.co/functions/v1/whatsapp-message-scheduler"
 
