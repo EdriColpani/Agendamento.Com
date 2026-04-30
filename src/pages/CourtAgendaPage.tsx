@@ -64,6 +64,7 @@ interface CourtAgendaSlot {
   startTime: string;
   occupied: boolean;
   slotPrice: number;
+  blockStatus: 'pendente' | 'confirmado' | 'ocupado' | null;
 }
 
 interface CourtAgendaData {
@@ -108,6 +109,7 @@ const CourtAgendaPage: React.FC = () => {
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [bookingContext, setBookingContext] = useState<BookingContext | null>(null);
   const [bookingClientId, setBookingClientId] = useState('');
+  const [bookingInitialStatus, setBookingInitialStatus] = useState<'pendente' | 'confirmado'>('pendente');
   const [bookingObservations, setBookingObservations] = useState('');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
 
@@ -150,6 +152,42 @@ const CourtAgendaPage: React.FC = () => {
     }
     setClients((data as ClientOption[]) || []);
   }, [primaryCompanyId]);
+
+  const resolveSlotBlockStatus = useCallback(
+    (
+      slotStartTime: string,
+      slotMinutes: number,
+      appointments: { appointment_time: string; total_duration_minutes: number | null; status: string | null }[],
+    ): 'pendente' | 'confirmado' | 'ocupado' | null => {
+      const toMinutes = (t: string) => {
+        const [h, m] = t.slice(0, 5).split(':').map((n) => Number(n));
+        return h * 60 + m;
+      };
+      const slotStart = toMinutes(slotStartTime);
+      const slotEnd = slotStart + slotMinutes;
+      let hasConfirmed = false;
+      let hasPending = false;
+      let hasOther = false;
+
+      for (const appt of appointments || []) {
+        const start = toMinutes(appt.appointment_time);
+        const end = start + (appt.total_duration_minutes ?? 60);
+        const overlaps = start < slotEnd && end > slotStart;
+        if (!overlaps) continue;
+
+        const s = String(appt.status || '').toLowerCase();
+        if (s === 'confirmado') hasConfirmed = true;
+        else if (s === 'pendente') hasPending = true;
+        else hasOther = true;
+      }
+
+      if (hasConfirmed) return 'confirmado';
+      if (hasPending) return 'pendente';
+      if (hasOther) return 'ocupado';
+      return null;
+    },
+    [],
+  );
 
   const refreshAgenda = useCallback(async () => {
     if (!primaryCompanyId || courts.length === 0) {
@@ -214,6 +252,17 @@ const CourtAgendaPage: React.FC = () => {
               startTime: slot.startTime,
               occupied: slot.occupied,
               slotPrice: estimateCourtBookingTotalPrice(slot.startTime, dur, dur, bands, defPrice),
+              blockStatus: slot.occupied
+                ? resolveSlotBlockStatus(
+                    slot.startTime,
+                    dur,
+                    (appts || []) as {
+                      appointment_time: string;
+                      total_duration_minutes: number | null;
+                      status: string | null;
+                    }[],
+                  )
+                : null,
             })),
             error: null,
           };
@@ -234,7 +283,7 @@ const CourtAgendaPage: React.FC = () => {
     );
     setCourtAgendas(nextAgendas);
     setLoadingAgenda(false);
-  }, [primaryCompanyId, courts, dayOfWeek, dateStr]);
+  }, [primaryCompanyId, courts, dayOfWeek, dateStr, resolveSlotBlockStatus]);
 
   useEffect(() => {
     if (primaryCompanyId && isCourtMode && canUseArenaManagement) {
@@ -303,6 +352,7 @@ const CourtAgendaPage: React.FC = () => {
       slotPrice: slot.slotPrice,
     });
     setBookingClientId('');
+    setBookingInitialStatus('pendente');
     setBookingObservations('');
     setBookModalOpen(true);
   };
@@ -316,7 +366,7 @@ const CourtAgendaPage: React.FC = () => {
     const client = clients.find((c) => c.id === bookingClientId);
     setBookingSubmitting(true);
     try {
-      await createCourtBooking({
+      const createdId = await createCourtBooking({
         companyId: primaryCompanyId,
         courtId: bookingContext.courtId,
         clientId: bookingClientId,
@@ -326,7 +376,21 @@ const CourtAgendaPage: React.FC = () => {
         durationMinutes: bookingContext.slotMinutes,
         observations: bookingObservations.trim() || null,
       });
-      showSuccess('Reserva criada com sucesso.');
+
+      if (bookingInitialStatus === 'confirmado') {
+        const { error: statusError } = await supabase
+          .from('appointments')
+          .update({ status: 'confirmado', payment_method: 'dinheiro' })
+          .eq('id', createdId)
+          .eq('company_id', primaryCompanyId);
+        if (statusError) throw statusError;
+      }
+
+      showSuccess(
+        bookingInitialStatus === 'confirmado'
+          ? 'Reserva criada e confirmada com sucesso.'
+          : 'Reserva criada com sucesso (pendente).',
+      );
       setBookModalOpen(false);
       setBookingContext(null);
       await refreshAgenda();
@@ -463,11 +527,32 @@ const CourtAgendaPage: React.FC = () => {
                             Nenhum slot gerado para este dia com blocos de {agenda.slotMinutes} minutos.
                           </p>
                         ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {agenda.slots.map((slot) => {
+                          <>
+                            <div className="flex flex-wrap gap-2 text-xs text-gray-600">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-800">
+                                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                                Pendente
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-green-800">
+                                <span className="h-2 w-2 rounded-full bg-green-500" />
+                                Confirmado
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-gray-700">
+                                <span className="h-2 w-2 rounded-full bg-gray-500" />
+                                Outro bloqueio
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {agenda.slots.map((slot) => {
                               const end = addDays(new Date(`1970-01-01T${slot.startTime}:00`), 0);
                               end.setMinutes(end.getMinutes() + agenda.slotMinutes);
                               const endStr = format(end, 'HH:mm');
+                              const occupiedClass =
+                                slot.blockStatus === 'confirmado'
+                                  ? 'cursor-not-allowed border-green-300 bg-green-50 text-green-800'
+                                  : slot.blockStatus === 'pendente'
+                                    ? 'cursor-not-allowed border-amber-300 bg-amber-50 text-amber-800'
+                                    : 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500';
                               return (
                                 <button
                                   key={`${court.id}-${slot.startTime}`}
@@ -475,19 +560,24 @@ const CourtAgendaPage: React.FC = () => {
                                   disabled={slot.occupied}
                                   onClick={() => !slot.occupied && openBookModal(court, slot, agenda.slotMinutes)}
                                   className={`rounded-md border px-3 py-2 text-left min-w-[120px] ${
-                                    slot.occupied
-                                      ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-400'
-                                      : 'border-gray-300 bg-white text-gray-900 hover:border-gray-500'
+                                    slot.occupied ? occupiedClass : 'border-gray-300 bg-white text-gray-900 hover:border-gray-500'
                                   }`}
                                 >
                                   <span className="block text-sm font-medium">{slot.startTime} às {endStr}</span>
                                   <span className="block text-sm font-semibold">
-                                    {slot.occupied ? 'Ocupado' : `R$ ${slot.slotPrice.toFixed(2).replace('.', ',')}`}
+                                    {slot.occupied
+                                      ? slot.blockStatus === 'confirmado'
+                                        ? 'Confirmado'
+                                        : slot.blockStatus === 'pendente'
+                                          ? 'Pendente'
+                                          : 'Ocupado'
+                                      : `R$ ${slot.slotPrice.toFixed(2).replace('.', ',')}`}
                                   </span>
                                 </button>
                               );
-                            })}
-                          </div>
+                              })}
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -545,6 +635,24 @@ const CourtAgendaPage: React.FC = () => {
                 onChange={(e) => setBookingObservations(e.target.value)}
                 placeholder="Opcional"
               />
+            </div>
+            <div>
+              <Label>Status inicial da reserva</Label>
+              <Select
+                value={bookingInitialStatus}
+                onValueChange={(v: 'pendente' | 'confirmado') => setBookingInitialStatus(v)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendente">Pendente (aguardando confirmação)</SelectItem>
+                  <SelectItem value="confirmado">Confirmado (telefone/balcão)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use confirmado quando o cliente ligar ou reservar direto no balcão da arena.
+              </p>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
