@@ -125,14 +125,18 @@ export const helpCategoriesArena: HelpCategory[] = [
       {
         id: 'arena-agenda-dia',
         title: 'Agenda do dia (grade)',
-        description: 'Visualização em grade das reservas por quadra e horário.',
+        description: 'Visualização em grade das reservas por quadra e horário, com identificação visual de bloqueios.',
         steps: [
           'Acesse “Agenda” ou “Agenda do dia” no menu do módulo',
           'Navegue pela data e pelas quadras',
-          'Identifique horários livres e ocupados',
+          'Identifique horários livres, pendentes e confirmados pelas cores/legendas dos slots',
+          'Ao criar reserva manual, escolha o status inicial: Pendente ou Confirmado (telefone/balcão)',
           'Abra uma reserva para editar ou criar nova conforme permitido',
         ],
-        tips: ['Combine com a lista de reservas para auditoria por período maior'],
+        tips: [
+          'Use “Confirmado” para atendimentos por telefone/balcão quando o cliente não usar link público',
+          'Combine com a lista de reservas para auditoria por período maior',
+        ],
         tags: ['agenda', 'grade', 'dia', 'quadras'],
       },
       {
@@ -158,18 +162,21 @@ export const helpCategoriesArena: HelpCategory[] = [
       {
         id: 'arena-lista-reservas',
         title: 'Lista de reservas',
-        description: 'Relatório com data, hora, quadra, cliente, valor e status.',
+        description: 'Relatório operacional com data, hora, quadra, cliente, valor, status e ações rápidas.',
         steps: [
           'Acesse “Reservas” ou “Lista de reservas” no menu',
           'Filtre por período, quadra e status',
+          'Use os cards do “Resumo operacional” para filtrar rapidamente por Pendente, Confirmado, Concluído e Cancelado',
+          'Use as ações rápidas na linha: Confirmar, Cancelar (pendentes) e Finalizar (confirmadas)',
           'Use a paginação quando houver muitos registros',
-          'Clique para editar a reserva na tela de agendamento',
+          'Clique para editar a reserva quando necessário',
         ],
         tips: [
           'A lista costuma mostrar as reservas mais recentes primeiro',
-          'Status (pendente, concluído, etc.) ajuda no acompanhamento financeiro',
+          'Finalizar gera o recebimento financeiro da reserva no caixa',
+          'Cancelamento rápido está focado em reservas pendentes para evitar conflitos operacionais',
         ],
-        tags: ['reservas', 'lista', 'filtros', 'relatório'],
+        tags: ['reservas', 'lista', 'filtros', 'relatório', 'resumo operacional'],
       },
       {
         id: 'arena-reserva-publica-link',
@@ -189,13 +196,16 @@ export const helpCategoriesArena: HelpCategory[] = [
       {
         id: 'arena-editar-reserva',
         title: 'Editar ou concluir reserva',
-        description: 'Ajuste dados da reserva de quadra pelo fluxo de edição de agendamento.',
+        description: 'Ajuste dados da reserva e finalize o atendimento diretamente no menu Reservas.',
         steps: [
           'Na lista ou na agenda, abra a reserva desejada',
           'Altere horário, quadra ou observações respeitando conflitos',
-          'Finalize ou registre pagamento conforme o processo da empresa',
+          'Para reservas confirmadas, use “Finalizar” para concluir o horário e gerar recebimento no caixa',
         ],
-        tips: ['Use a mesma tela de edição de agendamentos do restante do sistema'],
+        tips: [
+          'A finalização operacional da arena fica no menu Reservas',
+          'Status pendente pode ser confirmado/cancelado rapidamente sem sair da lista',
+        ],
         tags: ['editar', 'reserva', 'agendamento', 'status'],
       },
     ],
