@@ -70,6 +70,9 @@ verify_jwt = false
 [functions.finalize-appointment-by-collaborator]
 verify_jwt = false
 
+[functions.finalize-court-reservation]
+verify_jwt = false
+
 [functions.get-court-booking-refund-report]
 verify_jwt = false
 
