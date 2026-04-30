@@ -75,6 +75,73 @@ function jsonResponse(payload: unknown, status: number) {
   });
 }
 
+/** Valor líquido cobrado no Mercado Pago (usa na base da comissão de vendedor externo). */
+function getMercadoPagoTransactionAmount(payment: Record<string, unknown>): number | null {
+  const tx = payment.transaction_amount;
+  const details = (payment.transaction_details as Record<string, unknown> | undefined)?.total_paid_amount;
+  const n = Number(tx ?? details);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Comissão de vendedor externo (tabelas external_sales_*). Não altera commission_payments / colaboradores.
+ * Falhas são apenas logadas para não bloquear assinatura.
+ */
+async function recordExternalSalesAccrual(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  args: {
+    companyId: string;
+    mpPaymentId: string;
+    baseAmount: number | null;
+    sourceKind: "subscription_payment" | "plan_upgrade";
+    paymentAttemptId: string | null;
+    subscriptionChangeRequestId: string | null;
+    observations?: string | null;
+  },
+): Promise<void> {
+  if (args.baseAmount === null || !Number.isFinite(args.baseAmount) || args.baseAmount <= 0) {
+    console.warn("[external_sales] comissão não lançada: valor base inválido", args);
+    return;
+  }
+  const { data, error } = await supabaseAdmin.rpc("external_sales_record_accrual", {
+    p_company_id: args.companyId,
+    p_mercadopago_payment_id: args.mpPaymentId,
+    p_base_amount: args.baseAmount,
+    p_source_kind: args.sourceKind,
+    p_payment_attempt_id: args.paymentAttemptId,
+    p_subscription_change_request_id: args.subscriptionChangeRequestId,
+    p_observations: args.observations ?? null,
+  });
+  if (error) {
+    console.error("[external_sales] external_sales_record_accrual:", error);
+    return;
+  }
+  console.log("[external_sales] resultado:", data);
+}
+
+/** Mesmos status tratados em quadra/pacote para estorno MP. */
+function isMercadoPagoRefundLikeStatus(status: unknown): boolean {
+  const s = String(status ?? "").toLowerCase();
+  return s === "refunded" || s === "charged_back" || s === "chargeback";
+}
+
+/** Debita comissão de vendedor externo se existir acréscimo para este payment id (idempotente). */
+async function recordExternalSalesReversalIfApplicable(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  mpPaymentId: string,
+  observations: string,
+): Promise<void> {
+  const { data, error } = await supabaseAdmin.rpc("external_sales_record_reversal_for_payment", {
+    p_original_mercadopago_payment_id: String(mpPaymentId),
+    p_observations: observations,
+  });
+  if (error) {
+    console.error("[external_sales] external_sales_record_reversal_for_payment:", error);
+    return;
+  }
+  console.log("[external_sales] estorno comissão:", data);
+}
+
 /**
  * Verifica se o plano tem o menu WhatsApp e envia email de notificação se necessário
  * @param supabaseAdmin Cliente Supabase Admin
@@ -655,7 +722,7 @@ async function processSubscriptionPlanChangePayment(
 
   const { data: changeRequest, error: changeRequestError } = await supabaseAdmin
     .from("subscription_change_requests")
-    .select("id, company_id, subscription_id, to_plan_id, status")
+    .select("id, company_id, subscription_id, to_plan_id, status, proration_amount")
     .eq("id", changeRequestId)
     .eq("payment_attempt_id", paymentAttemptId)
     .maybeSingle();
@@ -669,6 +736,13 @@ async function processSubscriptionPlanChangePayment(
   }
 
   if (changeRequest.status === "applied") {
+    if (isMercadoPagoRefundLikeStatus(mpStatus)) {
+      await recordExternalSalesReversalIfApplicable(
+        supabaseAdmin,
+        String(paymentId),
+        "Estorno ou chargeback — pagamento de upgrade de plano (Mercado Pago).",
+      );
+    }
     return new Response(JSON.stringify({ received: true, alreadyApplied: true }), {
       status: 200,
       headers: jsonHeaders,
@@ -685,6 +759,15 @@ async function processSubscriptionPlanChangePayment(
         failure_reason: mpStatus === "pending" ? null : `Pagamento ${mpStatus}`,
       })
       .eq("id", changeRequest.id);
+
+    // Sem acréscimo de upgrade se nunca foi approved/applied — reversal é no-op se não houve lançamento.
+    if (isMercadoPagoRefundLikeStatus(mpStatus)) {
+      await recordExternalSalesReversalIfApplicable(
+        supabaseAdmin,
+        String(paymentId),
+        "Estorno ou chargeback — tentativa de pagamento de upgrade (sem plano aplicado).",
+      );
+    }
 
     return new Response(JSON.stringify({ received: true, message: `Payment status ${mpStatus}.` }), {
       status: 200,
@@ -723,6 +806,20 @@ async function processSubscriptionPlanChangePayment(
       failure_reason: null,
     })
     .eq("id", changeRequest.id);
+
+  const proration = Number((changeRequest as { proration_amount?: unknown }).proration_amount);
+  const txAmt = getMercadoPagoTransactionAmount(payment);
+  const baseAmount =
+    !Number.isNaN(proration) && proration > 0 ? proration : (txAmt ?? null);
+  await recordExternalSalesAccrual(supabaseAdmin, {
+    companyId: String(changeRequest.company_id),
+    mpPaymentId: String(paymentId),
+    baseAmount,
+    sourceKind: "plan_upgrade",
+    paymentAttemptId: paymentAttemptId,
+    subscriptionChangeRequestId: String(changeRequest.id),
+    observations: "Upgrade de plano (proration ou valor MP).",
+  });
 
   return new Response(JSON.stringify({ received: true, upgraded: true, changeRequestId: changeRequest.id }), {
     status: 200,
@@ -849,6 +946,13 @@ serve(async (req) => {
     }
 
     if (payment.status !== 'approved') {
+      if (isMercadoPagoRefundLikeStatus(payment.status)) {
+        await recordExternalSalesReversalIfApplicable(
+          supabaseAdmin,
+          String(paymentId),
+          "Estorno ou chargeback — pagamento de assinatura PlanoAgenda (Mercado Pago).",
+        );
+      }
       return jsonResponse({ received: true, message: `Pagamento com status ${payment.status}.` }, 200);
     }
 
@@ -1018,6 +1122,17 @@ serve(async (req) => {
             await checkAndNotifyWhatsAppPlan(supabaseAdmin, companyId, planId);
         }
     }
+
+    const subBaseAmount = getMercadoPagoTransactionAmount(payment);
+    await recordExternalSalesAccrual(supabaseAdmin, {
+      companyId,
+      mpPaymentId: String(paymentId),
+      baseAmount: subBaseAmount,
+      sourceKind: "subscription_payment",
+      paymentAttemptId,
+      subscriptionChangeRequestId: null,
+      observations: "Mensalidade / assinatura PlanoAgenda.",
+    });
     
     // 4. Register Coupon Usage (if applicable)
     if (hasCoupon) {

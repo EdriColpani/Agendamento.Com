@@ -107,7 +107,9 @@ serve(async (req) => {
         gender = 'Outro',
         // Company Data
         companyName, razaoSocial, cnpj, ie, companyEmail, companyPhoneNumber, segmentType,
-        address, number, neighborhood, complement, zipCode, city, state, imageBase64
+        address, number, neighborhood, complement, zipCode, city, state, imageBase64,
+        /** Código opcional de vendedor externo (?ref= no cadastro). Domínio separado da comissão de colaboradores. */
+        referralCode,
     } = requestBody;
 
     // 1. Input Validation (Basic check, detailed validation is done on frontend)
@@ -279,6 +281,39 @@ serve(async (req) => {
         });
     }
     const companyId = companyData.id;
+
+    // 5b. Indicação de vendedor externo (comissão sobre assinatura — tabelas external_sales_*)
+    if (typeof referralCode === "string" && referralCode.trim() !== "") {
+      const code = referralCode.trim().toLowerCase();
+      const { data: repRow, error: repLookupErr } = await supabaseAdmin
+        .from("external_sales_representatives")
+        .select("id")
+        .eq("referral_code", code)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (repLookupErr) {
+        console.warn("[register-company-and-user] external_sales lookup:", repLookupErr.message);
+      } else if (repRow?.id) {
+        const { error: attrErr } = await supabaseAdmin
+          .from("company_external_sales_attributions")
+          .insert({
+            company_id: companyId,
+            representative_id: repRow.id,
+            referral_code_used: code,
+          });
+
+        if (attrErr) {
+          if (attrErr.code !== "23505") {
+            console.warn("[register-company-and-user] attribution insert:", attrErr.message);
+          }
+        } else {
+          console.log("[register-company-and-user] external sales attribution saved for company", companyId);
+        }
+      } else {
+        console.log("[register-company-and-user] referral code not found or inactive:", code);
+      }
+    }
 
     // 6. Assign Proprietário Role and Set as Primary
     const { error: assignRoleError } = await supabaseAdmin.rpc('assign_user_to_company', {

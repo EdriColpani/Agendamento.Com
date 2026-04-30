@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,6 +80,7 @@ interface SegmentOption {
 
 const UnifiedRegistrationPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session } = useSession();
   const [loading, setLoading] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -374,6 +375,11 @@ const UnifiedRegistrationPage: React.FC = () => {
       imageBase64: pendingImageUrl, // Base64 string or null - NO File object
     };
 
+    const refParam = searchParams.get('ref') || searchParams.get('referral');
+    if (refParam && refParam.trim() !== '') {
+      cleanedData.referralCode = refParam.trim().toLowerCase();
+    }
+
     // Explicitly ensure no File objects are in the data
     if (cleanedData.companyLogo) {
       delete cleanedData.companyLogo;
@@ -458,6 +464,14 @@ const UnifiedRegistrationPage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Preencha seus dados pessoais e da sua empresa para começar a usar a plataforma.
           </p>
+          {(searchParams.get('ref') || searchParams.get('referral')) && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              Cadastro por indicação. Código:{' '}
+              <span className="font-mono font-semibold">
+                {(searchParams.get('ref') || searchParams.get('referral') || '').trim().toLowerCase()}
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">

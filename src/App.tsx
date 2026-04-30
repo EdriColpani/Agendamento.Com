@@ -91,6 +91,7 @@ import ColaboradorAgendamentosPage from "./pages/ColaboradorAgendamentosPage";
 import WaitingApprovalPage from "./pages/WaitingApprovalPage"; // Importar página de aprovação pendente
 import HelpPage from "./pages/HelpPage"; // Importar página de ajuda
 import SubscriptionChangeOpsPage from "./pages/SubscriptionChangeOpsPage";
+import ExternalSalesRepManagementPage from "./pages/ExternalSalesRepManagementPage";
 
 const queryClient = new QueryClient();
 
@@ -253,6 +254,7 @@ const App = () => (
             <Route path="/admin-dashboard/coupon-usage-report" element={<GlobalAdminProtectedRoute><CouponUsageReportPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Relatório de Tentativas de Pagamento */}
             <Route path="/admin-dashboard/payment-attempts" element={<GlobalAdminProtectedRoute><PaymentAttemptsPage /></GlobalAdminProtectedRoute>} />
+            <Route path="/admin-dashboard/vendedores-externos" element={<GlobalAdminProtectedRoute><ExternalSalesRepManagementPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/court-booking-timeout-health" element={<GlobalAdminProtectedRoute><CourtBookingTimeoutHealthPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/arena-cancelamentos-estornos" element={<GlobalAdminProtectedRoute><CourtBookingRefundHealthPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/operacoes-assinatura" element={<GlobalAdminProtectedRoute><SubscriptionChangeOpsPage /></GlobalAdminProtectedRoute>} />

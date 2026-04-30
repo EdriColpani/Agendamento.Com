@@ -1,0 +1,36 @@
+---
+description: Bloqueio de mudancas WhatsApp sem checklist e aprovacao
+globs:
+  - "supabase/functions/whatsapp-message-scheduler/**"
+  - "supabase/migrations/**/*whatsapp*"
+  - ".github/workflows/whatsapp-message-scheduler.yml"
+alwaysApply: true
+---
+
+# Controle de Mudancas - WhatsApp
+
+Objetivo: impedir alteracoes nas rotinas de envio automatico sem autorizacao explicita e checklist completo.
+
+## Regras obrigatorias
+
+1. Antes de editar qualquer arquivo coberto por esta regra, solicitar aprovacao explicita do proprietario.
+2. Antes de editar, apresentar checklist abaixo respondido:
+   - problema alvo
+   - impacto no scheduler
+   - risco de duplicidade
+   - risco de atraso
+   - estrategia de rollback
+   - teste de validacao final
+3. Sem aprovacao + checklist, a mudanca deve ser recusada.
+4. Mudancas devem manter uma unica fonte oficial de scheduler automatico.
+5. Nunca introduzir segundo scheduler automatico sem aprovacao explicita.
+
+## Checklist obrigatorio
+
+- Problema alvo descrito claramente? (sim/nao)
+- Mudanca afeta agendamento automatico? (sim/nao)
+- Risco de duplicidade mapeado? (sim/nao)
+- Risco de atraso mapeado? (sim/nao)
+- Plano de rollback definido? (sim/nao)
+- Teste de producao definido? (sim/nao)
+- Aprovacao explicita do proprietario registrada? (sim/nao)

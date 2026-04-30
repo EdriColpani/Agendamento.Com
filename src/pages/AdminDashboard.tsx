@@ -7,7 +7,7 @@ import { useSession } from '@/components/SessionContextProvider';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { performSignOut } from '@/utils/auth-state';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Building, DollarSign, FileText, Tags, LogOut, Key, MailCheck, Tag, BarChart, Zap, CreditCard, Image as ImageIcon, MessageSquare, UserCog, Menu, Database, AlertTriangle } from 'lucide-react'; // Importando ícones do dashboard
+import { Users, Building, DollarSign, FileText, Tags, LogOut, Key, MailCheck, Tag, BarChart, Zap, CreditCard, Image as ImageIcon, MessageSquare, UserCog, Menu, Database, AlertTriangle, Share2 } from 'lucide-react'; // Importando ícones do dashboard
 import RecentAuditLogs from '@/components/RecentAuditLogs';
 
 // Componente auxiliar para padronizar os cards de gerenciamento
@@ -322,6 +322,15 @@ const AdminDashboard: React.FC = () => {
             buttonText="Abrir relatório de pagamentos"
             buttonColor="bg-indigo-600 hover:bg-indigo-700"
             onClick={() => navigate('/admin-dashboard/payment-attempts')}
+          />
+
+          <ManagementCard
+            title="Vendedores externos (assinatura)"
+            description="Cadastre representantes, percentual de comissão e gere o link de indicação (?ref=). Separado da comissão de colaboradores."
+            icon={<Share2 className="h-6 w-6 text-teal-600" />}
+            buttonText="Gerenciar vendedores e links"
+            buttonColor="bg-teal-600 hover:bg-teal-700"
+            onClick={() => navigate('/admin-dashboard/vendedores-externos')}
           />
         </div>
 
