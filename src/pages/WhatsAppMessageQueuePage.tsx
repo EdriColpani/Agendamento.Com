@@ -162,6 +162,8 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [queueHealth, setQueueHealth] = useState<QueueHealth | null>(null);
   const [workerRuns, setWorkerRuns] = useState<WorkerExecutionLog[]>([]);
+  const [showAutomationPanels, setShowAutomationPanels] = useState(false);
+  const [loadingAutomationFlag, setLoadingAutomationFlag] = useState(true);
   const effectiveCompanyId = isGlobalAdmin ? selectedCompanyId : primaryCompanyId;
 
   const fetchCompaniesForGlobalAdmin = useCallback(async () => {
@@ -259,6 +261,24 @@ const WhatsAppMessageQueuePage: React.FC = () => {
     }
   }, []);
 
+  const fetchAutomationPanelFlag = useCallback(async () => {
+    setLoadingAutomationFlag(true);
+    try {
+      const { data, error } = await supabase
+        .from('global_feature_flags')
+        .select('is_enabled')
+        .eq('flag_key', 'whatsapp_show_automation_panels')
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      setShowAutomationPanels(data?.is_enabled === true);
+    } catch (error: any) {
+      console.error('Erro ao carregar flag global de painéis WhatsApp:', error);
+      setShowAutomationPanels(false);
+    } finally {
+      setLoadingAutomationFlag(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!loadingGlobalAdminCheck && isGlobalAdmin) {
       fetchCompaniesForGlobalAdmin();
@@ -266,15 +286,31 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   }, [loadingGlobalAdminCheck, isGlobalAdmin, fetchCompaniesForGlobalAdmin]);
 
   useEffect(() => {
-    if (!loadingPrimaryCompany && !loadingGlobalAdminCheck && effectiveCompanyId) {
-      fetchMessages();
-      fetchQueueHealth();
-      fetchWorkerRuns();
+    if (!loadingPrimaryCompany && !loadingGlobalAdminCheck) {
+      fetchAutomationPanelFlag();
     }
-  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchMessages, fetchQueueHealth, fetchWorkerRuns]);
+  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, fetchAutomationPanelFlag]);
 
   useEffect(() => {
     if (!loadingPrimaryCompany && !loadingGlobalAdminCheck && effectiveCompanyId) {
+      fetchMessages();
+      if (showAutomationPanels) {
+        fetchQueueHealth();
+        fetchWorkerRuns();
+      }
+    }
+  }, [
+    loadingPrimaryCompany,
+    loadingGlobalAdminCheck,
+    effectiveCompanyId,
+    showAutomationPanels,
+    fetchMessages,
+    fetchQueueHealth,
+    fetchWorkerRuns,
+  ]);
+
+  useEffect(() => {
+    if (!loadingPrimaryCompany && !loadingGlobalAdminCheck && effectiveCompanyId && showAutomationPanels) {
       const id = window.setInterval(() => {
         fetchQueueHealth();
         fetchWorkerRuns();
@@ -283,7 +319,15 @@ const WhatsAppMessageQueuePage: React.FC = () => {
       return () => window.clearInterval(id);
     }
     return undefined;
-  }, [loadingPrimaryCompany, loadingGlobalAdminCheck, effectiveCompanyId, fetchQueueHealth, fetchWorkerRuns, fetchMessages]);
+  }, [
+    loadingPrimaryCompany,
+    loadingGlobalAdminCheck,
+    effectiveCompanyId,
+    showAutomationPanels,
+    fetchQueueHealth,
+    fetchWorkerRuns,
+    fetchMessages,
+  ]);
 
   const todayYmdBR = useMemo(() => {
     return toYmdInSaoPaulo(new Date().toISOString());
@@ -621,6 +665,8 @@ const WhatsAppMessageQueuePage: React.FC = () => {
         </Card>
       </div>
 
+      {!loadingAutomationFlag && showAutomationPanels ? (
+      <>
       {/* Saúde operacional */}
       <Card className={`border ${hasCriticalPendingDue || isWorkerStale ? 'border-red-400 bg-red-50/60' : queueHealth?.pending_due ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200'}`}>
         <CardHeader>
@@ -718,6 +764,8 @@ const WhatsAppMessageQueuePage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      </>
+      ) : null}
 
       {/* Filtros */}
       <Card className="border-gray-200">

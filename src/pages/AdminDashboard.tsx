@@ -2,13 +2,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { showError } from '@/utils/toast';
+import { showError, showSuccess } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { performSignOut } from '@/utils/auth-state';
 import { supabase } from '@/integrations/supabase/client';
 import { Users, Building, DollarSign, FileText, Tags, LogOut, Key, MailCheck, Tag, BarChart, Zap, CreditCard, Image as ImageIcon, MessageSquare, UserCog, Menu, Database, AlertTriangle, Share2 } from 'lucide-react'; // Importando ícones do dashboard
 import RecentAuditLogs from '@/components/RecentAuditLogs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 // Componente auxiliar para padronizar os cards de gerenciamento
 interface ManagementCardProps {
@@ -47,6 +49,8 @@ const AdminDashboard: React.FC = () => {
   const [whatsAppPendingDue, setWhatsAppPendingDue] = useState(0);
   const [lastWorkerStatus, setLastWorkerStatus] = useState<string>('NO_RUN');
   const [lastWorkerExecutionTime, setLastWorkerExecutionTime] = useState<string | null>(null);
+  const [showWhatsAppAutomationPanels, setShowWhatsAppAutomationPanels] = useState(false);
+  const [savingGlobalFlag, setSavingGlobalFlag] = useState(false);
 
   const fetchWhatsAppOperationalHealth = useCallback(async () => {
     try {
@@ -92,6 +96,45 @@ const AdminDashboard: React.FC = () => {
       fetchWhatsAppOperationalHealth();
     }
   }, [sessionLoading, loadingGlobalAdminCheck, isGlobalAdmin, fetchWhatsAppOperationalHealth]);
+
+  const fetchGlobalFlags = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('global_feature_flags')
+        .select('is_enabled')
+        .eq('flag_key', 'whatsapp_show_automation_panels')
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      setShowWhatsAppAutomationPanels(data?.is_enabled === true);
+    } catch (error: any) {
+      showError('Erro ao carregar configuração global: ' + (error.message || 'Erro desconhecido.'));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sessionLoading && !loadingGlobalAdminCheck && isGlobalAdmin) {
+      fetchGlobalFlags();
+    }
+  }, [sessionLoading, loadingGlobalAdminCheck, isGlobalAdmin, fetchGlobalFlags]);
+
+  const handleSaveGlobalFlags = async () => {
+    setSavingGlobalFlag(true);
+    try {
+      const { error } = await supabase
+        .from('global_feature_flags')
+        .upsert({
+          flag_key: 'whatsapp_show_automation_panels',
+          is_enabled: showWhatsAppAutomationPanels,
+          updated_by_user_id: session?.user?.id ?? null,
+        });
+      if (error) throw error;
+      showSuccess('Configuração global salva com sucesso.');
+    } catch (error: any) {
+      showError('Erro ao salvar configuração global: ' + (error.message || 'Erro desconhecido.'));
+    } finally {
+      setSavingGlobalFlag(false);
+    }
+  };
 
   useEffect(() => {
     if (!sessionLoading && !loadingGlobalAdminCheck && isGlobalAdmin) {
@@ -149,93 +192,6 @@ const AdminDashboard: React.FC = () => {
         <p className="text-lg text-gray-700 dark:text-gray-300">
           Bem-vindo, Administrador Global! Aqui você pode gerenciar as configurações de alto nível do sistema.
         </p>
-
-        <Card className={whatsAppPendingDue > 0 ? "border-red-300 bg-red-50 dark:bg-red-950/30" : "border-gray-200 dark:border-gray-700 dark:bg-gray-800"}>
-            <CardContent className="pt-6">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    {healthLevel !== 'OK' ? (
-                      <>
-                        <p className="text-sm font-semibold text-red-700 dark:text-red-300">
-                          Alerta operacional WhatsApp ({healthLevel})
-                        </p>
-                        <p className="text-sm text-red-700/90 dark:text-red-300/90 mt-1">
-                          Existem {whatsAppPendingDue} mensagem(ns) vencida(s) pendente(s). Último status do worker: {lastWorkerStatus}.
-                          {isWorkerStale ? ` Sem execução recente há ${lastExecutionAgeMinutes} min.` : ''}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          Saúde operacional WhatsApp
-                        </p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
-                          Nenhuma pendência vencida no momento. Último status do worker: {lastWorkerStatus}.
-                          {lastExecutionAgeMinutes !== null ? ` Última execução há ${lastExecutionAgeMinutes} min.` : ''}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      className={`!rounded-button whitespace-nowrap text-white ${whatsAppPendingDue > 0 ? 'bg-red-600 hover:bg-red-700' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
-                      onClick={() => navigate('/mensagens-whatsapp/gerenciar-mensagens')}
-                    >
-                      Ver fila WhatsApp
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="!rounded-button"
-                      onClick={fetchWhatsAppOperationalHealth}
-                    >
-                      Atualizar diagnóstico
-                    </Button>
-                  </div>
-                </div>
-
-                <div className={`rounded-md border p-3 ${whatsAppPendingDue > 0 ? 'border-red-200 bg-white/70 dark:bg-gray-900/40' : 'border-gray-200 bg-gray-50 dark:bg-gray-900/30'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${whatsAppPendingDue > 0 ? 'text-red-700 dark:text-red-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                    Runbook rápido (ação imediata)
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div className="text-xs text-gray-700 dark:text-gray-300">
-                      <span className="font-semibold">1)</span> Abrir fila e confirmar quais mensagens estão vencidas e pendentes.
-                    </div>
-                    <div className="text-xs text-gray-700 dark:text-gray-300">
-                      <span className="font-semibold">2)</span> Validar se o provedor WhatsApp da empresa está ativo e com credenciais corretas.
-                    </div>
-                    <div className="text-xs text-gray-700 dark:text-gray-300">
-                      <span className="font-semibold">3)</span> Após correção, atualizar a tela e verificar redução das pendências vencidas.
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <Button
-                      variant="outline"
-                      className={`!rounded-button ${whatsAppPendingDue > 0 ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                      onClick={() => navigate('/mensagens-whatsapp/gerenciar-mensagens')}
-                    >
-                      Abrir fila
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className={`!rounded-button ${whatsAppPendingDue > 0 ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                      onClick={() => navigate('/admin-dashboard/whatsapp-providers')}
-                    >
-                      Ver provedores
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className={`!rounded-button ${whatsAppPendingDue > 0 ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                      onClick={fetchWhatsAppOperationalHealth}
-                    >
-                      Atualizar diagnóstico
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
         {/* Group Box: Gerenciamento Principal */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -337,6 +293,63 @@ const AdminDashboard: React.FC = () => {
         {/* Group Box: Configurações Globais */}
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white pt-4">Configurações Globais</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="border-gray-200 dark:border-gray-700 dark:bg-gray-800">
+            <CardHeader>
+              <CardTitle className="text-xl text-gray-900 dark:text-white">Feature flags globais</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4 rounded-md border border-gray-200 p-3 dark:border-gray-700">
+                <div>
+                  <Label htmlFor="flag-wa-panels" className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Mostrar “Saúde da Automação” e “Últimas execuções do worker” na fila WhatsApp
+                  </Label>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                    Quando desligado, os dois painéis ficam ocultos em “Gerenciar mensagens”.
+                  </p>
+                </div>
+                <Switch
+                  id="flag-wa-panels"
+                  checked={showWhatsAppAutomationPanels}
+                  onCheckedChange={(v) => setShowWhatsAppAutomationPanels(v)}
+                />
+              </div>
+              <Button
+                onClick={handleSaveGlobalFlags}
+                disabled={savingGlobalFlag}
+                className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {savingGlobalFlag ? 'Salvando...' : 'Salvar configuração global'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 flex flex-col justify-between">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <MessageSquare className="h-6 w-6 text-green-600" />
+                <CardTitle className="text-gray-900 dark:text-white text-xl">Saúde operacional do whats</CardTitle>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 text-sm">
+                Acesse a fila de mensagens WhatsApp e execute atualização de diagnóstico sob demanda.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                className="!rounded-button whitespace-nowrap w-full text-white font-semibold py-2.5 text-base bg-green-600 hover:bg-green-700"
+                onClick={() => navigate('/mensagens-whatsapp/gerenciar-mensagens')}
+              >
+                Ver fila WhatsApp
+              </Button>
+              <Button
+                variant="outline"
+                className="!rounded-button whitespace-nowrap w-full"
+                onClick={fetchWhatsAppOperationalHealth}
+              >
+                Atualizar diagnóstico
+              </Button>
+            </CardContent>
+          </Card>
+
           <ManagementCard
             title="Gerenciamento de Contratos"
             description="Crie e gerencie modelos de contratos que as empresas devem aceitar no cadastro."
