@@ -102,16 +102,6 @@ const ArenaDashboardPanel: React.FC<ArenaDashboardPanelProps> = ({
             variant="default"
             size="sm"
             className={arenaDashboardActionBtnClass}
-            onClick={() => navigate(`/novo-agendamento/${primaryCompanyId}`)}
-          >
-            <i className="fas fa-plus mr-2" />
-            Nova reserva
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            className={arenaDashboardActionBtnClass}
             onClick={() => navigate('/novo-cliente')}
           >
             <i className="fas fa-user-plus mr-2" />
