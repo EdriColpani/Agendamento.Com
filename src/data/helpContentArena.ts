@@ -57,7 +57,7 @@ export const helpCategoriesArena: HelpCategory[] = [
         steps: [
           'Abra o Dashboard pelo menu lateral',
           'Leia o aviso sobre o modo arena e o link público de reserva',
-          'Use os botões: Gerenciar quadras, Abrir reserva pública, Lista de reservas, Nova reserva, Novo cliente',
+          'Use os botões: Gerenciar quadras, Abrir reserva pública, Lista de reservas, Novo cliente',
           'Acompanhe os cards de faturamento, reservas de hoje e estoque crítico (se houver permissão)',
         ],
         tips: [
@@ -258,7 +258,7 @@ export const helpCategoriesArena: HelpCategory[] = [
         title: 'Nova reserva pelo painel',
         description: 'Crie reservas para clientes a partir do botão de novo agendamento.',
         steps: [
-          'Clique em “Novo Agendamento” (ou atalho no dashboard arena)',
+          'Clique em “Novo Agendamento” no menu lateral',
           'Selecione cliente, quadra, data e horário',
           'Revise valores e confirme',
         ],
