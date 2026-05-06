@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { addDays, format, startOfDay } from 'date-fns';
+import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -244,11 +244,29 @@ const CourtAgendaPage: React.FC = () => {
           if (apErr) throw apErr;
 
           const computed = computeCourtSlotsForDay(st, en, dur, appts || []);
+          const now = new Date();
+          const isToday = isSameDay(startOfDay(selectedDate), startOfDay(now));
+          const visibleSlots = isToday
+            ? computed.filter((slot) => {
+                const [h, m] = slot.startTime.split(':').map((x) => parseInt(x, 10));
+                const slotStart = new Date(
+                  selectedDate.getFullYear(),
+                  selectedDate.getMonth(),
+                  selectedDate.getDate(),
+                  h,
+                  m,
+                  0,
+                  0,
+                );
+                return slotStart.getTime() >= now.getTime();
+              })
+            : computed;
+
           nextAgendas[court.id] = {
             workingStart: st,
             workingEnd: en,
             slotMinutes: dur,
-            slots: computed.map((slot) => ({
+            slots: visibleSlots.map((slot) => ({
               startTime: slot.startTime,
               occupied: slot.occupied,
               slotPrice: estimateCourtBookingTotalPrice(slot.startTime, dur, dur, bands, defPrice),
@@ -283,7 +301,7 @@ const CourtAgendaPage: React.FC = () => {
     );
     setCourtAgendas(nextAgendas);
     setLoadingAgenda(false);
-  }, [primaryCompanyId, courts, dayOfWeek, dateStr, resolveSlotBlockStatus]);
+  }, [primaryCompanyId, courts, dayOfWeek, dateStr, selectedDate, resolveSlotBlockStatus]);
 
   useEffect(() => {
     if (primaryCompanyId && isCourtMode && canUseArenaManagement) {
