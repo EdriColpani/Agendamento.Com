@@ -11,9 +11,9 @@ interface ArenaPageHeaderProps {
  */
 const ArenaPageHeader: React.FC<ArenaPageHeaderProps> = ({ title, actions }) => {
   return (
-    <div className="space-y-2">
-      {actions ? <div className="flex flex-wrap items-center gap-2 sm:gap-4">{actions}</div> : null}
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
+    <div className="min-w-0 space-y-3">
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">{title}</h1>
+      {actions ? <div className="w-full min-w-0 max-w-full">{actions}</div> : null}
     </div>
   );
 };

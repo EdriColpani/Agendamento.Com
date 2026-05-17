@@ -398,8 +398,48 @@ const CourtReservationsListPage: React.FC = () => {
     );
   }
 
+  const renderRowActions = (r: CourtReservationRow) => (
+    <div className="flex flex-wrap gap-2">
+      <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
+        <Link to={`/agendamentos/edit/${r.id}`} title="Editar reserva" aria-label="Editar reserva">
+          <Pencil className="h-4 w-4" />
+        </Link>
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="h-8 flex-1 min-w-[5.5rem] sm:flex-none"
+        disabled={statusUpdatingId === r.id || r.status !== 'pendente'}
+        onClick={() => void handleQuickStatusChange(r, 'confirmado')}
+      >
+        {statusUpdatingId === r.id ? 'Atualizando...' : 'Confirmar'}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="destructive"
+        className="h-8 flex-1 min-w-[5.5rem] sm:flex-none"
+        disabled={statusUpdatingId === r.id || r.status !== 'pendente'}
+        onClick={() => void handleQuickStatusChange(r, 'cancelado')}
+      >
+        {statusUpdatingId === r.id ? 'Atualizando...' : 'Cancelar'}
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8 w-full sm:w-auto"
+        disabled={finishingId === r.id || r.status !== 'confirmado'}
+        onClick={() => void handleFinalizeReservation(r)}
+      >
+        {finishingId === r.id ? 'Finalizando...' : 'Finalizar'}
+      </Button>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-x-hidden">
       <ArenaPageHeader
         title="Reservas por quadra"
         actions={<ArenaToolbar back={{ to: '/quadras', label: 'Quadras' }} links={getArenaModuleLinks(true)} />}
@@ -602,7 +642,37 @@ const CourtReservationsListPage: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-400">Nenhuma reserva encontrada com os filtros atuais.</p>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="space-y-3 md:hidden">
+                {rows.map((r) => {
+                  const courtLabel =
+                    r.courts?.name || (r.court_id ? courtNameById.get(r.court_id) : null) || '—';
+                  const price = r.total_price != null ? Number(r.total_price) : 0;
+                  return (
+                    <div key={r.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {format(new Date(r.appointment_date + 'T12:00:00'), 'dd/MM/yyyy')} ·{' '}
+                            {formatTime(String(r.appointment_time))}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate">{displayClientName(r)}</p>
+                          <p className="text-sm text-muted-foreground">{courtLabel}</p>
+                        </div>
+                        <Badge className={`${getStatusColor(r.status || '')} shrink-0 text-white text-xs`}>
+                          {r.status || '—'}
+                        </Badge>
+                      </div>
+                      <p className="text-sm">
+                        {r.total_duration_minutes ?? 60} min ·{' '}
+                        {price > 0 ? `R$ ${price.toFixed(2).replace('.', ',')}` : '—'}
+                      </p>
+                      {renderRowActions(r)}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
                 <Table className="min-w-[760px]">
                   <TableHeader>
                     <TableRow>
@@ -636,49 +706,7 @@ const CourtReservationsListPage: React.FC = () => {
                               {r.status || '—'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-                                <Link
-                                  to={`/agendamentos/edit/${r.id}`}
-                                  title="Editar reserva"
-                                  aria-label="Editar reserva"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                className="h-8"
-                                disabled={statusUpdatingId === r.id || r.status !== 'pendente'}
-                                onClick={() => void handleQuickStatusChange(r, 'confirmado')}
-                              >
-                                {statusUpdatingId === r.id ? 'Atualizando...' : 'Confirmar'}
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="destructive"
-                                className="h-8"
-                                disabled={statusUpdatingId === r.id || r.status !== 'pendente'}
-                                onClick={() => void handleQuickStatusChange(r, 'cancelado')}
-                              >
-                                {statusUpdatingId === r.id ? 'Atualizando...' : 'Cancelar'}
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-8"
-                                disabled={finishingId === r.id || r.status !== 'confirmado'}
-                                onClick={() => void handleFinalizeReservation(r)}
-                              >
-                                {finishingId === r.id ? 'Finalizando...' : 'Finalizar'}
-                              </Button>
-                            </div>
-                          </TableCell>
+                          <TableCell>{renderRowActions(r)}</TableCell>
                         </TableRow>
                       );
                     })}

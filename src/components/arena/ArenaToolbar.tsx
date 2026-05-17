@@ -18,6 +18,12 @@ const navPillActive =
 
 const backButtonClass = cn(arenaToolbarSolidClass, 'justify-start');
 
+const navLinkBtnClass = cn(
+  arenaToolbarBtnClass,
+  arenaToolbarSolidClass,
+  'h-auto min-h-9 w-full whitespace-normal px-3 py-2.5 text-center leading-snug sm:w-auto sm:px-4 transition-all',
+);
+
 interface ArenaToolbarProps {
   /** Voltar: link ou ação (ex.: dashboard). */
   back?: { to?: string; onClick?: () => void; label: string };
@@ -37,13 +43,13 @@ const ArenaToolbar: React.FC<ArenaToolbarProps> = ({ back, links, trailing, clas
   const pathname = location.pathname;
 
   return (
-    <div className={cn('flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', className)}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+    <div className={cn('flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', className)}>
+      <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         {back ? (
           <Button
             variant="default"
             size="sm"
-            className={cn(arenaToolbarBtnClass, backButtonClass, 'w-full sm:w-auto')}
+            className={cn(arenaToolbarBtnClass, backButtonClass, 'w-full shrink-0 sm:w-auto')}
             {...(back.to
               ? { asChild: true }
               : { type: 'button' as const, onClick: back.onClick })}
@@ -62,7 +68,7 @@ const ArenaToolbar: React.FC<ArenaToolbarProps> = ({ back, links, trailing, clas
           </Button>
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:gap-2">
           {links.map((item) => {
             const active = isArenaNavItemActive(pathname, item.to);
             return (
@@ -70,12 +76,7 @@ const ArenaToolbar: React.FC<ArenaToolbarProps> = ({ back, links, trailing, clas
                 key={item.to}
                 variant="default"
                 size="sm"
-                className={cn(
-                  arenaToolbarBtnClass,
-                  arenaToolbarSolidClass,
-                  'w-full sm:w-auto sm:min-w-0 transition-all',
-                  active ? navPillActive : '',
-                )}
+                className={cn(navLinkBtnClass, active ? navPillActive : '')}
                 asChild
               >
                 <Link to={item.to}>{item.label}</Link>
@@ -85,7 +86,7 @@ const ArenaToolbar: React.FC<ArenaToolbarProps> = ({ back, links, trailing, clas
         </div>
       </div>
 
-      {trailing ? <div className="flex flex-wrap gap-2 sm:ml-auto">{trailing}</div> : null}
+      {trailing ? <div className="flex w-full min-w-0 flex-wrap gap-2 sm:ml-auto">{trailing}</div> : null}
     </div>
   );
 };
