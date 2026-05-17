@@ -1,4 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
+import markSrc from '@/assets/brand/planoagenda-mark.svg';
+import fullSrc from '@/assets/brand/planoagenda-logo-pa.svg';
+import { BrandMarkInline } from './BrandMarkInline';
 
 interface BrandLogoProps {
   className?: string;
@@ -6,56 +10,43 @@ interface BrandLogoProps {
   alt?: string;
 }
 
+const LOGO_SRC = {
+  mark: markSrc,
+  full: fullSrc,
+} as const;
+
 const BrandLogo: React.FC<BrandLogoProps> = ({
   className,
   variant = 'mark',
   alt = 'PlanoAgenda',
 }) => {
-  const [attempt, setAttempt] = useState<'full' | 'mark' | 'fallback'>(variant === 'full' ? 'full' : 'mark');
+  const [useInlineFallback, setUseInlineFallback] = useState(false);
+  const [srcVariant, setSrcVariant] = useState<'mark' | 'full'>(variant === 'full' ? 'full' : 'mark');
 
   useEffect(() => {
-    setAttempt(variant === 'full' ? 'full' : 'mark');
+    setUseInlineFallback(false);
+    setSrcVariant(variant === 'full' ? 'full' : 'mark');
   }, [variant]);
 
-  const src = useMemo(() => {
-    if (attempt === 'full') {
-      return '/brand/planoagenda-logo-pa.svg';
-    }
-    if (attempt === 'mark') {
-      return '/brand/planoagenda-mark.svg';
-    }
-    return null;
-  }, [attempt]);
+  const imgClassName = cn('shrink-0 object-contain', className);
 
-  if (attempt === 'fallback') {
-    return (
-      <div
-        role="img"
-        aria-label={alt}
-        className={[
-          'inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500',
-          'text-xs font-bold text-white',
-          className || '',
-        ].join(' ')}
-      >
-        PA
-      </div>
-    );
+  if (useInlineFallback) {
+    return <BrandMarkInline className={imgClassName} alt={alt} />;
   }
 
   return (
     <img
-      src={src || undefined}
+      src={LOGO_SRC[srcVariant]}
       alt={alt}
-      className={className}
+      className={imgClassName}
       loading="eager"
       decoding="async"
       onError={() => {
-        setAttempt((current) => {
-          if (current === 'full') return 'mark';
-          if (current === 'mark') return 'fallback';
-          return 'fallback';
-        });
+        if (srcVariant === 'full') {
+          setSrcVariant('mark');
+          return;
+        }
+        setUseInlineFallback(true);
       }}
     />
   );

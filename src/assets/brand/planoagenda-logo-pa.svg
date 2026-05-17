@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" fill="none">
+  <defs>
+    <linearGradient id="paMain" x1="14" y1="18" x2="214" y2="164" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB" />
+      <stop offset="1" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="paSoft" x1="120" y1="26" x2="204" y2="158" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#DBEAFE" />
+      <stop offset="1" stop-color="#DCFCE7" />
+    </linearGradient>
+    <linearGradient id="paA" x1="146" y1="77" x2="180" y2="131" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB" />
+      <stop offset="1" stop-color="#10B981" />
+    </linearGradient>
+  </defs>
+
+  <!-- Monograma P -->
+  <path
+    fill="url(#paMain)"
+    fill-rule="evenodd"
+    d="M18 18h32c35 0 56 18 56 45s-21 46-56 46H40v53H18V18zm22 18v55h11c21 0 34-10 34-28S72 36 51 36H40z"
+    clip-rule="evenodd"
+  />
+
+  <!-- Calendário -->
+  <rect x="118" y="26" width="88" height="132" rx="15" fill="white" />
+  <rect x="118" y="26" width="88" height="132" rx="15" stroke="url(#paMain)" stroke-width="8" />
+  <rect x="126" y="40" width="72" height="20" rx="8" fill="url(#paSoft)" />
+
+  <!-- Argolas -->
+  <rect x="136" y="18" width="8" height="20" rx="4" fill="url(#paMain)" />
+  <rect x="158" y="18" width="8" height="20" rx="4" fill="url(#paMain)" />
+  <rect x="180" y="18" width="8" height="20" rx="4" fill="url(#paMain)" />
+
+  <!-- Cartão interno para contraste -->
+  <path d="M132 72h60l-5 72h-55z" fill="white" />
+
+  <!-- Letra A estilizada -->
+  <path
+    fill="url(#paA)"
+    d="M158.7 128l-3.1-9.5h-15.4l-3.1 9.5H128l16.2-47h8.3l16.2 47h-10zm-10.8-33.6-4.8 15h9.6l-4.8-15z"
+  />
+  <!-- Recorte diagonal inspirado no rascunho -->
+  <path d="M176 77l-25 18h15l-7 33 26-28h-13l4-23z" fill="url(#paMain)" opacity=".85" />
+</svg>
