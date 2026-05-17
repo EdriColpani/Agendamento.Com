@@ -16,8 +16,8 @@ interface BrandHeaderProps {
 const BrandHeader: React.FC<BrandHeaderProps> = ({
   to,
   titleClassName = 'text-xl font-bold text-gray-900',
-  logoClassName = 'h-10 w-10',
-  fullLogoClassName = 'h-10 w-auto',
+  logoClassName = 'h-10 w-10 shrink-0',
+  fullLogoClassName = 'h-10 w-auto max-w-[140px] shrink-0',
   showFullLogoOnDesktop = false,
   subtitle,
   onClick,
