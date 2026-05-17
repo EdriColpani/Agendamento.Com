@@ -120,8 +120,38 @@ serve(async (req) => {
       return jsonResponse({ error: "Erro ao validar recebimento existente." }, 500);
     }
 
+    let skipReceiptForMonthlyPackage = false;
+    const { data: monthlyLink, error: monthlyLinkError } = await supabaseAdmin
+      .from("court_monthly_package_appointments")
+      .select("package_id")
+      .eq("appointment_id", appt.id)
+      .maybeSingle();
+
+    if (monthlyLinkError && monthlyLinkError.code !== "PGRST116") {
+      return jsonResponse({ error: "Erro ao validar vínculo com pacote mensal." }, 500);
+    }
+
+    if (monthlyLink?.package_id) {
+      const { data: monthlyPkg, error: monthlyPkgError } = await supabaseAdmin
+        .from("court_monthly_packages")
+        .select("payment_method, payment_status")
+        .eq("id", monthlyLink.package_id)
+        .maybeSingle();
+
+      if (monthlyPkgError && monthlyPkgError.code !== "PGRST116") {
+        return jsonResponse({ error: "Erro ao validar pacote mensal vinculado." }, 500);
+      }
+
+      if (
+        monthlyPkg?.payment_method === "dinheiro" &&
+        monthlyPkg?.payment_status === "paid"
+      ) {
+        skipReceiptForMonthlyPackage = true;
+      }
+    }
+
     let receiptCreated = false;
-    if (!existingReceipt) {
+    if (!existingReceipt && !skipReceiptForMonthlyPackage) {
       const paymentMethod = String(appt.payment_method || "dinheiro");
       const { error: insertError } = await supabaseAdmin.from("cash_movements").insert({
         company_id: appt.company_id,
