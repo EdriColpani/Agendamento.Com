@@ -166,8 +166,7 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
             </p>
             <Alert className="border-slate-200 bg-slate-50 dark:bg-slate-900/40">
               <AlertTitle className="text-sm">Pré-visualização do período</AlertTitle>
-              <AlertDescription asChild>
-                <div className="mt-2 space-y-2">
+              <AlertDescription className="mt-2 space-y-2">
                   {periodPreviewLoading ? (
                     <p className="text-xs text-gray-600 flex items-center gap-2">
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -201,7 +200,6 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
                       Preencha cliente, quadra e horário para ver a pré-visualização.
                     </p>
                   )}
-                </div>
               </AlertDescription>
             </Alert>
           </div>
