@@ -10,6 +10,7 @@ const EmailConfirmationPendingPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const email = searchParams.get('email');
+  const loginPath = searchParams.get('origem') === 'arena' ? '/arena' : '/login';
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
 
@@ -119,10 +120,11 @@ const EmailConfirmationPendingPage: React.FC = () => {
                 </p>
                 <ol className="list-decimal list-inside mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
                   <li>Verifique sua caixa de entrada (e a pasta de spam/lixo eletrônico)</li>
-                  <li>Procure por um e-mail de confirmação do PlanoAgenda</li>
+                  <li>No Hotmail/Outlook, confira também a pasta <strong>“Lixo eletrônico”</strong> e <strong>“Outros”</strong></li>
+                  <li>Procure por um e-mail de confirmação do PlanoAgenda (remetente: noreply@planoagenda.com.br)</li>
                   <li>Clique no link de confirmação no e-mail</li>
+                  <li>Só depois disso faça login — tentar entrar antes gera erro &quot;E-mail não confirmado&quot;</li>
                   <li>Você será redirecionado para a tela de seleção de planos</li>
-                  <li>Após selecionar um plano, seu sistema será habilitado</li>
                 </ol>
               </div>
             </div>
@@ -168,10 +170,10 @@ const EmailConfirmationPendingPage: React.FC = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(loginPath)}
                 className="!rounded-button"
               >
-                Ir para Login
+                Ir para Login{loginPath === '/arena' ? ' da arena' : ''}
               </Button>
               <Button
                 variant="outline"

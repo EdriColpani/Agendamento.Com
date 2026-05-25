@@ -45,6 +45,9 @@ const planSchema = z.object({
   status: z.enum(['active', 'inactive', 'deprecated'], {
     errorMap: () => ({ message: "O status é obrigatório." })
   }),
+  target_scheduling_mode: z.enum(['service', 'court'], {
+    errorMap: () => ({ message: "O público do plano é obrigatório." })
+  }),
 });
 
 type PlanFormValues = z.infer<typeof planSchema>;
@@ -57,6 +60,7 @@ interface Plan {
   features: string[] | null;
   duration_months: number;
   status: 'active' | 'inactive' | 'deprecated';
+  target_scheduling_mode?: 'service' | 'court';
 }
 
 interface PlanFormModalProps {
@@ -90,10 +94,12 @@ const PlanFormModal: React.FC<PlanFormModalProps> = ({
       features: '',
       duration_months: 1,
       status: 'active',
+      target_scheduling_mode: 'service',
     },
   });
 
   const statusValue = watch('status');
+  const targetSchedulingModeValue = watch('target_scheduling_mode');
 
   useEffect(() => {
     if (isOpen) {
@@ -106,6 +112,7 @@ const PlanFormModal: React.FC<PlanFormModalProps> = ({
           features: editingPlan.features ? editingPlan.features.join('\n') : '',
           duration_months: editingPlan.duration_months,
           status: editingPlan.status,
+          target_scheduling_mode: editingPlan.target_scheduling_mode ?? 'service',
         });
       } else {
         // Reset to default values for new plan
@@ -116,6 +123,7 @@ const PlanFormModal: React.FC<PlanFormModalProps> = ({
           features: '',
           duration_months: 1,
           status: 'active',
+          target_scheduling_mode: 'service',
         });
       }
     }
@@ -134,6 +142,7 @@ const PlanFormModal: React.FC<PlanFormModalProps> = ({
       features: featuresArray,
       duration_months: data.duration_months,
       status: data.status,
+      target_scheduling_mode: data.target_scheduling_mode,
     };
 
     try {
@@ -245,6 +254,28 @@ const PlanFormModal: React.FC<PlanFormModalProps> = ({
               </SelectContent>
             </Select>
             {errors.status && <p className="col-span-4 text-red-500 text-xs text-right">{errors.status.message}</p>}
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="target_scheduling_mode" className="text-right">
+              Público *
+            </Label>
+            <Select
+              onValueChange={(value) =>
+                setValue('target_scheduling_mode', value as 'service' | 'court', { shouldValidate: true })
+              }
+              value={targetSchedulingModeValue}
+            >
+              <SelectTrigger id="target_scheduling_mode" className="col-span-3">
+                <SelectValue placeholder="Selecione o público" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="service">Serviços (salão, clínica, etc.)</SelectItem>
+                <SelectItem value="court">Arena / quadras</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.target_scheduling_mode && (
+              <p className="col-span-4 text-red-500 text-xs text-right">{errors.target_scheduling_mode.message}</p>
+            )}
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="features" className="text-right pt-2">

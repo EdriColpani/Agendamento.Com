@@ -15,6 +15,16 @@ import { validateCnpj, formatCnpjInput, formatZipCodeInput, formatPhoneNumberInp
 import ContractAcceptanceModal from '@/components/ContractAcceptanceModal';
 import { useSession } from '@/components/SessionContextProvider';
 import { invokeEdgePublicOrThrow } from '@/utils/edge-invoke';
+import {
+  clearArenaRegistrationIntent,
+  getCourtSegmentOptions,
+  pickDefaultCourtSegmentId,
+  resolveArenaRegistrationMode,
+} from '@/utils/arenaRegistration';
+import {
+  duplicateRegistrationEmailHelp,
+  isDuplicateRegistrationEmailError,
+} from '@/utils/registrationErrors';
 
 // Helper function for numeric preprocessing
 const numericPreprocess = (val: unknown) => {
@@ -76,11 +86,13 @@ interface SegmentOption {
   id: string;
   name: string;
   area_name: string;
+  scheduling_mode?: string | null;
 }
 
 const UnifiedRegistrationPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const arenaRegistrationLocked = resolveArenaRegistrationMode(searchParams);
   const { session } = useSession();
   const [loading, setLoading] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
@@ -89,6 +101,7 @@ const UnifiedRegistrationPage: React.FC = () => {
   const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
   const [segmentOptions, setSegmentOptions] = useState<SegmentOption[]>([]);
   const [loadingSegments, setLoadingSegments] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
 
   const {
     register,
@@ -132,6 +145,20 @@ const UnifiedRegistrationPage: React.FC = () => {
   const companyPhoneNumberValue = watch('companyPhoneNumber');
   const stateValue = watch('state');
 
+  const visibleSegmentOptions = arenaRegistrationLocked
+    ? getCourtSegmentOptions(segmentOptions)
+    : segmentOptions;
+
+  useEffect(() => {
+    if (!arenaRegistrationLocked || loadingSegments || segmentOptions.length === 0) return;
+    const courtSegmentId = pickDefaultCourtSegmentId(segmentOptions);
+    if (courtSegmentId) {
+      setValue('segmentType', courtSegmentId, { shouldValidate: true });
+      return;
+    }
+    showError('Nenhum segmento de arena disponível. Entre em contato com o suporte.');
+  }, [arenaRegistrationLocked, loadingSegments, segmentOptions, setValue]);
+
   const fetchInitialData = useCallback(async () => {
     // Fetch the latest contract (GLOBAL ACCESS)
     const { data: contractData, error: contractError } = await supabase
@@ -157,6 +184,7 @@ const UnifiedRegistrationPage: React.FC = () => {
       .select(`
         id, 
         name,
+        scheduling_mode,
         area_de_atuacao(name)
       `)
       .order('name', { ascending: true });
@@ -168,6 +196,7 @@ const UnifiedRegistrationPage: React.FC = () => {
       setSegmentOptions(segmentsData.map(segment => ({ 
         id: segment.id, 
         name: segment.name,
+        scheduling_mode: segment.scheduling_mode,
         area_name: (segment.area_de_atuacao as { name: string } | null)?.name || 'Geral'
       })));
     }
@@ -175,12 +204,26 @@ const UnifiedRegistrationPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (session) {
-      // If user is already logged in, redirect them away from this page
+    if (session && !arenaRegistrationLocked) {
       navigate('/', { replace: true });
+      return;
     }
     fetchInitialData();
-  }, [session, navigate, fetchInitialData]);
+  }, [session, arenaRegistrationLocked, navigate, fetchInitialData]);
+
+  const handleSignOutForNewArenaAccount = async () => {
+    setSigningOut(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      showSuccess('Sessão encerrada. Agora você pode criar sua conta de arena.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao sair da conta.';
+      showError(message);
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'phoneNumber' | 'companyPhoneNumber') => {
     const formattedValue = formatPhoneNumberInput(e.target.value);
@@ -418,16 +461,27 @@ const UnifiedRegistrationPage: React.FC = () => {
 
       // Não fazer login automático - usuário precisa confirmar email primeiro
       showSuccess('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar sua conta.');
+      clearArenaRegistrationIntent();
       
       setIsContractModalOpen(false);
       setPendingData(null);
       setPendingImageUrl(null);
       
       // Redirecionar para página de aviso sobre confirmação de email
-      navigate(`/email-confirmation-pending?email=${encodeURIComponent(registeredEmail)}`);
-    } catch (error: any) {
+      navigate(`/email-confirmation-pending?email=${encodeURIComponent(registeredEmail)}&origem=arena`);
+    } catch (error: unknown) {
       console.error('Erro ao registrar usuário e empresa:', error);
-      showError('Erro ao finalizar o cadastro: ' + (error.message || 'Erro desconhecido.'));
+      const message = error instanceof Error ? error.message : 'Erro desconhecido.';
+      const email = pendingData?.email?.trim().toLowerCase();
+
+      if (email && isDuplicateRegistrationEmailError(message)) {
+        showError(duplicateRegistrationEmailHelp(email));
+        setIsContractModalOpen(false);
+        navigate(`/email-confirmation-pending?email=${encodeURIComponent(email)}&origem=arena`);
+        return;
+      }
+
+      showError('Erro ao finalizar o cadastro: ' + message);
     } finally {
       setLoading(false);
     }
@@ -446,6 +500,41 @@ const UnifiedRegistrationPage: React.FC = () => {
     { value: 'SP', label: 'São Paulo' }, { value: 'SE', label: 'Sergipe' }, { value: 'TO', label: 'Tocantins' }
   ];
 
+  if (session && arenaRegistrationLocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+        <Card className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-2xl font-extrabold text-gray-900 dark:text-white">
+              Você já está conectado
+            </CardTitle>
+            <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm leading-relaxed">
+              Para cadastrar uma <strong>nova conta de arena</strong> (usuário + empresa), é preciso sair da conta
+              atual: <span className="font-medium">{session.user.email}</span>.
+            </p>
+            <p className="text-gray-500 dark:text-gray-500 mt-2 text-xs">
+              O cadastro pelo portal da arena cria usuário e empresa juntos. Se você só quer adicionar outra empresa à
+              conta atual, use o menu interno após entrar.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <Button
+              type="button"
+              className="w-full"
+              disabled={signingOut}
+              onClick={() => void handleSignOutForNewArenaAccount()}
+            >
+              {signingOut ? 'Saindo...' : 'Sair e criar nova conta de arena'}
+            </Button>
+            <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/arena')}>
+              Voltar ao login da arena
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
       <Card className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
@@ -459,10 +548,12 @@ const UnifiedRegistrationPage: React.FC = () => {
             Voltar
           </Button>
           <CardTitle className="text-3xl font-extrabold text-gray-900 dark:text-white mt-8">
-            Cadastro de Profissional e Empresa
+            {arenaRegistrationLocked ? 'Cadastro da sua arena' : 'Cadastro de Profissional e Empresa'}
           </CardTitle>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Preencha seus dados pessoais e da sua empresa para começar a usar a plataforma.
+            {arenaRegistrationLocked
+              ? 'Preencha seus dados pessoais e da arena em um único passo. Depois confirme o e-mail para entrar.'
+              : 'Preencha seus dados pessoais e da sua empresa para começar a usar a plataforma.'}
           </p>
           {(searchParams.get('ref') || searchParams.get('referral')) && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
@@ -573,15 +664,33 @@ const UnifiedRegistrationPage: React.FC = () => {
                 </div>
                 <div className="md:col-span-2">
                   <Label htmlFor="segmentType">Segmento *</Label>
-                  <Select onValueChange={(value) => setValue('segmentType', value, { shouldValidate: true })} value={segmentTypeValue}>
-                    <SelectTrigger id="segmentType" className="mt-2 h-10" disabled={loadingSegments}>
-                      <SelectValue placeholder={loadingSegments ? "Carregando segmentos..." : "Selecione o segmento da empresa"} />
+                  <Select
+                    onValueChange={(value) => {
+                      if (arenaRegistrationLocked) return;
+                      setValue('segmentType', value, { shouldValidate: true });
+                    }}
+                    value={segmentTypeValue}
+                  >
+                    <SelectTrigger
+                      id="segmentType"
+                      className="mt-2 h-10"
+                      disabled={loadingSegments || arenaRegistrationLocked}
+                    >
+                      <SelectValue
+                        placeholder={
+                          loadingSegments
+                            ? 'Carregando segmentos...'
+                            : arenaRegistrationLocked
+                              ? 'Arena / quadras'
+                              : 'Selecione o segmento da empresa'
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {segmentOptions.length === 0 && !loadingSegments ? (
+                      {visibleSegmentOptions.length === 0 && !loadingSegments ? (
                         <SelectItem value="no-segments" disabled>Nenhum segmento disponível.</SelectItem>
                       ) : (
-                        segmentOptions.map((option) => (
+                        visibleSegmentOptions.map((option) => (
                           <SelectItem key={option.id} value={option.id}>
                             {option.name} (Área: {option.area_name})
                           </SelectItem>
@@ -589,6 +698,11 @@ const UnifiedRegistrationPage: React.FC = () => {
                       )}
                     </SelectContent>
                   </Select>
+                  {arenaRegistrationLocked ? (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Segmento definido para gestão de quadras (Arena). Este cadastro veio pelo portal da arena.
+                    </p>
+                  ) : null}
                   {errors.segmentType && <p className="text-red-500 text-xs mt-1">{errors.segmentType.message}</p>}
                 </div>
               </div>
