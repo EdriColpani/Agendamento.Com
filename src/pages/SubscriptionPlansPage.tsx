@@ -12,6 +12,8 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { useIsProprietario } from '@/hooks/useIsProprietario';
 import { useIsCompanyAdmin } from '@/hooks/useIsCompanyAdmin';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
+import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
+import { filterPlansForCompanySchedulingMode } from '@/utils/planSchedulingMode';
 import { Check, X, DollarSign, Clock, Zap, Tag, AlertTriangle, Settings, Info } from 'lucide-react';
 import { format, parseISO, addMonths, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -37,6 +39,7 @@ interface Plan {
   price: number;
   features: string[] | null;
   duration_months: number;
+  target_scheduling_mode?: 'service' | 'court' | null;
   menus?: Menu[]; // Menus vinculados ao plano
 }
 
@@ -62,6 +65,7 @@ const SubscriptionPlansPage: React.FC = () => {
   const { isProprietario } = useIsProprietario();
   const { isCompanyAdmin } = useIsCompanyAdmin();
   const { isGlobalAdmin } = useIsGlobalAdmin();
+  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
   const showPlanActivationHint =
     !isGlobalAdmin &&
     (isProprietario || isCompanyAdmin) &&
@@ -90,7 +94,7 @@ const SubscriptionPlansPage: React.FC = () => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly'); // Estado para período de cobrança
 
   const fetchSubscriptionData = useCallback(async () => {
-    if (sessionLoading || loadingPrimaryCompany || !primaryCompanyId) {
+    if (sessionLoading || loadingPrimaryCompany || loadingSchedulingMode || !primaryCompanyId) {
       return;
     }
 
@@ -99,7 +103,7 @@ const SubscriptionPlansPage: React.FC = () => {
       // 1. Fetch available active plans
       const { data: plansData, error: plansError } = await supabase
         .from('subscription_plans')
-        .select('id, name, description, price, features, duration_months, status') // Incluindo status na busca
+        .select('id, name, description, price, features, duration_months, status, target_scheduling_mode')
         .eq('status', 'active')
         .order('price', { ascending: true });
 
@@ -118,6 +122,7 @@ const SubscriptionPlansPage: React.FC = () => {
           price: p.price,
           features: p.features,
           duration_months: p.duration_months,
+          target_scheduling_mode: (p as { target_scheduling_mode?: string | null }).target_scheduling_mode ?? 'service',
         })) as Plan[];
         
           // Buscar menus vinculados a cada plano e limites
@@ -162,7 +167,8 @@ const SubscriptionPlansPage: React.FC = () => {
         })
       );
         
-      setAvailablePlans(plansWithMenus);
+      const plansForCompany = filterPlansForCompanySchedulingMode(plansWithMenus, isCourtMode);
+      setAvailablePlans(plansForCompany);
 
       // 2. Buscar a assinatura mais recente da empresa (independente do status)
       // Usamos select('*') em uma única linha para evitar qualquer problema de sintaxe no parâmetro select (HTTP 406).
@@ -225,7 +231,7 @@ const SubscriptionPlansPage: React.FC = () => {
     } finally {
       setLoadingData(false);
     }
-  }, [sessionLoading, loadingPrimaryCompany, primaryCompanyId]);
+  }, [sessionLoading, loadingPrimaryCompany, loadingSchedulingMode, primaryCompanyId, isCourtMode]);
 
   // Effect to handle Mercado Pago redirects (success/failure)
   useEffect(() => {
@@ -629,7 +635,7 @@ const SubscriptionPlansPage: React.FC = () => {
   }, [fetchSubscriptionData]);
 
 
-  if (loadingData || sessionLoading || loadingPrimaryCompany) {
+  if (loadingData || sessionLoading || loadingPrimaryCompany || loadingSchedulingMode) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-700">Carregando planos de assinatura...</p>
@@ -696,7 +702,9 @@ const SubscriptionPlansPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-gray-900">Planos de Assinatura</h1>
+      <h1 className="text-3xl font-bold text-gray-900">
+        {isCourtMode ? 'Planos para Arena / Quadras' : 'Planos de Assinatura'}
+      </h1>
 
       {showPlanActivationHint && (
         <Alert className="border-primary/40 bg-primary/5">
@@ -864,7 +872,14 @@ const SubscriptionPlansPage: React.FC = () => {
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {availablePlans.map((plan) => {
+        {availablePlans.length === 0 ? (
+          <p className="col-span-full text-center text-gray-600 py-8">
+            {isCourtMode
+              ? 'Nenhum plano de arena disponível no momento. Entre em contato com o suporte.'
+              : 'Nenhum plano para serviços disponível no momento. Entre em contato com o suporte.'}
+          </p>
+        ) : (
+        availablePlans.map((plan) => {
           if (!plan) return null; 
           
           const isCurrentPlan = currentSubscription?.plan_id === plan.id;
@@ -1078,7 +1093,8 @@ const SubscriptionPlansPage: React.FC = () => {
               </CardContent>
             </Card>
           );
-        })}
+        })
+        )}
       </div>
 
       {/* Cancellation Confirmation Dialog */}

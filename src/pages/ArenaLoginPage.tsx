@@ -9,6 +9,11 @@ import {
 } from 'lucide-react';
 import { fetchArenaLoginMarketingPublic } from '@/services/arenaLoginMarketingService';
 import BrandLogo from '@/components/brand/BrandLogo';
+import planoArenaLogo from '@/assets/brand/plano-arena-logo.png';
+import {
+  ARENA_REGISTER_PROFESSIONAL_URL,
+  persistArenaRegistrationIntent,
+} from '@/utils/arenaRegistration';
 
 const marketingLines = [
   { lead: 'O PlanoAgenda veio para', highlight: 'organizar sua arena' },
@@ -114,21 +119,34 @@ const ArenaLoginPage: React.FC = () => {
       <main className="flex flex-1 flex-col items-center justify-center bg-slate-50 px-4 py-10 dark:bg-[#0f172a] md:min-h-screen md:px-8">
         <div className="w-full max-w-md space-y-8">
           <div className="flex flex-col items-center text-center">
-            <div className="mb-3 rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 p-[2px] shadow-md ring-2 ring-white/30">
-              <div className="rounded-[14px] bg-white/90 p-1.5 dark:bg-slate-900/60">
-                <img src="/brand/arena-login-icon.png" alt="Ícone Arena" className="h-11 w-11 rounded-lg" />
-              </div>
-            </div>
-            <h1
-              className="font-serif text-2xl font-bold tracking-tight text-[#0c2340] dark:text-white"
-              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-            >
-              PlanoAgenda
-            </h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            <img
+              src={planoArenaLogo}
+              alt="Plano Arena — Sistema de agendamento de quadras"
+              className="mb-4 w-full max-w-[300px] h-auto object-contain"
+              loading="eager"
+              decoding="async"
+            />
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Gestão de quadras e reservas — entre com sua conta.
             </p>
           </div>
+
+          <Link
+            to={ARENA_REGISTER_PROFESSIONAL_URL}
+            onClick={persistArenaRegistrationIntent}
+            className="group block w-full rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-emerald-50 px-5 py-4 text-center shadow-sm transition hover:border-teal-300 hover:shadow-md dark:border-teal-800 dark:from-teal-950/40 dark:via-slate-900 dark:to-emerald-950/30"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
+              Planos a partir de
+            </p>
+            <p className="mt-1 text-3xl font-extrabold tracking-tight text-[#0c2340] dark:text-white">
+              R$ 69,90
+              <span className="text-base font-medium text-slate-600 dark:text-slate-400">/mês</span>
+            </p>
+            <p className="mt-2 text-sm font-medium text-teal-700 group-hover:underline dark:text-teal-300">
+              Cadastre sua arena →
+            </p>
+          </Link>
 
           <div
             className={[
@@ -137,18 +155,8 @@ const ArenaLoginPage: React.FC = () => {
               '[&_button[type="submit"]]:!border-0 [&_button[type="submit"]]:!bg-gradient-to-r [&_button[type="submit"]]:!from-[#0066ff] [&_button[type="submit"]]:!to-[#10b981] [&_button[type="submit"]]:!text-white [&_button[type="submit"]]:hover:!opacity-95 [&_button[type="submit"]]:!shadow-md',
             ].join(' ')}
           >
-            <LoginForm />
+            <LoginForm signupTo={ARENA_REGISTER_PROFESSIONAL_URL} />
           </div>
-
-          <p className="text-center text-xs text-slate-500 dark:text-slate-500">
-            É salão, clínica ou outro agendamento?{' '}
-            <Link
-              to="/login"
-              className="font-medium text-[#0369a1] underline-offset-4 hover:text-[#0055ff] hover:underline dark:text-teal-400 dark:hover:text-teal-300"
-            >
-              Acesso ao login geral
-            </Link>
-          </p>
         </div>
       </main>
     </div>

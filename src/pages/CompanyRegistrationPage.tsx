@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,12 @@ import ContractAcceptanceModal from '@/components/ContractAcceptanceModal';
 import { PermissionsAlertModal } from '@/components/PermissionsAlertModal';
 import { ALERT_KEYS, hasSeenAlert, markAlertAsSeen } from '@/utils/onboardingAlerts';
 import { isSegmentCourtModeClient } from '@/utils/segmentCourtMode';
+import {
+  clearArenaRegistrationIntent,
+  getCourtSegmentOptions,
+  pickDefaultCourtSegmentId,
+  resolveArenaRegistrationMode,
+} from '@/utils/arenaRegistration';
 
 // Zod schema for company registration
 const companySchema = z.object({
@@ -56,10 +62,13 @@ interface SegmentOption {
   id: string;
   name: string;
   area_name: string;
+  scheduling_mode?: string | null;
 }
 
 const CompanyRegistrationPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const arenaRegistrationLocked = resolveArenaRegistrationMode(searchParams);
   const { session } = useSession();
   const [loading, setLoading] = useState(false);
   const [proprietarioRoleId, setProprietarioRoleId] = useState<number | null>(null);
@@ -106,6 +115,20 @@ const CompanyRegistrationPage: React.FC = () => {
   const zipCodeValue = watch('zip_code');
   const phoneNumberValue = watch('phone_number');
   const stateValue = watch('state'); // Watch state value for potential city filtering (future)
+
+  const visibleSegmentOptions = arenaRegistrationLocked
+    ? getCourtSegmentOptions(segmentOptions)
+    : segmentOptions;
+
+  useEffect(() => {
+    if (!arenaRegistrationLocked || loadingSegments || segmentOptions.length === 0) return;
+    const courtSegmentId = pickDefaultCourtSegmentId(segmentOptions);
+    if (courtSegmentId) {
+      setValue('segment_type', courtSegmentId, { shouldValidate: true });
+      return;
+    }
+    showError('Nenhum segmento de arena disponível. Entre em contato com o suporte.');
+  }, [arenaRegistrationLocked, loadingSegments, segmentOptions, setValue]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -159,6 +182,7 @@ const CompanyRegistrationPage: React.FC = () => {
         .select(`
           id, 
           name,
+          scheduling_mode,
           area_de_atuacao(name)
         `)
         .order('name', { ascending: true });
@@ -170,6 +194,7 @@ const CompanyRegistrationPage: React.FC = () => {
         const mappedSegments = segmentsData.map(segment => ({
           id: segment.id, 
           name: segment.name,
+          scheduling_mode: segment.scheduling_mode,
           area_name: (segment.area_de_atuacao as { name: string } | null)?.name || 'Geral'
         }));
         setSegmentOptions(mappedSegments);
@@ -510,6 +535,7 @@ const CompanyRegistrationPage: React.FC = () => {
       const shouldShowAlert = !hasSeenAlert(ALERT_KEYS.COMPANY_REGISTRATION, userId, companyId);
       
       showSuccess('Empresa cadastrada com sucesso e você foi definido como proprietário!');
+      clearArenaRegistrationIntent();
       setIsContractModalOpen(false);
       setPendingCompanyData(null);
       setPendingImageUrl(null);
@@ -643,15 +669,33 @@ const CompanyRegistrationPage: React.FC = () => {
 
             <div>
               <Label htmlFor="segment_type" className="text-sm font-medium text-gray-700 dark:text-gray-300">Segmento *</Label>
-              <Select onValueChange={(value) => setValue('segment_type', value, { shouldValidate: true })} value={segmentTypeValue}>
-                <SelectTrigger id="segment_type" className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary" disabled={loadingSegments}>
-                  <SelectValue placeholder={loadingSegments ? "Carregando segmentos..." : "Selecione o segmento da empresa"} />
+              <Select
+                onValueChange={(value) => {
+                  if (arenaRegistrationLocked) return;
+                  setValue('segment_type', value, { shouldValidate: true });
+                }}
+                value={segmentTypeValue}
+              >
+                <SelectTrigger
+                  id="segment_type"
+                  className="mt-2 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary focus:ring-primary"
+                  disabled={loadingSegments || arenaRegistrationLocked}
+                >
+                  <SelectValue
+                    placeholder={
+                      loadingSegments
+                        ? 'Carregando segmentos...'
+                        : arenaRegistrationLocked
+                          ? 'Arena / quadras'
+                          : 'Selecione o segmento da empresa'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-700 dark:text-white">
-                  {segmentOptions.length === 0 && !loadingSegments ? (
+                  {visibleSegmentOptions.length === 0 && !loadingSegments ? (
                     <SelectItem value="no-segments" disabled>Nenhum segmento disponível. Crie um nas configurações.</SelectItem>
                   ) : (
-                    segmentOptions.map((option) => (
+                    visibleSegmentOptions.map((option) => (
                       <SelectItem key={option.id} value={option.id}>
                         {option.name} (Área: {option.area_name})
                       </SelectItem>
@@ -659,6 +703,11 @@ const CompanyRegistrationPage: React.FC = () => {
                   )}
                 </SelectContent>
               </Select>
+              {arenaRegistrationLocked ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Segmento definido para gestão de quadras (Arena). Este cadastro veio pelo portal da arena.
+                </p>
+              ) : null}
               {errors.segment_type && <p className="text-red-500 text-xs mt-1">{errors.segment_type.message}</p>}
             </div>
 

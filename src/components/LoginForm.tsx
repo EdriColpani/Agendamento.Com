@@ -7,7 +7,12 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSession } from '@/components/SessionContextProvider';
 
-const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  /** Destino do link "Cadastrar" (ex.: cadastro unificado da arena). */
+  signupTo?: string;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ signupTo = '/signup' }) => {
   const navigate = useNavigate();
   const { session } = useSession();
   const [email, setEmail] = useState('');
@@ -89,7 +94,7 @@ const LoginForm: React.FC = () => {
       </div>
       <div className="text-center text-sm mt-2">
         Não tem uma conta?{' '}
-        <Link to="/signup" className="text-primary hover:underline">
+        <Link to={signupTo} className="text-primary hover:underline">
           Cadastrar
         </Link>
       </div>
