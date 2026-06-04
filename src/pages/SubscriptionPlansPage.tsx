@@ -661,7 +661,14 @@ const SubscriptionPlansPage: React.FC = () => {
   }
   
   const isCanceled = currentSubscription?.status === 'canceled';
-  const isExpired = currentSubscription?.end_date ? isPast(parseISO(currentSubscription.end_date)) : false; // Nova variável
+  const isExpired = currentSubscription?.end_date ? isPast(parseISO(currentSubscription.end_date)) : false;
+  const isExpiringSoon = subscriptionStatus === 'expiring_soon';
+  const couponBlockedByActiveSub =
+    !!currentSubscription &&
+    !isExpired &&
+    !isCanceled &&
+    currentSubscription.status === 'active' &&
+    !isExpiringSoon;
   const scheduledNextPlanName = currentSubscription?.next_plan_id
     ? (availablePlans.find((plan) => plan.id === currentSubscription.next_plan_id)?.name || 'Plano selecionado')
     : null;
@@ -719,8 +726,27 @@ const SubscriptionPlansPage: React.FC = () => {
         </Alert>
       )}
 
+      {isExpiringSoon && !isExpired && !isCanceled && (
+        <Alert className="border-amber-500 bg-amber-50">
+          <AlertTriangle className="h-4 w-4 text-amber-700" />
+          <AlertTitle className="text-amber-900">Seu plano está encerrando</AlertTitle>
+          <AlertDescription className="text-amber-800">
+            A assinatura expira em <strong>{expirationDateFormatted}</strong>. Você pode renovar agora: no card do seu
+            plano, use o botão <strong>Renovar Plano</strong> para pagar e estender o período sem perder o acesso.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Status da Assinatura Atual */}
-      <Card className={`border-2 shadow-lg ${isCanceled || isExpired ? 'border-red-600 bg-red-50' : 'border-primary'}`}>
+      <Card
+        className={`border-2 shadow-lg ${
+          isCanceled || isExpired
+            ? 'border-red-600 bg-red-50'
+            : isExpiringSoon
+              ? 'border-amber-500 bg-amber-50'
+              : 'border-primary'
+        }`}
+      >
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className={`text-xl text-gray-900 flex items-center gap-2 ${isCanceled || isExpired ? 'text-red-600' : 'text-primary'}`}>
             {isCanceled || isExpired ? <AlertTriangle className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
@@ -786,11 +812,11 @@ const SubscriptionPlansPage: React.FC = () => {
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               className="flex-1"
-              disabled={loadingData || (currentSubscription && !isExpired && !isCanceled && currentSubscription.status === 'active')}
+              disabled={loadingData || couponBlockedByActiveSub}
             />
             <Button 
               onClick={handleValidateCoupon} 
-              disabled={loadingData || !couponCode || (currentSubscription && !isExpired && !isCanceled && currentSubscription.status === 'active')}
+              disabled={loadingData || !couponCode || couponBlockedByActiveSub}
               className="!rounded-button whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loadingData ? 'Validando...' : 'Aplicar'}
@@ -884,21 +910,23 @@ const SubscriptionPlansPage: React.FC = () => {
           
           const isCurrentPlan = currentSubscription?.plan_id === plan.id;
           
-          // Lógica de desabilitação corrigida:
-          // 1. Desabilita se estiver carregando dados.
-          // 2. Desabilita se for o plano atual E o status for 'active' E não estiver expirado (não pode assinar o mesmo plano ativo).
-          // 3. Permite se o status for 'canceled' ou 'expired' (re-assinatura).
-          const isCurrentAndActive = isCurrentPlan && displayStatus === 'active' && !isExpired;
+          const canRenewCurrentPlan = isCurrentPlan && isExpiringSoon;
+          const isCurrentAndActive =
+            isCurrentPlan && displayStatus === 'active' && !isExpired && !isExpiringSoon;
           const buttonDisabled = loadingData || isCurrentAndActive;
 
           let buttonText = 'Assinar Agora';
-          if (isCurrentAndActive) {
+          if (canRenewCurrentPlan) {
+            buttonText = 'Renovar Plano';
+          } else if (isCurrentAndActive) {
             buttonText = 'Plano Atual';
           } else if (currentSubscription && displayStatus === 'active' && !isExpired) {
             const currentPrice = currentSubscription.subscription_plans?.price || 0;
             buttonText = plan.price >= currentPrice ? 'Fazer Upgrade' : 'Agendar Downgrade';
           }
-          const buttonClass = isCurrentPlan && displayStatus === 'active' && !isExpired ? 'bg-gray-400 hover:bg-gray-500 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90';
+          const buttonClass = isCurrentAndActive
+            ? 'bg-gray-400 hover:bg-gray-500 text-white'
+            : 'bg-primary text-primary-foreground hover:bg-primary/90';
 
           // Calcular preço base baseado no período selecionado
           // Para plano anual: aplicar desconto de 15% sobre o valor anual (12 meses)
