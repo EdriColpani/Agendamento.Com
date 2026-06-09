@@ -122,9 +122,9 @@ function CourtAgendaLegend({ compact }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <details className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+      <details className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700">
         <summary className="cursor-pointer font-medium text-gray-900 select-none">Legenda dos horários</summary>
-        <div className="mt-2 grid grid-cols-1 gap-1.5">
+        <div className="mt-2 grid grid-cols-1 gap-2">
           {items.map((item) => (
             <span key={item.label} className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ${item.className}`}>
               <span className={`h-2 w-2 shrink-0 rounded-full ${item.dot}`} />
@@ -137,7 +137,7 @@ function CourtAgendaLegend({ compact }: { compact?: boolean }) {
   }
 
   return (
-    <div className="flex flex-wrap gap-2 text-xs text-gray-600">
+    <div className="flex flex-wrap gap-2 text-sm text-gray-600">
       {items.map((item) => (
         <span key={item.label} className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${item.className}`}>
           <span className={`h-2 w-2 rounded-full ${item.dot}`} />
@@ -533,10 +533,10 @@ const CourtAgendaPage: React.FC = () => {
         <>
           <Card>
             <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-              <CardTitle className="text-base sm:text-lg text-center capitalize">
+              <CardTitle className="text-lg sm:text-xl text-center capitalize">
                 {format(selectedDate, "MMMM yyyy", { locale: ptBR })}
               </CardTitle>
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-base text-muted-foreground">
                 {format(selectedDate, "EEEE, dd/MM/yyyy", { locale: ptBR })}
               </p>
             </CardHeader>
@@ -566,12 +566,12 @@ const CourtAgendaPage: React.FC = () => {
                           variant={isSelected ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setSelectedDate(date)}
-                          className="min-h-[auto] min-w-[56px] sm:min-w-[72px] flex-col gap-0 rounded-full px-2 sm:px-3 py-2 font-normal shrink-0"
+                          className="min-h-[auto] min-w-[60px] sm:min-w-[72px] flex-col gap-0 rounded-full px-2.5 sm:px-3 py-2.5 font-normal shrink-0"
                         >
-                          <span className="block text-xs uppercase leading-tight">
+                          <span className="block text-sm uppercase leading-tight">
                             {format(date, 'EEE', { locale: ptBR })}
                           </span>
-                          <span className="block text-sm font-semibold leading-tight">
+                          <span className="block text-base font-semibold leading-tight">
                             {format(date, 'dd')}
                           </span>
                         </Button>
@@ -622,11 +622,11 @@ const CourtAgendaPage: React.FC = () => {
 
                       <div className="flex-1 space-y-3">
                         <div>
-                          <h3 className="text-base sm:text-lg font-semibold text-gray-900">{court.name}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900">{court.name}</h3>
                           {court.description ? (
-                            <p className="text-sm font-medium text-orange-600">{court.description}</p>
+                            <p className="text-base font-medium text-orange-600">{court.description}</p>
                           ) : null}
-                          <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 sm:line-clamp-none">
+                          <p className="text-sm sm:text-base text-gray-600 line-clamp-2 sm:line-clamp-none">
                             {formatCourtAddress(court)}
                           </p>
                         </div>
@@ -671,14 +671,14 @@ const CourtAgendaPage: React.FC = () => {
                                   type="button"
                                   disabled={slot.occupied}
                                   onClick={() => !slot.occupied && openBookModal(court, slot, agenda.slotMinutes)}
-                                  className={`w-full rounded-md border px-2.5 py-2 text-left lg:w-auto lg:min-w-[132px] lg:max-w-[160px] ${
+                                  className={`w-full min-h-[4.25rem] rounded-md border px-3 py-2.5 text-left lg:w-auto lg:min-h-0 lg:min-w-[140px] lg:max-w-[168px] ${
                                     slot.occupied ? occupiedClass : 'border-gray-300 bg-white text-gray-900 hover:border-gray-500'
                                   }`}
                                 >
-                                  <span className="block text-xs sm:text-sm font-medium leading-tight">
+                                  <span className="block text-sm sm:text-base font-medium leading-snug">
                                     {slot.startTime} às {endStr}
                                   </span>
-                                  <span className="block text-[11px] sm:text-sm font-semibold leading-snug mt-0.5">
+                                  <span className="block text-sm sm:text-base font-semibold leading-snug mt-1">
                                     {slot.occupied ? (
                                       <>
                                         <span className="sm:hidden">
