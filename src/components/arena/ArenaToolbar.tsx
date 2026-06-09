@@ -21,7 +21,7 @@ const backButtonClass = cn(arenaToolbarSolidClass, 'justify-start');
 const navLinkBtnClass = cn(
   arenaToolbarBtnClass,
   arenaToolbarSolidClass,
-  'h-10 shrink-0 whitespace-nowrap px-3.5 text-base transition-all sm:h-auto sm:min-h-9 sm:text-sm sm:whitespace-normal sm:px-4 sm:py-2.5 sm:text-center sm:leading-snug',
+  'h-9 shrink-0 whitespace-nowrap px-3 text-sm transition-all sm:h-auto sm:min-h-9 sm:whitespace-normal sm:px-4 sm:py-2.5 sm:text-center sm:leading-snug',
 );
 
 interface ArenaToolbarProps {

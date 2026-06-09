@@ -39,6 +39,11 @@ import {
 } from '@/utils/courtSlots';
 import { Loader2 } from 'lucide-react';
 import { invokeEdgePublicOrThrow } from '@/utils/edge-invoke';
+import {
+  CourtTimeSlotButton,
+  CourtTimeSlotGrid,
+  type CourtSlotStatus,
+} from '@/components/arena/CourtTimeSlotButton';
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, '');
@@ -438,44 +443,26 @@ const PublicCourtBookingPage: React.FC = () => {
           ) : slots.length === 0 ? (
             <p className="text-gray-600">Sem horários para esta data ou quadra fechada.</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {slots.map((s) => (
-                (() => {
-                  const past = isPastSlot(s.startTime);
-                  const belowMin = !s.occupied && !past && s.slotPrice < 0.5;
-                  const disabled = s.occupied || past || belowMin;
-                  const statusLabel = s.occupied
-                    ? 'Ocupado'
-                    : past
-                      ? 'Encerrado'
-                      : belowMin
-                        ? 'Mín. R$ 0,50'
-                        : 'Livre';
-                  return (
-                <Button
-                  key={s.startTime}
-                  type="button"
-                  variant={disabled ? 'secondary' : 'outline'}
-                  disabled={disabled}
-                  className={
-                    disabled
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'border-amber-400 hover:bg-amber-50 text-gray-900'
-                  }
-                  onClick={() => !disabled && openBookModal(s.startTime)}
-                >
-                  <span className="block font-medium">{s.startTime}</span>
-                  {!disabled && s.slotPrice > 0 ? (
-                    <span className="block text-xs font-normal opacity-90">
-                      R$ {s.slotPrice.toFixed(2).replace('.', ',')}
-                    </span>
-                  ) : null}
-                  <span className="block text-[11px] font-normal opacity-80">{statusLabel}</span>
-                </Button>
-                  );
-                })()
-              ))}
-            </div>
+            <CourtTimeSlotGrid>
+              {slots.map((s) => {
+                const past = isPastSlot(s.startTime);
+                const belowMin = !s.occupied && !past && s.slotPrice < 0.5;
+                let status: CourtSlotStatus = 'available';
+                if (s.occupied) status = 'ocupado';
+                else if (past) status = 'past';
+                else if (belowMin) status = 'below_min';
+
+                return (
+                  <CourtTimeSlotButton
+                    key={s.startTime}
+                    timeLabel={s.startTime}
+                    price={status === 'available' ? s.slotPrice : null}
+                    status={status}
+                    onClick={() => openBookModal(s.startTime)}
+                  />
+                );
+              })}
+            </CourtTimeSlotGrid>
           )}
         </CardContent>
       </Card>
