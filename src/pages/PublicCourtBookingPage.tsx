@@ -306,8 +306,17 @@ const PublicCourtBookingPage: React.FC = () => {
         setBookModalOpen(false);
         setSlotToBook(null);
         await refreshSlots();
-        showSuccess('Reserva criada com sucesso! Pagamento combinado para o balcão da arena.');
-        navigate(`/agendamento-confirmado/${newId}?flow=court&mp=0&paymentMethod=dinheiro`);
+        const selectedCourt = courts.find((c) => c.id === courtId);
+        const confirmParams = new URLSearchParams({
+          flow: 'court',
+          paymentMethod: 'dinheiro',
+          appointmentDate: dateStr,
+          appointmentTime: slotToBook,
+          slotPrice: String(slotPriceDisplay),
+        });
+        if (companyName) confirmParams.set('companyName', companyName);
+        if (selectedCourt?.name) confirmParams.set('courtName', selectedCourt.name);
+        navigate(`/agendamento-confirmado/${newId}?${confirmParams.toString()}`);
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);

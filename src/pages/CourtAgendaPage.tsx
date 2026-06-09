@@ -60,11 +60,90 @@ interface ClientOption {
   name: string;
 }
 
+type SlotBlockKind =
+  | 'confirmado'
+  | 'pendente_pagamento'
+  | 'pendente_balcao'
+  | 'pendente_confirmacao'
+  | 'ocupado'
+  | null;
+
+interface CourtAgendaAppointment {
+  appointment_time: string;
+  total_duration_minutes: number | null;
+  status: string | null;
+  payment_method?: string | null;
+  mp_payment_status?: string | null;
+}
+
 interface CourtAgendaSlot {
   startTime: string;
   occupied: boolean;
   slotPrice: number;
-  blockStatus: 'pendente' | 'confirmado' | 'ocupado' | null;
+  blockKind: SlotBlockKind;
+  blockLabel: string;
+}
+
+const SLOT_BLOCK_LABELS: Record<Exclude<SlotBlockKind, null>, string> = {
+  confirmado: 'Confirmado',
+  pendente_pagamento: 'Pendente de pagamento',
+  pendente_balcao: 'Pendente no balcão',
+  pendente_confirmacao: 'Pendente de confirmação',
+  ocupado: 'Ocupado',
+};
+
+function isPendingBlockKind(kind: SlotBlockKind): boolean {
+  return (
+    kind === 'pendente_pagamento' ||
+    kind === 'pendente_balcao' ||
+    kind === 'pendente_confirmacao'
+  );
+}
+
+function getPendingBlockKind(appt: CourtAgendaAppointment): Exclude<SlotBlockKind, null | 'confirmado' | 'ocupado'> {
+  const payment = String(appt.payment_method || '').toLowerCase();
+  if (payment === 'mercado_pago') {
+    const mpStatus = String(appt.mp_payment_status || '').toLowerCase();
+    if (mpStatus === 'approved') return 'pendente_confirmacao';
+    return 'pendente_pagamento';
+  }
+  if (payment === 'dinheiro') return 'pendente_balcao';
+  return 'pendente_confirmacao';
+}
+
+function resolveSlotBlock(
+  slotStartTime: string,
+  slotMinutes: number,
+  appointments: CourtAgendaAppointment[],
+): { kind: SlotBlockKind; label: string } {
+  const toMinutes = (t: string) => {
+    const [h, m] = t.slice(0, 5).split(':').map((n) => Number(n));
+    return h * 60 + m;
+  };
+  const slotStart = toMinutes(slotStartTime);
+  const slotEnd = slotStart + slotMinutes;
+
+  const overlapping = (appointments || []).filter((appt) => {
+    const start = toMinutes(appt.appointment_time);
+    const end = start + (appt.total_duration_minutes ?? 60);
+    return start < slotEnd && end > slotStart;
+  });
+
+  if (overlapping.length === 0) {
+    return { kind: null, label: '' };
+  }
+
+  if (overlapping.some((appt) => String(appt.status || '').toLowerCase() === 'confirmado')) {
+    return { kind: 'confirmado', label: SLOT_BLOCK_LABELS.confirmado };
+  }
+
+  const pendingAppt = overlapping.find((appt) => String(appt.status || '').toLowerCase() === 'pendente');
+  if (pendingAppt) {
+    const kind = getPendingBlockKind(pendingAppt);
+    return { kind, label: SLOT_BLOCK_LABELS[kind] };
+  }
+
+  return { kind: 'ocupado', label: SLOT_BLOCK_LABELS.ocupado };
 }
 
 interface CourtAgendaData {
@@ -153,42 +232,6 @@ const CourtAgendaPage: React.FC = () => {
     setClients((data as ClientOption[]) || []);
   }, [primaryCompanyId]);
 
-  const resolveSlotBlockStatus = useCallback(
-    (
-      slotStartTime: string,
-      slotMinutes: number,
-      appointments: { appointment_time: string; total_duration_minutes: number | null; status: string | null }[],
-    ): 'pendente' | 'confirmado' | 'ocupado' | null => {
-      const toMinutes = (t: string) => {
-        const [h, m] = t.slice(0, 5).split(':').map((n) => Number(n));
-        return h * 60 + m;
-      };
-      const slotStart = toMinutes(slotStartTime);
-      const slotEnd = slotStart + slotMinutes;
-      let hasConfirmed = false;
-      let hasPending = false;
-      let hasOther = false;
-
-      for (const appt of appointments || []) {
-        const start = toMinutes(appt.appointment_time);
-        const end = start + (appt.total_duration_minutes ?? 60);
-        const overlaps = start < slotEnd && end > slotStart;
-        if (!overlaps) continue;
-
-        const s = String(appt.status || '').toLowerCase();
-        if (s === 'confirmado') hasConfirmed = true;
-        else if (s === 'pendente') hasPending = true;
-        else hasOther = true;
-      }
-
-      if (hasConfirmed) return 'confirmado';
-      if (hasPending) return 'pendente';
-      if (hasOther) return 'ocupado';
-      return null;
-    },
-    [],
-  );
-
   const refreshAgenda = useCallback(async () => {
     if (!primaryCompanyId || courts.length === 0) {
       setCourtAgendas({});
@@ -236,7 +279,7 @@ const CourtAgendaPage: React.FC = () => {
 
           const { data: appts, error: apErr } = await supabase
             .from('appointments')
-            .select('appointment_time, total_duration_minutes, status')
+            .select('appointment_time, total_duration_minutes, status, payment_method, mp_payment_status')
             .eq('company_id', primaryCompanyId)
             .eq('court_id', court.id)
             .eq('appointment_date', dateStr)
@@ -266,22 +309,18 @@ const CourtAgendaPage: React.FC = () => {
             workingStart: st,
             workingEnd: en,
             slotMinutes: dur,
-            slots: visibleSlots.map((slot) => ({
-              startTime: slot.startTime,
-              occupied: slot.occupied,
-              slotPrice: estimateCourtBookingTotalPrice(slot.startTime, dur, dur, bands, defPrice),
-              blockStatus: slot.occupied
-                ? resolveSlotBlockStatus(
-                    slot.startTime,
-                    dur,
-                    (appts || []) as {
-                      appointment_time: string;
-                      total_duration_minutes: number | null;
-                      status: string | null;
-                    }[],
-                  )
-                : null,
-            })),
+            slots: visibleSlots.map((slot) => {
+              const block = slot.occupied
+                ? resolveSlotBlock(slot.startTime, dur, (appts || []) as CourtAgendaAppointment[])
+                : { kind: null as SlotBlockKind, label: '' };
+              return {
+                startTime: slot.startTime,
+                occupied: slot.occupied,
+                slotPrice: estimateCourtBookingTotalPrice(slot.startTime, dur, dur, bands, defPrice),
+                blockKind: block.kind,
+                blockLabel: block.label,
+              };
+            }),
             error: null,
           };
         } catch (e: unknown) {
@@ -301,7 +340,7 @@ const CourtAgendaPage: React.FC = () => {
     );
     setCourtAgendas(nextAgendas);
     setLoadingAgenda(false);
-  }, [primaryCompanyId, courts, dayOfWeek, dateStr, selectedDate, resolveSlotBlockStatus]);
+  }, [primaryCompanyId, courts, dayOfWeek, dateStr, selectedDate]);
 
   useEffect(() => {
     if (primaryCompanyId && isCourtMode && canUseArenaManagement) {
@@ -549,7 +588,15 @@ const CourtAgendaPage: React.FC = () => {
                             <div className="flex flex-wrap gap-2 text-xs text-gray-600">
                               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-800">
                                 <span className="h-2 w-2 rounded-full bg-amber-500" />
-                                Pendente
+                                Pendente de pagamento
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-900 border border-amber-200">
+                                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                                Pendente no balcão
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-yellow-900">
+                                <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                                Pendente de confirmação
                               </span>
                               <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-green-800">
                                 <span className="h-2 w-2 rounded-full bg-green-500" />
@@ -566,29 +613,27 @@ const CourtAgendaPage: React.FC = () => {
                               end.setMinutes(end.getMinutes() + agenda.slotMinutes);
                               const endStr = format(end, 'HH:mm');
                               const occupiedClass =
-                                slot.blockStatus === 'confirmado'
+                                slot.blockKind === 'confirmado'
                                   ? 'cursor-not-allowed border-green-300 bg-green-50 text-green-800'
-                                  : slot.blockStatus === 'pendente'
-                                    ? 'cursor-not-allowed border-amber-300 bg-amber-50 text-amber-800'
-                                    : 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500';
+                                  : slot.blockKind === 'pendente_balcao'
+                                    ? 'cursor-not-allowed border-amber-200 bg-amber-50/80 text-amber-900'
+                                    : isPendingBlockKind(slot.blockKind)
+                                      ? 'cursor-not-allowed border-amber-300 bg-amber-50 text-amber-800'
+                                      : 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500';
                               return (
                                 <button
                                   key={`${court.id}-${slot.startTime}`}
                                   type="button"
                                   disabled={slot.occupied}
                                   onClick={() => !slot.occupied && openBookModal(court, slot, agenda.slotMinutes)}
-                                  className={`rounded-md border px-3 py-2 text-left min-w-[120px] ${
+                                  className={`rounded-md border px-3 py-2 text-left min-w-[132px] max-w-[160px] ${
                                     slot.occupied ? occupiedClass : 'border-gray-300 bg-white text-gray-900 hover:border-gray-500'
                                   }`}
                                 >
                                   <span className="block text-sm font-medium">{slot.startTime} às {endStr}</span>
-                                  <span className="block text-sm font-semibold">
+                                  <span className="block text-xs sm:text-sm font-semibold leading-snug">
                                     {slot.occupied
-                                      ? slot.blockStatus === 'confirmado'
-                                        ? 'Confirmado'
-                                        : slot.blockStatus === 'pendente'
-                                          ? 'Pendente'
-                                          : 'Ocupado'
+                                      ? slot.blockLabel
                                       : `R$ ${slot.slotPrice.toFixed(2).replace('.', ',')}`}
                                   </span>
                                 </button>
