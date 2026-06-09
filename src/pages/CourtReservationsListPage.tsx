@@ -35,7 +35,7 @@ import {
   COURT_RESERVATIONS_MAX_RANGE_DAYS,
   COURT_RESERVATIONS_PAGE_SIZE,
 } from '@/utils/courtReservationListQuery';
-import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Pencil } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 import ArenaToolbar from '@/components/arena/ArenaToolbar';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
@@ -70,7 +70,28 @@ function displayClientName(row: CourtReservationRow): string {
 
 function formatTime(t: string): string {
   if (!t) return '—';
-  return t.length > 5 ? t.slice(0, 5) : t;
+  const trimmed = String(t).trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+  if (match) {
+    return `${match[1].padStart(2, '0')}:${match[2]}`;
+  }
+  return trimmed.length > 5 ? trimmed.slice(0, 5) : trimmed;
+}
+
+function formatReservationTimeRange(
+  appointmentTime: string,
+  durationMinutes: number | null | undefined,
+): string {
+  const start = formatTime(appointmentTime);
+  if (start === '—') return '—';
+  const duration = durationMinutes ?? 60;
+  const [h, m] = start.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return start;
+  const totalMinutes = h * 60 + m + duration;
+  const endH = Math.floor(totalMinutes / 60) % 24;
+  const endM = totalMinutes % 60;
+  const end = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  return `${start} – ${end}`;
 }
 
 const CourtReservationsListPage: React.FC = () => {
@@ -647,15 +668,22 @@ const CourtReservationsListPage: React.FC = () => {
                   const courtLabel =
                     r.courts?.name || (r.court_id ? courtNameById.get(r.court_id) : null) || '—';
                   const price = r.total_price != null ? Number(r.total_price) : 0;
+                  const timeRange = formatReservationTimeRange(
+                    String(r.appointment_time),
+                    r.total_duration_minutes,
+                  );
                   return (
                     <div key={r.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {format(new Date(r.appointment_date + 'T12:00:00'), 'dd/MM/yyyy')} ·{' '}
-                            {formatTime(String(r.appointment_time))}
+                            {format(new Date(r.appointment_date + 'T12:00:00'), 'dd/MM/yyyy')}
                           </p>
-                          <p className="text-sm text-muted-foreground truncate">{displayClientName(r)}</p>
+                          <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                            <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            {timeRange}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate mt-1">{displayClientName(r)}</p>
                           <p className="text-sm text-muted-foreground">{courtLabel}</p>
                         </div>
                         <Badge className={`${getStatusColor(r.status || '')} shrink-0 text-white text-xs`}>
@@ -677,7 +705,7 @@ const CourtReservationsListPage: React.FC = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Data</TableHead>
-                      <TableHead>Hora</TableHead>
+                      <TableHead>Horário</TableHead>
                       <TableHead>Quadra</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Duração</TableHead>
@@ -691,10 +719,14 @@ const CourtReservationsListPage: React.FC = () => {
                       const courtLabel =
                         r.courts?.name || (r.court_id ? courtNameById.get(r.court_id) : null) || '—';
                       const price = r.total_price != null ? Number(r.total_price) : 0;
+                      const timeRange = formatReservationTimeRange(
+                        String(r.appointment_time),
+                        r.total_duration_minutes,
+                      );
                       return (
                         <TableRow key={r.id}>
                           <TableCell>{format(new Date(r.appointment_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
-                          <TableCell>{formatTime(String(r.appointment_time))}</TableCell>
+                          <TableCell className="whitespace-nowrap font-medium">{timeRange}</TableCell>
                           <TableCell>{courtLabel}</TableCell>
                           <TableCell>{displayClientName(r)}</TableCell>
                           <TableCell>{r.total_duration_minutes ?? 60} min</TableCell>
