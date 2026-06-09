@@ -21,7 +21,7 @@ const backButtonClass = cn(arenaToolbarSolidClass, 'justify-start');
 const navLinkBtnClass = cn(
   arenaToolbarBtnClass,
   arenaToolbarSolidClass,
-  'h-auto min-h-9 w-full whitespace-normal px-3 py-2.5 text-center leading-snug sm:w-auto sm:px-4 transition-all',
+  'h-9 shrink-0 whitespace-nowrap px-3 transition-all sm:h-auto sm:min-h-9 sm:whitespace-normal sm:px-4 sm:py-2.5 sm:text-center sm:leading-snug',
 );
 
 interface ArenaToolbarProps {
@@ -68,7 +68,7 @@ const ArenaToolbar: React.FC<ArenaToolbarProps> = ({ back, links, trailing, clas
           </Button>
         ) : null}
 
-        <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:gap-2">
+        <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {links.map((item) => {
             const active = isArenaNavItemActive(pathname, item.to);
             return (
