@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Link, Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useSession } from './SessionContextProvider';
@@ -57,8 +57,11 @@ function isPlanosSidebarItem(item: { id: string; path?: string }): boolean {
   return false;
 }
 
+const APP_HEADER_HEIGHT_VAR = '--app-header-height';
+
 const MainApplication: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const { session, loading: sessionLoading } = useSession();
   const { isProprietario, loadingProprietarioCheck } = useIsProprietario();
   const { isCompanyAdmin, loadingCompanyAdminCheck } = useIsCompanyAdmin();
@@ -73,7 +76,21 @@ const MainApplication: React.FC = () => {
     companyDetails,
   } = useCourtBookingModule(primaryCompanyId);
   const isMobile = useIsMobile();
-  
+
+  const syncHeaderHeight = useCallback(() => {
+    const height = headerRef.current?.offsetHeight ?? 64;
+    document.documentElement.style.setProperty(APP_HEADER_HEIGHT_VAR, `${height}px`);
+  }, []);
+
+  useEffect(() => {
+    syncHeaderHeight();
+    const node = headerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => syncHeaderHeight());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [syncHeaderHeight, isCourtMode, canUseArenaManagement, session?.user]);
+
   // Novo: Status da Assinatura
   const { status: subscriptionStatus, endDate, loading: loadingSubscription } = useSubscriptionStatus();
   
@@ -257,9 +274,12 @@ const MainApplication: React.FC = () => {
   // Renderiza o componente principal
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header
+        ref={headerRef}
+        className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4 pt-[max(0.75rem,env(safe-area-inset-top))]"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             {isAppPath && (
               <Button
                 variant="ghost"
@@ -323,14 +343,17 @@ const MainApplication: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex flex-1 pt-16">
+      <div
+        className="flex flex-1"
+        style={{ paddingTop: 'var(--app-header-height, 4rem)' }}
+      >
         {isAppPath && (
           <aside
             className={`bg-sidebar text-sidebar-foreground transition-all duration-300 ${
               isMobile
                 ? sidebarCollapsed
                   ? 'hidden'
-                  : 'fixed top-16 left-0 w-64 z-40 h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain'
+                  : 'fixed left-0 w-64 z-40 overflow-y-auto overscroll-contain top-[var(--app-header-height,4rem)] h-[calc(100dvh-var(--app-header-height,4rem))]'
                 : sidebarCollapsed
                   ? 'w-16'
                   : 'w-64'
@@ -438,7 +461,7 @@ const MainApplication: React.FC = () => {
             </nav>
           </aside>
         )}
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="flex-1 min-w-0 p-4 pb-24 sm:p-6 sm:pb-6">
           {/* Aviso de Expiração */}
           {isProprietarioOrCompanyAdmin && subscriptionStatus === 'expiring_soon' && endDate && (
             <Alert className="mb-6 border-primary bg-primary/10 text-amber-900">
