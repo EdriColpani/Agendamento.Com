@@ -18,8 +18,15 @@ import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
+import { cn } from '@/lib/utils';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import {
+  arenaBodyClass,
+  arenaSectionTitleClass,
+  arenaTouchButtonClass,
+  arenaTouchInputClass,
+} from '@/components/arena/arenaPageStyles';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 const DAY_LABELS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -245,14 +252,14 @@ const CourtWorkingHoursPage: React.FC = () => {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Configuração por quadra</CardTitle>
+            <CardTitle className={arenaSectionTitleClass}>Configuração por quadra</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label>Quadra</Label>
                 <Select value={courtId} onValueChange={(v) => setCourtId(v)}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className={arenaTouchInputClass}>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -270,11 +277,11 @@ const CourtWorkingHoursPage: React.FC = () => {
                   type="number"
                   min={15}
                   max={720}
-                  className="mt-1"
+                  className={arenaTouchInputClass}
                   value={slotMinutes}
                   onChange={(e) => setSlotMinutes(parseInt(e.target.value, 10) || 60)}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className={cn(arenaBodyClass, 'mt-2')}>
                   Ex.: 60 para reservas de 1 hora. Usado na grade da agenda.
                 </p>
               </div>
@@ -294,24 +301,24 @@ const CourtWorkingHoursPage: React.FC = () => {
                         checked={days[d].active}
                         onCheckedChange={(v) => updateDay(d, { active: v })}
                       />
-                      <span className="font-medium text-gray-900 dark:text-white">{label}</span>
+                      <span className="text-base font-semibold text-gray-900 dark:text-white">{label}</span>
                     </div>
                     <div className="flex flex-wrap items-end gap-3 w-full md:w-auto">
                       <div>
-                        <Label className="text-xs">Abertura</Label>
+                        <Label className="text-sm font-medium">Abertura</Label>
                         <Input
                           type="time"
-                          className="mt-1 w-full sm:w-36"
+                          className={cn(arenaTouchInputClass, 'w-full sm:w-40')}
                           disabled={!days[d].active}
                           value={days[d].start}
                           onChange={(e) => updateDay(d, { start: e.target.value })}
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Encerramento</Label>
+                        <Label className="text-sm font-medium">Encerramento</Label>
                         <Input
                           type="time"
-                          className="mt-1 w-full sm:w-36"
+                          className={cn(arenaTouchInputClass, 'w-full sm:w-40')}
                           disabled={!days[d].active}
                           value={days[d].end}
                           onChange={(e) => updateDay(d, { end: e.target.value })}
@@ -325,7 +332,7 @@ const CourtWorkingHoursPage: React.FC = () => {
 
             <Button
               type="button"
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className={cn('w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90', arenaTouchButtonClass)}
               disabled={saving || !courtId}
               onClick={handleSave}
             >

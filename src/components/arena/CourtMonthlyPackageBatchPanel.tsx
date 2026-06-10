@@ -3,6 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { BatchRow, PackageRow } from '@/components/arena/CourtMonthlyPackageRecentList';
+import { cn } from '@/lib/utils';
+import {
+  arenaBodyClass,
+  arenaSectionTitleClass,
+  arenaTouchButtonClass,
+} from '@/components/arena/arenaPageStyles';
 
 export interface CourtMonthlyPackageBatchPanelProps {
   batch: BatchRow;
@@ -38,8 +44,8 @@ const CourtMonthlyPackageBatchPanel: React.FC<CourtMonthlyPackageBatchPanelProps
   return (
     <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Ações do lote selecionado</CardTitle>
-        <p className="text-sm text-gray-600 dark:text-gray-300">
+        <CardTitle className={arenaSectionTitleClass}>Ações do lote selecionado</CardTitle>
+        <p className={arenaBodyClass}>
           Início {formatMonthLabel(String(batch.start_month).slice(0, 10))} · {batch.duration_months}{' '}
           meses · {batch.created_count} criados · {batch.skipped_count} ignorados · {batch.failed_count}{' '}
           falhas
@@ -50,7 +56,7 @@ const CourtMonthlyPackageBatchPanel: React.FC<CourtMonthlyPackageBatchPanelProps
           <Button
             type="button"
             variant="destructive"
-            size="sm"
+            className={cn('w-full sm:w-auto', arenaTouchButtonClass)}
             disabled={cancelling || activeCount === 0}
             onClick={onCancelBatch}
           >
@@ -59,7 +65,7 @@ const CourtMonthlyPackageBatchPanel: React.FC<CourtMonthlyPackageBatchPanelProps
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            className={cn('w-full sm:w-auto', arenaTouchButtonClass)}
             disabled={complementing}
             onClick={onComplementBatch}
           >
@@ -72,17 +78,17 @@ const CourtMonthlyPackageBatchPanel: React.FC<CourtMonthlyPackageBatchPanelProps
             <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
               Checkouts Mercado Pago pendentes ({pendingMp.length})
             </p>
-            <p className="text-xs text-gray-600">
+            <p className={arenaBodyClass}>
               Cada mês do lote exige pagamento online separado.
             </p>
-            <ul className="space-y-1">
+            <ul className="space-y-2">
               {pendingMp.map((pkg) => (
-                <li key={pkg.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span>
+                <li key={pkg.id} className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-base font-medium">
                     {formatMonthLabel(String(pkg.reference_month).slice(0, 10))} · R${' '}
                     {Number(pkg.total_amount || 0).toFixed(2).replace('.', ',')}
                   </span>
-                  <Button type="button" size="sm" variant="outline" onClick={() => onOpenCheckout(pkg.id)}>
+                  <Button type="button" className={arenaTouchButtonClass} variant="outline" onClick={() => onOpenCheckout(pkg.id)}>
                     Abrir checkout
                   </Button>
                 </li>

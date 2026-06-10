@@ -1,18 +1,23 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { isArenaNavItemActive } from './arenaNavConfig';
+import { arenaTouchButtonClass } from './arenaPageStyles';
 
-/** Altura e raio únicos para botões da barra do módulo arena. */
-export const arenaToolbarBtnClass = 'h-9 rounded-full px-4 text-sm';
+export const arenaToolbarBtnClass = 'h-10 rounded-full px-4 text-sm sm:h-9';
 
-/** Padrão visual único: fundo primário (verde/teal), texto branco, borda branca — use em toda a barra arena. */
 export const arenaToolbarSolidClass =
   'border-2 border-white bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground';
 
-/** Destaque do item ativo (mesmas cores; anel para indicar rota atual). */
 const navPillActive =
   'font-semibold shadow-md ring-2 ring-white ring-offset-2 ring-offset-background';
 
@@ -21,38 +26,79 @@ const backButtonClass = cn(arenaToolbarSolidClass, 'justify-start');
 const navLinkBtnClass = cn(
   arenaToolbarBtnClass,
   arenaToolbarSolidClass,
-  'h-9 shrink-0 whitespace-nowrap px-3 text-sm transition-all sm:h-auto sm:min-h-9 sm:whitespace-normal sm:px-4 sm:py-2.5 sm:text-center sm:leading-snug',
+  'shrink-0 whitespace-nowrap px-4 transition-all sm:h-auto sm:min-h-9 sm:whitespace-normal sm:px-4 sm:py-2.5 sm:text-center sm:leading-snug',
 );
 
 interface ArenaToolbarProps {
-  /** Voltar: link ou ação (ex.: dashboard). */
   back?: { to?: string; onClick?: () => void; label: string };
-  /** Links do sub-menu (destaque no item da rota atual). */
   links: { to: string; label: string }[];
-  /** Ex.: botão Atualizar */
   trailing?: React.ReactNode;
   className?: string;
 }
 
 /**
- * Barra do módulo quadras: fundo primário (verde), texto branco e borda branca em todos os botões;
- * o item da rota atual recebe anel de foco extra.
+ * Navegação do módulo quadras.
+ * Mobile: voltar + select (legível, uma linha) — padrão Relatórios.
+ * Desktop: pills horizontais.
  */
 const ArenaToolbar: React.FC<ArenaToolbarProps> = ({ back, links, trailing, className }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const pathname = location.pathname;
 
+  const activeLink = useMemo(
+    () => links.find((item) => isArenaNavItemActive(pathname, item.to))?.to ?? links[0]?.to ?? '',
+    [links, pathname],
+  );
+
   return (
-    <div className={cn('flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', className)}>
-      <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+    <div className={cn('w-full min-w-0 space-y-3', className)}>
+      {/* Mobile */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {back ? (
+          <Button
+            variant="default"
+            className={cn(arenaToolbarBtnClass, backButtonClass, arenaTouchButtonClass, 'w-full')}
+            {...(back.to ? { asChild: true } : { type: 'button' as const, onClick: back.onClick })}
+          >
+            {back.to ? (
+              <Link to={back.to}>
+                <ArrowLeft className="mr-2 h-5 w-5 shrink-0" aria-hidden />
+                {back.label}
+              </Link>
+            ) : (
+              <>
+                <ArrowLeft className="mr-2 h-5 w-5 shrink-0" aria-hidden />
+                {back.label}
+              </>
+            )}
+          </Button>
+        ) : null}
+
+        <Select value={activeLink} onValueChange={(to) => navigate(to)}>
+          <SelectTrigger className={cn('w-full', arenaTouchButtonClass)}>
+            <SelectValue placeholder="Seção do módulo" />
+          </SelectTrigger>
+          <SelectContent>
+            {links.map((item) => (
+              <SelectItem key={item.to} value={item.to} className="text-base">
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {trailing ? <div className="w-full">{trailing}</div> : null}
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden md:flex md:flex-wrap md:items-center md:gap-2">
         {back ? (
           <Button
             variant="default"
             size="sm"
-            className={cn(arenaToolbarBtnClass, backButtonClass, 'w-full shrink-0 sm:w-auto')}
-            {...(back.to
-              ? { asChild: true }
-              : { type: 'button' as const, onClick: back.onClick })}
+            className={cn(arenaToolbarBtnClass, backButtonClass, 'shrink-0')}
+            {...(back.to ? { asChild: true } : { type: 'button' as const, onClick: back.onClick })}
           >
             {back.to ? (
               <Link to={back.to}>
@@ -68,25 +114,23 @@ const ArenaToolbar: React.FC<ArenaToolbarProps> = ({ back, links, trailing, clas
           </Button>
         ) : null}
 
-        <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-0.5 sm:flex-wrap sm:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {links.map((item) => {
-            const active = isArenaNavItemActive(pathname, item.to);
-            return (
-              <Button
-                key={item.to}
-                variant="default"
-                size="sm"
-                className={cn(navLinkBtnClass, active ? navPillActive : '')}
-                asChild
-              >
-                <Link to={item.to}>{item.label}</Link>
-              </Button>
-            );
-          })}
-        </div>
-      </div>
+        {links.map((item) => {
+          const active = isArenaNavItemActive(pathname, item.to);
+          return (
+            <Button
+              key={item.to}
+              variant="default"
+              size="sm"
+              className={cn(navLinkBtnClass, active ? navPillActive : '')}
+              asChild
+            >
+              <Link to={item.to}>{item.label}</Link>
+            </Button>
+          );
+        })}
 
-      {trailing ? <div className="flex w-full min-w-0 flex-wrap gap-2 sm:ml-auto">{trailing}</div> : null}
+        {trailing ? <div className="ml-auto flex flex-wrap gap-2">{trailing}</div> : null}
+      </div>
     </div>
   );
 };

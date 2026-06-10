@@ -28,6 +28,8 @@ import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import { Trash2 } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import { arenaSectionTitleClass, arenaTouchInputClass, arenaTouchButtonClass } from '@/components/arena/arenaPageStyles';
+import { cn } from '@/lib/utils';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 const WEEKDAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -216,11 +218,11 @@ const CourtSlotPriceBandsPage: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-gray-900 dark:text-white">Quadra</CardTitle>
+          <CardTitle className={arenaSectionTitleClass}>Quadra</CardTitle>
         </CardHeader>
         <CardContent>
           <Select value={courtId} onValueChange={setCourtId}>
-            <SelectTrigger className="w-full sm:max-w-md">
+            <SelectTrigger className={cn(arenaTouchInputClass, 'w-full sm:max-w-md')}>
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
@@ -240,13 +242,13 @@ const CourtSlotPriceBandsPage: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-gray-900 dark:text-white">Nova faixa</CardTitle>
+          <CardTitle className={arenaSectionTitleClass}>Nova faixa</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 items-end">
           <div>
             <Label>Dia</Label>
             <Select value={newDay} onValueChange={setNewDay}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -260,11 +262,11 @@ const CourtSlotPriceBandsPage: React.FC = () => {
           </div>
           <div>
             <Label>Início</Label>
-            <Input type="time" className="mt-1" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+            <Input type="time" className={arenaTouchInputClass} value={newStart} onChange={(e) => setNewStart(e.target.value)} />
           </div>
           <div>
             <Label>Fim (exclusivo)</Label>
-            <Input type="time" className="mt-1" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
+            <Input type="time" className={arenaTouchInputClass} value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
           </div>
           <div>
             <Label>Preço / slot (R$)</Label>
@@ -272,17 +274,17 @@ const CourtSlotPriceBandsPage: React.FC = () => {
               type="number"
               min={0}
               step="0.01"
-              className="mt-1"
+              className={arenaTouchInputClass}
               value={newPrice}
               onChange={(e) => setNewPrice(e.target.value)}
             />
           </div>
           <div>
             <Label>Ordem</Label>
-            <Input type="number" className="mt-1" value={newSort} onChange={(e) => setNewSort(e.target.value)} />
+            <Input type="number" className={arenaTouchInputClass} value={newSort} onChange={(e) => setNewSort(e.target.value)} />
           </div>
           <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            className={cn('w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90', arenaTouchButtonClass)}
             disabled={saving || !courtId}
             onClick={handleAdd}
           >
@@ -293,7 +295,7 @@ const CourtSlotPriceBandsPage: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-gray-900 dark:text-white">Faixas cadastradas</CardTitle>
+          <CardTitle className={arenaSectionTitleClass}>Faixas cadastradas</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -303,42 +305,73 @@ const CourtSlotPriceBandsPage: React.FC = () => {
           ) : bands.length === 0 ? (
             <p className="text-gray-600">Nenhuma faixa; o preço padrão da quadra será usado em todo o dia.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[640px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Dia</TableHead>
-                    <TableHead>Início</TableHead>
-                    <TableHead>Fim</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Ordem</TableHead>
-                    <TableHead className="w-[80px]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bands.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell>{WEEKDAY_LABELS[b.day_of_week] ?? b.day_of_week}</TableCell>
-                      <TableCell>{formatTimeLabel(String(b.start_time))}</TableCell>
-                      <TableCell>{formatTimeLabel(String(b.end_time))}</TableCell>
-                      <TableCell>R$ {Number(b.slot_price).toFixed(2).replace('.', ',')}</TableCell>
-                      <TableCell>{b.sort_order}</TableCell>
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={saving}
-                          onClick={() => handleDelete(b.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="space-y-3 md:hidden">
+                {bands.map((b) => (
+                  <div
+                    key={b.id}
+                    className="rounded-lg border border-gray-200 p-4 text-base dark:border-gray-700"
+                  >
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {WEEKDAY_LABELS[b.day_of_week] ?? b.day_of_week}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      {formatTimeLabel(String(b.start_time))} – {formatTimeLabel(String(b.end_time))}
+                    </p>
+                    <p className="mt-2 text-lg font-bold text-gray-900 dark:text-white">
+                      R$ {Number(b.slot_price).toFixed(2).replace('.', ',')}
+                    </p>
+                    <p className="text-sm text-gray-500">Ordem: {b.sort_order}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn('mt-3 w-full', arenaTouchButtonClass)}
+                      disabled={saving}
+                      onClick={() => handleDelete(b.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                      Excluir faixa
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
+                <Table className="min-w-[640px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Dia</TableHead>
+                      <TableHead>Início</TableHead>
+                      <TableHead>Fim</TableHead>
+                      <TableHead>Preço</TableHead>
+                      <TableHead>Ordem</TableHead>
+                      <TableHead className="w-[80px]" />
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {bands.map((b) => (
+                      <TableRow key={b.id}>
+                        <TableCell>{WEEKDAY_LABELS[b.day_of_week] ?? b.day_of_week}</TableCell>
+                        <TableCell>{formatTimeLabel(String(b.start_time))}</TableCell>
+                        <TableCell>{formatTimeLabel(String(b.end_time))}</TableCell>
+                        <TableCell>R$ {Number(b.slot_price).toFixed(2).replace('.', ',')}</TableCell>
+                        <TableCell>{b.sort_order}</TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={saving}
+                            onClick={() => handleDelete(b.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -35,6 +35,7 @@ import {
   type CourtPriceBand,
 } from '@/utils/courtSlots';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 import ArenaToolbar from '@/components/arena/ArenaToolbar';
 import CourtSlotStatusLegend from '@/components/arena/CourtSlotStatusLegend';
@@ -44,6 +45,7 @@ import {
   type CourtSlotStatus,
 } from '@/components/arena/CourtTimeSlotButton';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
+import { arenaBodyClass, arenaSectionTitleClass } from '@/components/arena/arenaPageStyles';
 
 interface CourtOption {
   id: string;
@@ -478,10 +480,10 @@ const CourtAgendaPage: React.FC = () => {
         <>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg text-center capitalize">
+              <CardTitle className={cn(arenaSectionTitleClass, 'text-center capitalize')}>
                 {format(selectedDate, "MMMM yyyy", { locale: ptBR })}
               </CardTitle>
-              <p className="text-center text-sm text-muted-foreground">
+              <p className={cn(arenaBodyClass, 'text-center')}>
                 {format(selectedDate, "EEEE, dd/MM/yyyy", { locale: ptBR })}
               </p>
             </CardHeader>
@@ -509,14 +511,13 @@ const CourtAgendaPage: React.FC = () => {
                           key={format(date, 'yyyy-MM-dd')}
                           type="button"
                           variant={isSelected ? 'default' : 'outline'}
-                          size="sm"
                           onClick={() => setSelectedDate(date)}
-                          className="min-h-[auto] min-w-[72px] flex-col gap-0 rounded-full px-3 py-2 font-normal shrink-0"
+                          className="min-h-[56px] min-w-[80px] flex-col gap-0.5 rounded-full px-3 py-2 font-normal shrink-0"
                         >
-                          <span className="block text-xs uppercase leading-tight">
+                          <span className="block text-sm uppercase leading-tight">
                             {format(date, 'EEE', { locale: ptBR })}
                           </span>
-                          <span className="block text-sm font-semibold leading-tight">
+                          <span className="block text-lg font-semibold leading-tight">
                             {format(date, 'dd')}
                           </span>
                         </Button>
@@ -540,7 +541,7 @@ const CourtAgendaPage: React.FC = () => {
           {hasAnySlots ? (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base text-gray-900">Legenda dos horários</CardTitle>
+                <CardTitle className={arenaSectionTitleClass}>Legenda dos horários</CardTitle>
               </CardHeader>
               <CardContent>
                 <CourtSlotStatusLegend />
@@ -554,7 +555,7 @@ const CourtAgendaPage: React.FC = () => {
               return (
                 <Card key={court.id}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg text-gray-900">{court.name}</CardTitle>
+                    <CardTitle className={arenaSectionTitleClass}>{court.name}</CardTitle>
                     {court.description ? (
                       <p className="text-sm font-medium text-orange-600">{court.description}</p>
                     ) : null}

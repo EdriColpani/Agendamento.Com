@@ -4,6 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import {
+  arenaBodyClass,
+  arenaLabelClass,
+  arenaSectionTitleClass,
+  arenaTouchButtonClass,
+  arenaTouchInputClass,
+} from '@/components/arena/arenaPageStyles';
 
 type PaymentMethod = 'dinheiro' | 'mercado_pago';
 
@@ -105,12 +113,12 @@ const CourtMonthlyPackageRecentList: React.FC<CourtMonthlyPackageRecentListProps
     <Card>
       <CardHeader className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Pacotes mensais recentes</CardTitle>
+          <CardTitle className={arenaSectionTitleClass}>Pacotes mensais recentes</CardTitle>
           {hasBackfillCandidates && onBackfillAllCashReceipts ? (
             <Button
               type="button"
-              size="sm"
               variant="outline"
+              className={cn('w-full sm:w-auto', arenaTouchButtonClass)}
               disabled={backfillingAll}
               onClick={onBackfillAllCashReceipts}
             >
@@ -120,9 +128,9 @@ const CourtMonthlyPackageRecentList: React.FC<CourtMonthlyPackageRecentListProps
         </div>
         {batches.length > 0 ? (
           <div className="max-w-md">
-            <Label className="text-xs text-gray-600">Filtrar por lote de geração</Label>
+            <Label className={arenaLabelClass}>Filtrar por lote de geração</Label>
             <Select value={batchFilter} onValueChange={onBatchFilterChange}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
@@ -147,15 +155,15 @@ const CourtMonthlyPackageRecentList: React.FC<CourtMonthlyPackageRecentListProps
         ) : (
           <div className="space-y-2">
             {filtered.map((pkg) => (
-              <div key={pkg.id} className="border rounded-md p-3 text-sm space-y-1">
+              <div key={pkg.id} className="space-y-2 rounded-lg border p-4 text-base">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
                     {pkg.clients?.name || 'Cliente'} · {pkg.courts?.name || 'Quadra'} ·{' '}
                     {String(pkg.reference_month).slice(0, 7)}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {pkg.batch_id ? (
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-sm">
                         Lote
                       </Badge>
                     ) : null}
@@ -168,25 +176,25 @@ const CourtMonthlyPackageRecentList: React.FC<CourtMonthlyPackageRecentListProps
                     <Badge>{PACKAGE_STATUS_LABELS[pkg.status] ?? pkg.status}</Badge>
                   </div>
                 </div>
-                <p>
+                <p className={arenaBodyClass}>
                   Plano: {pkg.court_monthly_plans?.name || 'Sem plano'} · Dia{' '}
                   {WEEK_DAYS.find((w) => w.value === pkg.week_day)?.label} às{' '}
                   {String(pkg.start_time).slice(0, 5)}
                 </p>
-                <p>
+                <p className={arenaBodyClass}>
                   Total: R$ {Number(pkg.total_amount || 0).toFixed(2).replace('.', ',')} · Desconto: R${' '}
                   {Number(pkg.discount_amount || 0).toFixed(2).replace('.', ',')} · Ocorrências:{' '}
                   {pkg.occurrences_count} ({pkg.bonus_occurrences_count} bônus)
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {pkg.payment_method === 'mercado_pago' && pkg.status === 'pending_payment' ? (
-                    <Button size="sm" variant="outline" onClick={() => onOpenCheckout(pkg.id)}>
+                    <Button className={arenaTouchButtonClass} variant="outline" onClick={() => onOpenCheckout(pkg.id)}>
                       Abrir checkout
                     </Button>
                   ) : null}
                   {canBackfillPackage(pkg) && onBackfillCashReceipt ? (
                     <Button
-                      size="sm"
+                      className={arenaTouchButtonClass}
                       variant="secondary"
                       disabled={backfillingPackageId === pkg.id || backfillingAll}
                       onClick={() => onBackfillCashReceipt(pkg.id)}
@@ -196,7 +204,7 @@ const CourtMonthlyPackageRecentList: React.FC<CourtMonthlyPackageRecentListProps
                   ) : null}
                   {pkg.status !== 'cancelled' && onCancelPackage ? (
                     <Button
-                      size="sm"
+                      className={arenaTouchButtonClass}
                       variant="destructive"
                       disabled={cancellingPackageId === pkg.id}
                       onClick={() => onCancelPackage(pkg.id)}
