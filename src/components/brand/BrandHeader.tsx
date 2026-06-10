@@ -23,7 +23,7 @@ const BrandHeader: React.FC<BrandHeaderProps> = ({
   onClick,
 }) => {
   return (
-    <Link to={to} className="flex items-center gap-3 cursor-pointer" onClick={onClick}>
+    <Link to={to} className="flex min-w-0 items-center gap-2 sm:gap-3 cursor-pointer" onClick={onClick}>
       {showFullLogoOnDesktop ? (
         <>
           <BrandLogo className={`${logoClassName} md:hidden`} />
@@ -32,10 +32,10 @@ const BrandHeader: React.FC<BrandHeaderProps> = ({
       ) : (
         <BrandLogo className={logoClassName} />
       )}
-      <div className="flex flex-col items-start">
-        <h1 className={titleClassName}>PlanoAgenda</h1>
+      <div className="flex min-w-0 flex-col items-start">
+        <h1 className={`${titleClassName} max-w-[9.5rem] truncate sm:max-w-none`}>PlanoAgenda</h1>
         {subtitle ? (
-          <span className="mt-0.5 rounded bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+          <span className="mt-0.5 max-w-[11rem] truncate rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white sm:max-w-none sm:px-2 sm:text-xs">
             {subtitle}
           </span>
         ) : null}

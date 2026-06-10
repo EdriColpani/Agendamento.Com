@@ -157,3 +157,11 @@ export function computeCourtSlotsForDay(
   const occ = appointmentsToOccupiedIntervals(appointments);
   return mergeSlotsWithOccupancy(raw, occ);
 }
+
+/** Ex.: "08:30 às 09:00" — seguro para HH:mm ou HH:mm:ss vindos do banco. */
+export function formatCourtSlotTimeRange(startTime: string, slotMinutes: number): string {
+  const hhmm = startTime.slice(0, 5);
+  const start = parse(hhmm, 'HH:mm', new Date());
+  const end = addMinutes(start, slotMinutes);
+  return `${format(start, 'HH:mm')} às ${format(end, 'HH:mm')}`;
+}

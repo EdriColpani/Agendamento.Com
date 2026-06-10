@@ -32,6 +32,7 @@ import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import {
   computeCourtSlotsForDay,
   estimateCourtBookingTotalPrice,
+  formatCourtSlotTimeRange,
   type CourtPriceBand,
 } from '@/utils/courtSlots';
 import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
@@ -584,14 +585,11 @@ const CourtAgendaPage: React.FC = () => {
                     ) : (
                       <CourtTimeSlotGrid>
                         {agenda.slots.map((slot) => {
-                          const end = addDays(new Date(`1970-01-01T${slot.startTime}:00`), 0);
-                          end.setMinutes(end.getMinutes() + agenda.slotMinutes);
-                          const endStr = format(end, 'HH:mm');
                           const status = blockKindToSlotStatus(slot.blockKind, slot.occupied);
                           return (
                             <CourtTimeSlotButton
                               key={`${court.id}-${slot.startTime}`}
-                              timeLabel={`${slot.startTime} às ${endStr}`}
+                              timeLabel={formatCourtSlotTimeRange(slot.startTime, agenda.slotMinutes)}
                               price={slot.occupied ? null : slot.slotPrice}
                               status={status}
                               onClick={() => openBookModal(court, slot, agenda.slotMinutes)}

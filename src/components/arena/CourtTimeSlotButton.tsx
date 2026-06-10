@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export type CourtSlotStatus =
@@ -29,7 +28,7 @@ const COURT_SLOT_STATUS_STYLES: Record<CourtSlotStatus, string> = {
   pendente_pagamento: 'border-amber-300 bg-amber-50 text-amber-900',
   pendente_balcao: 'border-amber-300 bg-amber-50 text-amber-900',
   pendente_confirmacao: 'border-yellow-300 bg-yellow-50 text-yellow-900',
-  ocupado: 'border-gray-300 bg-gray-100 text-gray-600',
+  ocupado: 'border-gray-300 bg-gray-100 text-gray-700',
   past: 'border-gray-200 bg-gray-50 text-gray-500 opacity-60',
   below_min: 'border-gray-200 bg-gray-50 text-gray-500 opacity-60',
 };
@@ -45,8 +44,7 @@ export interface CourtTimeSlotButtonProps {
 }
 
 /**
- * Slot de horário — hierarquia igual aos KPIs de Relatórios:
- * horário em destaque (lg/bold), detalhe em sm.
+ * Slot de horário — botão nativo (evita conflito de estilos do shadcn Button no mobile).
  */
 export const CourtTimeSlotButton: React.FC<CourtTimeSlotButtonProps> = ({
   timeLabel,
@@ -63,32 +61,33 @@ export const CourtTimeSlotButton: React.FC<CourtTimeSlotButtonProps> = ({
   const showPrice = isSelectable && price != null && price > 0;
 
   return (
-    <Button
+    <button
       type="button"
-      variant={isSelectable ? 'outline' : 'secondary'}
       disabled={isDisabled}
       onClick={isSelectable ? onClick : undefined}
       className={cn(
-        'h-auto min-h-[5rem] w-full flex-col items-center justify-center gap-1.5 rounded-lg border py-4 px-3 text-center whitespace-normal shadow-none',
+        'flex min-h-[5rem] w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-lg border px-3 py-4 text-center shadow-none transition-colors',
+        'text-base font-medium leading-snug',
         COURT_SLOT_STATUS_STYLES[status],
-        isSelectable && 'cursor-pointer',
+        isSelectable && 'cursor-pointer active:scale-[0.99]',
         !isSelectable && 'cursor-not-allowed opacity-100',
+        isDisabled && !isSelectable && 'opacity-90',
         className,
       )}
     >
-      <span className="text-lg font-bold leading-tight text-gray-900">{timeLabel}</span>
+      <span className="block w-full text-lg font-bold leading-tight">{timeLabel}</span>
       {showPrice ? (
-        <span className="text-sm font-medium leading-tight text-gray-600">
+        <span className="block w-full text-sm font-semibold leading-tight opacity-90">
           R$ {price.toFixed(2).replace('.', ',')}
         </span>
       ) : null}
       {!isSelectable && label ? (
-        <span className="text-sm font-medium leading-tight">{label}</span>
+        <span className="block w-full text-sm font-medium leading-tight">{label}</span>
       ) : null}
       {isSelectable && !showPrice ? (
-        <span className="text-sm font-medium leading-tight text-gray-500">Livre</span>
+        <span className="block w-full text-sm font-medium leading-tight opacity-80">Livre</span>
       ) : null}
-    </Button>
+    </button>
   );
 };
 
