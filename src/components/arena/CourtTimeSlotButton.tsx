@@ -2,7 +2,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-/** Estados visuais padronizados dos slots de quadra (agenda interna + link público). */
 export type CourtSlotStatus =
   | 'available'
   | 'confirmado'
@@ -36,11 +35,9 @@ const COURT_SLOT_STATUS_STYLES: Record<CourtSlotStatus, string> = {
 };
 
 export interface CourtTimeSlotButtonProps {
-  /** Ex.: "09:00" ou "09:00 às 09:30" */
   timeLabel: string;
   price?: number | null;
   status?: CourtSlotStatus;
-  /** Sobrescreve o rótulo padrão do status */
   statusLabel?: string;
   disabled?: boolean;
   onClick?: () => void;
@@ -48,8 +45,8 @@ export interface CourtTimeSlotButtonProps {
 }
 
 /**
- * Botão de horário padronizado para grade de quadras.
- * Estrutura fixa em todas as telas: horário (sm) → preço ou status (xs).
+ * Slot de horário — hierarquia igual aos KPIs de Relatórios:
+ * horário em destaque (lg/bold), detalhe em sm.
  */
 export const CourtTimeSlotButton: React.FC<CourtTimeSlotButtonProps> = ({
   timeLabel,
@@ -72,29 +69,30 @@ export const CourtTimeSlotButton: React.FC<CourtTimeSlotButtonProps> = ({
       disabled={isDisabled}
       onClick={isSelectable ? onClick : undefined}
       className={cn(
-        'h-auto min-h-[4rem] w-full flex-col items-center justify-center gap-1 rounded-md border py-2.5 px-2 text-center whitespace-normal shadow-none',
+        'h-auto min-h-[5rem] w-full flex-col items-center justify-center gap-1.5 rounded-lg border py-4 px-3 text-center whitespace-normal shadow-none',
         COURT_SLOT_STATUS_STYLES[status],
         isSelectable && 'cursor-pointer',
         !isSelectable && 'cursor-not-allowed opacity-100',
         className,
       )}
     >
-      <span className="text-sm font-semibold leading-tight">{timeLabel}</span>
+      <span className="text-lg font-bold leading-tight text-gray-900">{timeLabel}</span>
       {showPrice ? (
-        <span className="text-xs font-normal leading-tight text-gray-600">
+        <span className="text-sm font-medium leading-tight text-gray-600">
           R$ {price.toFixed(2).replace('.', ',')}
         </span>
       ) : null}
       {!isSelectable && label ? (
-        <span className="text-xs font-medium leading-tight">{label}</span>
+        <span className="text-sm font-medium leading-tight">{label}</span>
       ) : null}
       {isSelectable && !showPrice ? (
-        <span className="text-xs font-normal leading-tight text-gray-500">Livre</span>
+        <span className="text-sm font-medium leading-tight text-gray-500">Livre</span>
       ) : null}
     </Button>
   );
 };
 
+/** Grade: 1 coluna no celular (legível), depois 2 → 3 → 4 como reserva pública. */
 export function CourtTimeSlotGrid({
   children,
   className,
@@ -102,5 +100,9 @@ export function CourtTimeSlotGrid({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn('grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2', className)}>{children}</div>;
+  return (
+    <div className={cn('grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3', className)}>
+      {children}
+    </div>
+  );
 }

@@ -9,6 +9,14 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  arenaBodyClass,
+  arenaLabelClass,
+  arenaSectionTitleClass,
+  arenaTouchButtonClass,
+  arenaTouchInputClass,
+} from '@/components/arena/arenaPageStyles';
 
 type PaymentMethod = 'dinheiro' | 'mercado_pago';
 type ContractMode = 'single' | 'period';
@@ -115,11 +123,11 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Criar pacote mensal</CardTitle>
+        <CardTitle className={arenaSectionTitleClass}>Criar pacote mensal</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>Tipo de contratação</Label>
+          <Label className={arenaLabelClass}>Tipo de contratação</Label>
           <RadioGroup
             value={contractMode}
             onValueChange={(v) => onContractModeChange(v as ContractMode)}
@@ -142,12 +150,12 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
 
         {isPeriod ? (
           <div className="space-y-2">
-            <Label>Duração do contrato</Label>
+            <Label className={arenaLabelClass}>Duração do contrato</Label>
             <Select
               value={String(durationMonths)}
               onValueChange={(v) => onDurationMonthsChange(Number(v) as (typeof DURATION_OPTIONS)[number])}
             >
-              <SelectTrigger>
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -158,23 +166,23 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-600">
+            <p className={arenaBodyClass}>
               Serão gerados {durationMonths} pacote(s): {periodMonthLabels.join(' · ') || '—'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className={arenaBodyClass}>
               Valor calculado individualmente em cada mês.
             </p>
             <Alert className="border-slate-200 bg-slate-50 dark:bg-slate-900/40">
               <AlertTitle className="text-sm">Pré-visualização do período</AlertTitle>
               <AlertDescription className="mt-2 space-y-2">
                   {periodPreviewLoading ? (
-                    <p className="text-xs text-gray-600 flex items-center gap-2">
+                    <p className={cn(arenaBodyClass, 'flex items-center gap-2')}>
                       <Loader2 className="h-3 w-3 animate-spin" />
                       Verificando meses…
                     </p>
                   ) : periodPreview ? (
                     <>
-                      <p className="text-xs text-gray-700">
+                      <p className={arenaBodyClass}>
                         {periodPreview.available_count} mês(es) serão gerados ·{' '}
                         {periodPreview.duplicate_count} já existente(s)
                       </p>
@@ -183,7 +191,7 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
                           <li key={m.reference_month}>
                             <Badge
                               variant={m.status === 'duplicate' ? 'secondary' : 'default'}
-                              className="text-[11px] font-normal"
+                              className="text-sm font-normal"
                             >
                               {formatMonthLabel(m.reference_month)}
                               {m.status === 'duplicate' ? ' · já existe' : ''}
@@ -191,12 +199,12 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
                           </li>
                         ))}
                       </ul>
-                      <p className="text-[11px] text-gray-500">
+                      <p className={arenaBodyClass}>
                         Conflitos de horário só são validados na confirmação.
                       </p>
                     </>
                   ) : (
-                    <p className="text-xs text-gray-600">
+                    <p className={arenaBodyClass}>
                       Preencha cliente, quadra e horário para ver a pré-visualização.
                     </p>
                   )}
@@ -207,9 +215,9 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
 
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <Label>Cliente</Label>
+            <Label className={arenaLabelClass}>Cliente</Label>
             <Select value={selectedClientId} onValueChange={onSelectedClientIdChange}>
-              <SelectTrigger>
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
@@ -222,7 +230,7 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
             </Select>
           </div>
           <div>
-            <Label>Quadra</Label>
+            <Label className={arenaLabelClass}>Quadra</Label>
             <Select
               value={selectedCourtId}
               onValueChange={(v) => {
@@ -231,7 +239,7 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
                 if (court) onDurationMinutesChange(String(court.slot_duration_minutes || 60));
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
@@ -244,18 +252,19 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
             </Select>
           </div>
           <div>
-            <Label>{isPeriod ? 'Mês de referência (início)' : 'Mês de referência'}</Label>
+            <Label className={arenaLabelClass}>{isPeriod ? 'Mês de referência (início)' : 'Mês de referência'}</Label>
             <Input
               type="month"
               min={isPeriod ? todayMonth : undefined}
+              className={arenaTouchInputClass}
               value={referenceMonth}
               onChange={(e) => onReferenceMonthChange(e.target.value)}
             />
           </div>
           <div>
-            <Label>Dia da semana</Label>
+            <Label className={arenaLabelClass}>Dia da semana</Label>
             <Select value={weekDay} onValueChange={onWeekDayChange}>
-              <SelectTrigger>
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -268,23 +277,24 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
             </Select>
           </div>
           <div>
-            <Label>Horário</Label>
-            <Input type="time" value={startTime} onChange={(e) => onStartTimeChange(e.target.value)} />
+            <Label className={arenaLabelClass}>Horário</Label>
+            <Input type="time" className={arenaTouchInputClass} value={startTime} onChange={(e) => onStartTimeChange(e.target.value)} />
           </div>
           <div>
-            <Label>Duração (min)</Label>
+            <Label className={arenaLabelClass}>Duração (min)</Label>
             <Input
               type="number"
               min={15}
               max={1440}
+              className={arenaTouchInputClass}
               value={durationMinutes}
               onChange={(e) => onDurationMinutesChange(e.target.value)}
             />
           </div>
           <div>
-            <Label>Plano de benefício (opcional)</Label>
+            <Label className={arenaLabelClass}>Plano de benefício (opcional)</Label>
             <Select value={selectedPlanId} onValueChange={onSelectedPlanIdChange}>
-              <SelectTrigger>
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -300,9 +310,9 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
             </Select>
           </div>
           <div>
-            <Label>Forma de pagamento</Label>
+            <Label className={arenaLabelClass}>Forma de pagamento</Label>
             <Select value={paymentMethod} onValueChange={(v) => onPaymentMethodChange(v as PaymentMethod)}>
-              <SelectTrigger>
+              <SelectTrigger className={arenaTouchInputClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -311,7 +321,7 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
               </SelectContent>
             </Select>
             {isPeriod && paymentMethod === 'mercado_pago' ? (
-              <p className="text-xs text-amber-700 mt-1">
+              <p className="mt-1 text-sm text-amber-700">
                 No período com Mercado Pago, cada mês gerado terá checkout separado após a criação.
               </p>
             ) : null}
@@ -319,12 +329,12 @@ const CourtMonthlyPackageCreateCard: React.FC<CourtMonthlyPackageCreateCardProps
         </div>
 
         <div>
-          <Label>Observações</Label>
-          <Textarea rows={2} value={notes} onChange={(e) => onNotesChange(e.target.value)} />
+          <Label className={arenaLabelClass}>Observações</Label>
+          <Textarea className="mt-1 min-h-[88px] text-base" rows={3} value={notes} onChange={(e) => onNotesChange(e.target.value)} />
         </div>
 
         <Button
-          className="bg-primary text-primary-foreground hover:bg-primary/90 !rounded-button"
+          className={cn('w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 !rounded-button', arenaTouchButtonClass)}
           disabled={savingPackage}
           onClick={onSubmit}
         >

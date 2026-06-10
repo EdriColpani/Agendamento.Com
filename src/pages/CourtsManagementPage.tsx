@@ -28,6 +28,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, Edit, PlusCircle, Trash2, Upload, X } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import {
+  arenaBodyClass,
+  arenaSectionTitleClass,
+  arenaTouchButtonClass,
+} from '@/components/arena/arenaPageStyles';
+import { cn } from '@/lib/utils';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 const courtFormSchema = z.object({
@@ -428,8 +434,8 @@ const CourtsManagementPage: React.FC = () => {
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
-          <CardTitle className="text-gray-900 dark:text-white">Recursos (quadras)</CardTitle>
-          <Button className="rounded-full" onClick={openCreate}>
+          <CardTitle className={arenaSectionTitleClass}>Recursos (quadras)</CardTitle>
+          <Button className={cn('rounded-full w-full sm:w-auto', arenaTouchButtonClass)} onClick={openCreate}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Nova quadra
           </Button>
@@ -446,38 +452,48 @@ const CourtsManagementPage: React.FC = () => {
               {courts.map((court) => (
                 <li
                   key={court.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                  className="flex flex-col gap-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-gray-900 dark:text-white">{court.name}</span>
-                      <Badge variant={court.is_active ? 'default' : 'secondary'}>
+                  <div className="min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-lg font-semibold text-gray-900 dark:text-white">{court.name}</span>
+                      <Badge variant={court.is_active ? 'default' : 'secondary'} className="text-sm">
                         {court.is_active ? 'Ativa' : 'Inativa'}
                       </Badge>
-                      <span className="text-xs text-gray-500">
-                        Ordem: {court.display_order} · Slot: {court.slot_duration_minutes ?? 60} min
-                        {Number(court.default_slot_price) > 0
-                          ? ` · R$ ${Number(court.default_slot_price).toFixed(2).replace('.', ',')} / slot`
-                          : ''}
-                      </span>
                     </div>
+                    <p className="text-sm text-gray-600">
+                      Ordem: {court.display_order} · Slot: {court.slot_duration_minutes ?? 60} min
+                      {Number(court.default_slot_price) > 0
+                        ? ` · R$ ${Number(court.default_slot_price).toFixed(2).replace('.', ',')} / slot`
+                        : ''}
+                    </p>
                     {court.description ? (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{court.description}</p>
+                      <p className={arenaBodyClass}>{court.description}</p>
                     ) : null}
                     {court.address || court.city || court.state ? (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className={cn(arenaBodyClass, 'break-words')}>
                         {[court.address, court.number, court.neighborhood, court.city, court.state]
                           .filter((item) => item && String(item).trim())
                           .join(' · ')}
                       </p>
                     ) : null}
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(court)}>
-                      <Edit className="h-4 w-4" />
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      className={cn('flex-1 sm:flex-none', arenaTouchButtonClass)}
+                      onClick={() => openEdit(court)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => setDeleteId(court.id)}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button
+                      variant="destructive"
+                      className={cn('flex-1 sm:flex-none', arenaTouchButtonClass)}
+                      onClick={() => setDeleteId(court.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
                     </Button>
                   </div>
                 </li>
@@ -489,15 +505,20 @@ const CourtsManagementPage: React.FC = () => {
 
       <Card className="border-dashed border-amber-300 bg-amber-50/40 dark:bg-amber-950/20 dark:border-amber-800">
         <CardHeader>
-          <CardTitle className="text-base text-gray-900 dark:text-white">Link público de reserva</CardTitle>
+          <CardTitle className={arenaSectionTitleClass}>Link público de reserva</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
-          <p>Compartilhe com clientes para reservarem sem login (empresa em modo arena).</p>
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <code className="block flex-1 break-all rounded bg-white dark:bg-gray-900 px-2 py-1 text-xs border">
+        <CardContent className="space-y-3">
+          <p className={arenaBodyClass}>Compartilhe com clientes para reservarem sem login (empresa em modo arena).</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <code className="block flex-1 break-all rounded-lg bg-white dark:bg-gray-900 px-3 py-3 text-sm border">
               {publicBookingLink}
             </code>
-            <Button type="button" variant="outline" size="sm" onClick={handleCopyPublicLink} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyPublicLink}
+              className={cn('w-full sm:w-auto shrink-0', arenaTouchButtonClass)}
+            >
               <Copy className="h-4 w-4 mr-2" />
               Copiar link
             </Button>

@@ -30,6 +30,7 @@ import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import { getStatusColor } from '@/lib/dashboard-utils';
+import { cn } from '@/lib/utils';
 import {
   clampCourtReservationDateRange,
   COURT_RESERVATIONS_MAX_RANGE_DAYS,
@@ -37,7 +38,14 @@ import {
 } from '@/utils/courtReservationListQuery';
 import { ChevronLeft, ChevronRight, Clock, Pencil } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
+import ArenaMetricCard from '@/components/arena/ArenaMetricCard';
 import ArenaToolbar from '@/components/arena/ArenaToolbar';
+import {
+  arenaSectionTitleClass,
+  arenaTouchButtonClass,
+  arenaTouchInputClass,
+  arenaBodyClass,
+} from '@/components/arena/arenaPageStyles';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 
 interface CourtOption {
@@ -420,17 +428,17 @@ const CourtReservationsListPage: React.FC = () => {
   }
 
   const renderRowActions = (r: CourtReservationRow) => (
-    <div className="flex flex-wrap gap-2">
-      <Button variant="ghost" size="sm" className="h-8 px-2" asChild>
-        <Link to={`/agendamentos/edit/${r.id}`} title="Editar reserva" aria-label="Editar reserva">
-          <Pencil className="h-4 w-4" />
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <Button variant="outline" className={cn(arenaTouchButtonClass, 'w-full sm:w-auto')} asChild>
+        <Link to={`/agendamentos/edit/${r.id}`}>
+          <Pencil className="h-4 w-4 mr-2" />
+          Editar
         </Link>
       </Button>
       <Button
         type="button"
-        size="sm"
         variant="secondary"
-        className="h-8 flex-1 min-w-[5.5rem] sm:flex-none"
+        className={cn(arenaTouchButtonClass, 'w-full sm:flex-1 sm:min-w-[5.5rem] sm:flex-none')}
         disabled={statusUpdatingId === r.id || r.status !== 'pendente'}
         onClick={() => void handleQuickStatusChange(r, 'confirmado')}
       >
@@ -438,9 +446,8 @@ const CourtReservationsListPage: React.FC = () => {
       </Button>
       <Button
         type="button"
-        size="sm"
         variant="destructive"
-        className="h-8 flex-1 min-w-[5.5rem] sm:flex-none"
+        className={cn(arenaTouchButtonClass, 'w-full sm:flex-1 sm:min-w-[5.5rem] sm:flex-none')}
         disabled={statusUpdatingId === r.id || r.status !== 'pendente'}
         onClick={() => void handleQuickStatusChange(r, 'cancelado')}
       >
@@ -448,9 +455,8 @@ const CourtReservationsListPage: React.FC = () => {
       </Button>
       <Button
         type="button"
-        size="sm"
         variant="outline"
-        className="h-8 w-full sm:w-auto"
+        className={cn(arenaTouchButtonClass, 'w-full sm:w-auto')}
         disabled={finishingId === r.id || r.status !== 'confirmado'}
         onClick={() => void handleFinalizeReservation(r)}
       >
@@ -468,14 +474,14 @@ const CourtReservationsListPage: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-gray-900 dark:text-white">Filtros</CardTitle>
+          <CardTitle className={arenaSectionTitleClass}>Filtros</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
+        <CardContent className="space-y-4">
+          <p className={arenaBodyClass}>
             Consulta limitada a <strong>{COURT_RESERVATIONS_MAX_RANGE_DAYS} dias</strong> corridos entre &quot;De&quot; e
             &quot;Até&quot;. Resultados em páginas de <strong>{COURT_RESERVATIONS_PAGE_SIZE}</strong> linhas.
           </p>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 items-end">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5 items-end">
             <div>
               <Label>Quadra</Label>
               <Select
@@ -485,7 +491,7 @@ const CourtReservationsListPage: React.FC = () => {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className={arenaTouchInputClass}>
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -507,7 +513,7 @@ const CourtReservationsListPage: React.FC = () => {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className={arenaTouchInputClass}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -524,7 +530,7 @@ const CourtReservationsListPage: React.FC = () => {
               <Input
                 id="cr-from"
                 type="date"
-                className="mt-1"
+                className={arenaTouchInputClass}
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value);
@@ -537,7 +543,7 @@ const CourtReservationsListPage: React.FC = () => {
               <Input
                 id="cr-to"
                 type="date"
-                className="mt-1"
+                className={arenaTouchInputClass}
                 value={dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value);
@@ -548,7 +554,7 @@ const CourtReservationsListPage: React.FC = () => {
             <Button
               type="button"
               variant="secondary"
-              className="!rounded-button"
+              className={cn('!rounded-button w-full sm:w-auto', arenaTouchButtonClass)}
               onClick={() => fetchReservations()}
               disabled={loading}
             >
@@ -560,7 +566,7 @@ const CourtReservationsListPage: React.FC = () => {
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base text-gray-900 dark:text-white">Resumo operacional</CardTitle>
+          <CardTitle className={arenaSectionTitleClass}>Resumo operacional</CardTitle>
           <Button
             type="button"
             variant="outline"
@@ -573,57 +579,58 @@ const CourtReservationsListPage: React.FC = () => {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <button
-              type="button"
-              className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <ArenaMetricCard
+              label="Pendente"
+              value={summaryMetrics.pendente}
+              className="border-amber-300 bg-amber-50"
+              labelClassName="text-amber-800"
+              valueClassName="text-amber-900"
               onClick={() => {
                 setStatusScope('pendente');
                 setPage(1);
               }}
-            >
-              <p className="text-xs text-amber-800">Pendente</p>
-              <p className="text-xl font-semibold text-amber-900">{summaryMetrics.pendente}</p>
-            </button>
-            <button
-              type="button"
-              className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-left"
+            />
+            <ArenaMetricCard
+              label="Confirmado"
+              value={summaryMetrics.confirmado}
+              className="border-green-300 bg-green-50"
+              labelClassName="text-green-800"
+              valueClassName="text-green-900"
               onClick={() => {
                 setStatusScope('confirmado');
                 setPage(1);
               }}
-            >
-              <p className="text-xs text-green-800">Confirmado</p>
-              <p className="text-xl font-semibold text-green-900">{summaryMetrics.confirmado}</p>
-            </button>
-            <button
-              type="button"
-              className="rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-left"
+            />
+            <ArenaMetricCard
+              label="Concluído"
+              value={summaryMetrics.concluido}
+              className="border-blue-300 bg-blue-50"
+              labelClassName="text-blue-800"
+              valueClassName="text-blue-900"
               onClick={() => {
                 setStatusScope('concluido');
                 setPage(1);
               }}
-            >
-              <p className="text-xs text-blue-800">Concluído</p>
-              <p className="text-xl font-semibold text-blue-900">{summaryMetrics.concluido}</p>
-            </button>
-            <button
-              type="button"
-              className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-left"
+            />
+            <ArenaMetricCard
+              label="Cancelado"
+              value={summaryMetrics.cancelado}
+              className="border-gray-300 bg-gray-50"
+              labelClassName="text-gray-700"
+              valueClassName="text-gray-900"
               onClick={() => {
                 setStatusScope('cancelado');
                 setPage(1);
               }}
-            >
-              <p className="text-xs text-gray-700">Cancelado</p>
-              <p className="text-xl font-semibold text-gray-900">{summaryMetrics.cancelado}</p>
-            </button>
-            <div className="rounded-md border border-indigo-300 bg-indigo-50 px-3 py-2 text-left">
-              <p className="text-xs text-indigo-800">Taxa de conversão</p>
-              <p className="text-xl font-semibold text-indigo-900">
-                {summaryMetrics.conversionRate.toFixed(1).replace('.', ',')}%
-              </p>
-            </div>
+            />
+            <ArenaMetricCard
+              label="Taxa de conversão"
+              value={`${summaryMetrics.conversionRate.toFixed(1).replace('.', ',')}%`}
+              className="border-indigo-300 bg-indigo-50 sm:col-span-2 lg:col-span-1"
+              labelClassName="text-indigo-800"
+              valueClassName="text-indigo-900"
+            />
           </div>
 
           {courtFilter === 'all' && summaryMetrics.perCourt.length > 0 ? (
@@ -647,8 +654,8 @@ const CourtReservationsListPage: React.FC = () => {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-base text-gray-900 dark:text-white">Lista</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
+            <CardTitle className={arenaSectionTitleClass}>Lista</CardTitle>
+            <p className={cn(arenaBodyClass, 'mt-1')}>
               {totalCount} registro(s) · período efetivo {clampMeta.effFrom} a {clampMeta.effTo}
             </p>
           </div>
@@ -673,29 +680,34 @@ const CourtReservationsListPage: React.FC = () => {
                     r.total_duration_minutes,
                   );
                   return (
-                    <div key={r.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {format(new Date(r.appointment_date + 'T12:00:00'), 'dd/MM/yyyy')}
-                          </p>
-                          <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-primary">
-                            <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                            {timeRange}
-                          </p>
-                          <p className="text-sm text-muted-foreground truncate mt-1">{displayClientName(r)}</p>
-                          <p className="text-sm text-muted-foreground">{courtLabel}</p>
+                    <Card key={r.id} className="border-gray-200">
+                      <CardContent className="p-4 space-y-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-sm font-medium text-gray-600">Data</p>
+                            <p className="text-lg font-bold text-gray-900">
+                              {format(new Date(r.appointment_date + 'T12:00:00'), 'dd/MM/yyyy')}
+                            </p>
+                            <p className="flex items-center gap-2 text-base font-semibold text-primary pt-1">
+                              <Clock className="h-5 w-5 shrink-0" aria-hidden />
+                              {timeRange}
+                            </p>
+                            <p className="text-base text-gray-800 pt-1">{displayClientName(r)}</p>
+                            <p className="text-sm text-gray-600">{courtLabel}</p>
+                          </div>
+                          <Badge
+                            className={`${getStatusColor(r.status || '')} shrink-0 text-white text-sm px-2.5 py-1`}
+                          >
+                            {r.status || '—'}
+                          </Badge>
                         </div>
-                        <Badge className={`${getStatusColor(r.status || '')} shrink-0 text-white text-xs`}>
-                          {r.status || '—'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm">
-                        {r.total_duration_minutes ?? 60} min ·{' '}
-                        {price > 0 ? `R$ ${price.toFixed(2).replace('.', ',')}` : '—'}
-                      </p>
-                      {renderRowActions(r)}
-                    </div>
+                        <p className="text-base font-semibold text-gray-900">
+                          {r.total_duration_minutes ?? 60} min ·{' '}
+                          {price > 0 ? `R$ ${price.toFixed(2).replace('.', ',')}` : '—'}
+                        </p>
+                        {renderRowActions(r)}
+                      </CardContent>
+                    </Card>
                   );
                 })}
               </div>
