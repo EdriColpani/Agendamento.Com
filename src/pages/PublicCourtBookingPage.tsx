@@ -35,6 +35,7 @@ import {
 import {
   computeCourtSlotsForDay,
   estimateCourtBookingTotalPrice,
+  formatCourtSlotTimeRange,
   type CourtPriceBand,
 } from '@/utils/courtSlots';
 import { Loader2 } from 'lucide-react';
@@ -102,6 +103,10 @@ const PublicCourtBookingPage: React.FC = () => {
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const isSelectedDateToday = useMemo(() => isSameDay(selectedDate, new Date()), [selectedDate]);
+  const slotDurationMinutes = useMemo(() => {
+    const court = courts.find((c) => c.id === courtId);
+    return court?.slot_duration_minutes ?? 60;
+  }, [courts, courtId]);
 
   const loadCourts = useCallback(async () => {
     if (!companyId) return;
@@ -443,7 +448,7 @@ const PublicCourtBookingPage: React.FC = () => {
           ) : slots.length === 0 ? (
             <p className="text-gray-600">Sem horários para esta data ou quadra fechada.</p>
           ) : (
-            <CourtTimeSlotGrid>
+            <CourtTimeSlotGrid layout="public">
               {slots.map((s) => {
                 const past = isPastSlot(s.startTime);
                 const belowMin = !s.occupied && !past && s.slotPrice < 0.5;
@@ -455,7 +460,7 @@ const PublicCourtBookingPage: React.FC = () => {
                 return (
                   <CourtTimeSlotButton
                     key={s.startTime}
-                    timeLabel={s.startTime}
+                    timeLabel={formatCourtSlotTimeRange(s.startTime, slotDurationMinutes, true)}
                     price={status === 'available' ? s.slotPrice : null}
                     status={status}
                     onClick={() => openBookModal(s.startTime)}

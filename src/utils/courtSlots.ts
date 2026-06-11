@@ -158,10 +158,16 @@ export function computeCourtSlotsForDay(
   return mergeSlotsWithOccupancy(raw, occ);
 }
 
-/** Ex.: "08:30 às 09:00" — seguro para HH:mm ou HH:mm:ss vindos do banco. */
-export function formatCourtSlotTimeRange(startTime: string, slotMinutes: number): string {
+/** Ex.: "08:30 às 09:00" ou "08:30 - 09:00" (compact) — HH:mm ou HH:mm:ss do banco. */
+export function formatCourtSlotTimeRange(
+  startTime: string,
+  slotMinutes: number,
+  compact = false,
+): string {
   const hhmm = startTime.slice(0, 5);
   const start = parse(hhmm, 'HH:mm', new Date());
   const end = addMinutes(start, slotMinutes);
-  return `${format(start, 'HH:mm')} às ${format(end, 'HH:mm')}`;
+  const startLabel = format(start, 'HH:mm');
+  const endLabel = format(end, 'HH:mm');
+  return compact ? `${startLabel} - ${endLabel}` : `${startLabel} às ${endLabel}`;
 }
