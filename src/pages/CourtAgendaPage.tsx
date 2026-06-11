@@ -583,7 +583,7 @@ const CourtAgendaPage: React.FC = () => {
                         Nenhum slot gerado para este dia com blocos de {agenda.slotMinutes} minutos.
                       </p>
                     ) : (
-                      <CourtTimeSlotGrid>
+                      <CourtTimeSlotGrid layout="admin">
                         {agenda.slots.map((slot) => {
                           const status = blockKindToSlotStatus(slot.blockKind, slot.occupied);
                           return (
