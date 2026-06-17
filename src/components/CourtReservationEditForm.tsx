@@ -19,6 +19,13 @@ import { format, parse, parseISO, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import CourtSportSelect from '@/components/arena/CourtSportSelect';
+import {
+  courtSportAutoValue,
+  courtSportRequiresSelection,
+  fetchCourtSportModalitiesByCourtIds,
+  type CourtSportModality,
+} from '@/utils/courtSportModalities';
 
 const courtEditSchema = z.object({
   clientId: z.string().min(1, 'Cliente é obrigatório.'),
@@ -43,6 +50,7 @@ export interface CourtAppointmentRow {
   observations: string | null;
   status: string;
   court_id: string | null;
+  court_sport_name: string | null;
   payment_method: string | null;
   mp_payment_id: string | null;
   mp_payment_status: string | null;
@@ -70,6 +78,31 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
   onBack,
 }) => {
   const [saving, setSaving] = React.useState(false);
+  const [courtModalities, setCourtModalities] = React.useState<CourtSportModality[]>([]);
+  const [bookingSport, setBookingSport] = React.useState(appointment.court_sport_name?.trim() || '');
+
+  useEffect(() => {
+    setBookingSport(appointment.court_sport_name?.trim() || '');
+  }, [appointment.court_sport_name]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const courtId = appointment.court_id;
+    if (!courtId) {
+      setCourtModalities([]);
+      return;
+    }
+    fetchCourtSportModalitiesByCourtIds([courtId])
+      .then((map) => {
+        if (!cancelled) setCourtModalities(map[courtId] || []);
+      })
+      .catch(() => {
+        if (!cancelled) setCourtModalities([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appointment.court_id]);
 
   const timeLabel = useMemo(() => {
     const d = parseISO(appointment.appointment_date);
@@ -120,6 +153,13 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
   const hasPaidMercadoPago = hasMercadoPagoPayment && appointment.mp_payment_status === 'approved';
 
   const onSubmit = async (data: CourtEditFormValues) => {
+    const resolvedSport =
+      bookingSport.trim() || courtSportAutoValue(courtModalities) || null;
+    if (courtSportRequiresSelection(courtModalities) && !resolvedSport) {
+      showError('Selecione a modalidade / esporte da reserva.');
+      return;
+    }
+
     setSaving(true);
     try {
       const isTransitionToCancelled = data.status === 'cancelado' && appointment.status !== 'cancelado';
@@ -165,6 +205,7 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
           client_nickname: data.clientNickname?.trim() || null,
           observations: data.observations?.trim() || null,
           status: data.status,
+          court_sport_name: resolvedSport,
         })
         .eq('id', appointment.id)
         .eq('company_id', primaryCompanyId);
@@ -202,6 +243,11 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
             <p>
               <span className="font-medium">Horário:</span> {timeLabel}
             </p>
+            {appointment.court_sport_name && !courtSportRequiresSelection(courtModalities) ? (
+              <p>
+                <span className="font-medium">Esporte:</span> {appointment.court_sport_name}
+              </p>
+            ) : null}
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               Data, horário e quadra não podem ser alterados aqui; cancele esta reserva e crie outra na agenda de
               quadras, se precisar mudar o horário.
@@ -256,6 +302,12 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
                   )}
                 </div>
               </div>
+
+              <CourtSportSelect
+                modalities={courtModalities}
+                value={bookingSport}
+                onChange={setBookingSport}
+              />
 
               <div>
                 <Label htmlFor="court-status" className="block text-sm font-medium text-gray-700 mb-2">
@@ -331,7 +383,10 @@ export const CourtReservationEditForm: React.FC<CourtReservationEditFormProps> =
                 <Button
                   type="submit"
                   className="!rounded-button flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                  disabled={saving}
+                  disabled={
+                    saving ||
+                    (courtSportRequiresSelection(courtModalities) && !bookingSport.trim())
+                  }
                 >
                   {saving ? 'Salvando...' : 'Salvar alterações'}
                 </Button>

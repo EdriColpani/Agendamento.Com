@@ -47,6 +47,13 @@ import {
 } from '@/components/arena/CourtTimeSlotButton';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
 import { arenaBodyClass, arenaSectionTitleClass } from '@/components/arena/arenaPageStyles';
+import CourtSportSelect from '@/components/arena/CourtSportSelect';
+import {
+  courtSportAutoValue,
+  courtSportRequiresSelection,
+  fetchCourtSportModalitiesByCourtIds,
+  type CourtSportModality,
+} from '@/utils/courtSportModalities';
 
 interface CourtOption {
   id: string;
@@ -83,6 +90,7 @@ interface CourtAgendaAppointment {
   status: string | null;
   payment_method?: string | null;
   mp_payment_status?: string | null;
+  court_sport_name?: string | null;
 }
 
 interface CourtAgendaSlot {
@@ -186,7 +194,9 @@ const CourtAgendaPage: React.FC = () => {
   const [bookingClientId, setBookingClientId] = useState('');
   const [bookingInitialStatus, setBookingInitialStatus] = useState<'pendente' | 'confirmado'>('pendente');
   const [bookingObservations, setBookingObservations] = useState('');
+  const [bookingSport, setBookingSport] = useState('');
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
+  const [courtSportsMap, setCourtSportsMap] = useState<Record<string, CourtSportModality[]>>({});
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const dayOfWeek = selectedDate.getDay();
@@ -211,6 +221,17 @@ const CourtAgendaPage: React.FC = () => {
       return;
     }
     setCourts((data as CourtOption[]) || []);
+    const ids = ((data as CourtOption[]) || []).map((c) => c.id);
+    if (ids.length) {
+      try {
+        const map = await fetchCourtSportModalitiesByCourtIds(ids);
+        setCourtSportsMap(map);
+      } catch {
+        setCourtSportsMap({});
+      }
+    } else {
+      setCourtSportsMap({});
+    }
   }, [primaryCompanyId]);
 
   const loadClients = useCallback(async () => {
@@ -275,7 +296,9 @@ const CourtAgendaPage: React.FC = () => {
 
           const { data: appts, error: apErr } = await supabase
             .from('appointments')
-            .select('appointment_time, total_duration_minutes, status, payment_method, mp_payment_status')
+            .select(
+              'appointment_time, total_duration_minutes, status, payment_method, mp_payment_status, court_sport_name',
+            )
             .eq('company_id', primaryCompanyId)
             .eq('court_id', court.id)
             .eq('appointment_date', dateStr)
@@ -309,12 +332,27 @@ const CourtAgendaPage: React.FC = () => {
               const block = slot.occupied
                 ? resolveSlotBlock(slot.startTime, dur, (appts || []) as CourtAgendaAppointment[])
                 : { kind: null as SlotBlockKind, label: '' };
+              const sportForSlot = slot.occupied
+                ? ((appts || []) as CourtAgendaAppointment[]).find((appt) => {
+                    const toMin = (t: string) => {
+                      const [h, m] = t.slice(0, 5).split(':').map((n) => Number(n));
+                      return h * 60 + m;
+                    };
+                    const slotStart = toMin(slot.startTime);
+                    const slotEnd = slotStart + dur;
+                    const start = toMin(appt.appointment_time);
+                    const end = start + (appt.total_duration_minutes ?? 60);
+                    return start < slotEnd && end > slotStart;
+                  })?.court_sport_name?.trim() || null
+                : null;
+              const blockLabel =
+                block.label && sportForSlot ? `${block.label} · ${sportForSlot}` : block.label;
               return {
                 startTime: slot.startTime,
                 occupied: slot.occupied,
                 slotPrice: estimateCourtBookingTotalPrice(slot.startTime, dur, dur, bands, defPrice),
                 blockKind: block.kind,
-                blockLabel: block.label,
+                blockLabel,
               };
             }),
             error: null,
@@ -397,6 +435,8 @@ const CourtAgendaPage: React.FC = () => {
   }
 
   const openBookModal = (court: CourtOption, slot: CourtAgendaSlot, slotMinutes: number) => {
+    const modalities = courtSportsMap[court.id] || [];
+    const autoSport = courtSportAutoValue(modalities);
     setBookingContext({
       courtId: court.id,
       courtName: court.name,
@@ -407,13 +447,20 @@ const CourtAgendaPage: React.FC = () => {
     setBookingClientId('');
     setBookingInitialStatus('pendente');
     setBookingObservations('');
+    setBookingSport(autoSport || '');
     setBookModalOpen(true);
   };
+
+  const bookingModalities = bookingContext ? courtSportsMap[bookingContext.courtId] || [] : [];
 
   const handleConfirmBooking = async () => {
     if (!primaryCompanyId || !bookingContext) return;
     if (!bookingClientId) {
       showError('Selecione um cliente.');
+      return;
+    }
+    if (courtSportRequiresSelection(bookingModalities) && !bookingSport.trim()) {
+      showError('Selecione a modalidade de esporte.');
       return;
     }
     const client = clients.find((c) => c.id === bookingClientId);
@@ -428,6 +475,7 @@ const CourtAgendaPage: React.FC = () => {
         appointmentTime: bookingContext.startTime,
         durationMinutes: bookingContext.slotMinutes,
         observations: bookingObservations.trim() || null,
+        courtSportName: bookingSport.trim() || courtSportAutoValue(bookingModalities),
       });
 
       if (bookingInitialStatus === 'confirmado') {
@@ -592,6 +640,7 @@ const CourtAgendaPage: React.FC = () => {
                               timeLabel={formatCourtSlotTimeRange(slot.startTime, agenda.slotMinutes)}
                               price={slot.occupied ? null : slot.slotPrice}
                               status={status}
+                              statusLabel={slot.blockLabel || undefined}
                               onClick={() => openBookModal(court, slot, agenda.slotMinutes)}
                             />
                           );
@@ -643,6 +692,11 @@ const CourtAgendaPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground mt-1">Cadastre clientes em Clientes.</p>
               ) : null}
             </div>
+            <CourtSportSelect
+              modalities={bookingModalities}
+              value={bookingSport}
+              onChange={setBookingSport}
+            />
             <div>
               <Label>Observações</Label>
               <Textarea
@@ -679,7 +733,11 @@ const CourtAgendaPage: React.FC = () => {
             <Button
               type="button"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={bookingSubmitting || !bookingClientId}
+              disabled={
+                bookingSubmitting ||
+                !bookingClientId ||
+                (courtSportRequiresSelection(bookingModalities) && !bookingSport.trim())
+              }
               onClick={handleConfirmBooking}
             >
               {bookingSubmitting ? 'Salvando...' : 'Confirmar reserva'}

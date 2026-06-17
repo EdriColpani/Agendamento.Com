@@ -45,6 +45,11 @@ import {
   CourtTimeSlotGrid,
   type CourtSlotStatus,
 } from '@/components/arena/CourtTimeSlotButton';
+import CourtSportSelect from '@/components/arena/CourtSportSelect';
+import {
+  courtSportAutoValue,
+  courtSportRequiresSelection,
+} from '@/utils/courtSportModalities';
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, '');
@@ -100,6 +105,8 @@ const PublicCourtBookingPage: React.FC = () => {
   const [allowOnlinePayment, setAllowOnlinePayment] = useState(false);
   const [allowCounterPayment, setAllowCounterPayment] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PublicPaymentMethod>('mercado_pago');
+  const [daySportModalities, setDaySportModalities] = useState<string[]>([]);
+  const [bookingSport, setBookingSport] = useState('');
 
   const dateStr = useMemo(() => format(selectedDate, 'yyyy-MM-dd'), [selectedDate]);
   const isSelectedDateToday = useMemo(() => isSameDay(selectedDate, new Date()), [selectedDate]);
@@ -195,6 +202,7 @@ const PublicCourtBookingPage: React.FC = () => {
       setSlots([]);
       setDayPriceBands([]);
       setDayDefaultPrice(0);
+      setDaySportModalities([]);
       return;
     }
     setLoadingSlots(true);
@@ -213,6 +221,7 @@ const PublicCourtBookingPage: React.FC = () => {
         const bandsClosed = (view.price_bands || []) as CourtPriceBand[];
         setDayPriceBands(bandsClosed);
         setDayDefaultPrice(Number(view.default_slot_price ?? 0));
+        setDaySportModalities(Array.isArray(view.sport_modalities) ? view.sport_modalities : []);
         return;
       }
       const startShort = view.working_start.substring(0, 5);
@@ -223,6 +232,7 @@ const PublicCourtBookingPage: React.FC = () => {
       const def = Number(view.default_slot_price ?? 0);
       setDayPriceBands(bands);
       setDayDefaultPrice(def);
+      setDaySportModalities(Array.isArray(view.sport_modalities) ? view.sport_modalities : []);
       const computed = computeCourtSlotsForDay(startShort, endShort, dur, occ);
       setSlots(
         computed.map((s) => ({
@@ -252,6 +262,7 @@ const PublicCourtBookingPage: React.FC = () => {
     setGuestName('');
     setGuestPhone('');
     setBookingObservations('');
+    setBookingSport(courtSportAutoValue(daySportModalities) || '');
     setBookModalOpen(true);
   };
 
@@ -272,6 +283,10 @@ const PublicCourtBookingPage: React.FC = () => {
     }
     if (!guestName.trim()) {
       showError('Informe seu nome.');
+      return;
+    }
+    if (courtSportRequiresSelection(daySportModalities) && !bookingSport.trim()) {
+      showError('Selecione a modalidade de esporte.');
       return;
     }
     if (selectedPaymentMethod === 'mercado_pago' && slotPriceDisplay < 0.5) {
@@ -299,6 +314,7 @@ const PublicCourtBookingPage: React.FC = () => {
         durationMinutes: courts.find((c) => c.id === courtId)?.slot_duration_minutes ?? 60,
         observations: bookingObservations.trim() || null,
         paymentMethod: selectedPaymentMethod,
+        courtSportName: bookingSport.trim() || courtSportAutoValue(daySportModalities),
       });
 
       if (selectedPaymentMethod === 'mercado_pago') {
@@ -540,6 +556,11 @@ const PublicCourtBookingPage: React.FC = () => {
                   : 'Pagamento no balcão: reserva criada para pagamento presencial diretamente na arena.'}
               </p>
             </div>
+            <CourtSportSelect
+              modalities={daySportModalities}
+              value={bookingSport}
+              onChange={setBookingSport}
+            />
             <div>
               <Label htmlFor="guest-obs">Observações</Label>
               <Textarea
@@ -570,7 +591,10 @@ const PublicCourtBookingPage: React.FC = () => {
             <Button
               type="button"
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={bookingSubmitting}
+              disabled={
+                bookingSubmitting ||
+                (courtSportRequiresSelection(daySportModalities) && !bookingSport.trim())
+              }
               onClick={handleConfirmBooking}
             >
               {bookingSubmitting
