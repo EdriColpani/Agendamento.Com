@@ -35,6 +35,10 @@ import {
 } from '@/components/arena/arenaPageStyles';
 import { cn } from '@/lib/utils';
 import { getArenaModuleLinks } from '@/components/arena/arenaNavConfig';
+import {
+  fetchCourtSportModalitiesByCourtIds,
+  saveCourtSportModalities,
+} from '@/utils/courtSportModalities';
 
 const courtFormSchema = z.object({
   name: z.string().min(1, 'Nome da quadra é obrigatório.'),
@@ -74,6 +78,7 @@ interface CourtRow {
   city?: string | null;
   state?: string | null;
   created_at: string;
+  sport_modalities?: string[];
 }
 
 const CourtsManagementPage: React.FC = () => {
@@ -93,6 +98,8 @@ const CourtsManagementPage: React.FC = () => {
   const [courtImageFile, setCourtImageFile] = useState<File | null>(null);
   const [courtImagePreview, setCourtImagePreview] = useState<string | null>(null);
   const courtImageFileInputRef = useRef<HTMLInputElement>(null);
+  const [courtSportNames, setCourtSportNames] = useState<string[]>([]);
+  const [newSportName, setNewSportName] = useState('');
 
   const {
     register,
@@ -200,7 +207,25 @@ const CourtsManagementPage: React.FC = () => {
       showError('Erro ao carregar quadras: ' + error.message);
       setCourts([]);
     } else {
-      setCourts((data as CourtRow[]) || []);
+      const rows = (data as CourtRow[]) || [];
+      const ids = rows.map((c) => c.id);
+      let sportsMap: Record<string, { name: string }[]> = {};
+      if (ids.length) {
+        try {
+          const byCourt = await fetchCourtSportModalitiesByCourtIds(ids);
+          sportsMap = Object.fromEntries(
+            Object.entries(byCourt).map(([id, list]) => [id, list.map((m) => ({ name: m.name }))]),
+          );
+        } catch {
+          sportsMap = {};
+        }
+      }
+      setCourts(
+        rows.map((c) => ({
+          ...c,
+          sport_modalities: (sportsMap[c.id] || []).map((m) => m.name),
+        })),
+      );
     }
     setLoadingCourts(false);
   }, [primaryCompanyId, session?.user]);
@@ -235,10 +260,12 @@ const CourtsManagementPage: React.FC = () => {
     setCourtImagePreview(null);
     setCourtImageTab('upload');
     if (courtImageFileInputRef.current) courtImageFileInputRef.current.value = '';
+    setCourtSportNames([]);
+    setNewSportName('');
     setModalOpen(true);
   };
 
-  const openEdit = (court: CourtRow) => {
+  const openEdit = async (court: CourtRow) => {
     setEditingCourt(court);
     reset({
       name: court.name,
@@ -260,7 +287,29 @@ const CourtsManagementPage: React.FC = () => {
     setCourtImagePreview(court.image_url?.trim() ? court.image_url : null);
     setCourtImageTab(court.image_url?.trim() ? 'url' : 'upload');
     if (courtImageFileInputRef.current) courtImageFileInputRef.current.value = '';
+    try {
+      const map = await fetchCourtSportModalitiesByCourtIds([court.id]);
+      setCourtSportNames((map[court.id] || []).map((m) => m.name));
+    } catch {
+      setCourtSportNames(court.sport_modalities || []);
+    }
+    setNewSportName('');
     setModalOpen(true);
+  };
+
+  const addSportName = () => {
+    const name = newSportName.trim();
+    if (!name) return;
+    if (courtSportNames.some((n) => n.toLowerCase() === name.toLowerCase())) {
+      showError('Esta modalidade já está na lista.');
+      return;
+    }
+    setCourtSportNames((prev) => [...prev, name]);
+    setNewSportName('');
+  };
+
+  const removeSportName = (name: string) => {
+    setCourtSportNames((prev) => prev.filter((n) => n !== name));
   };
 
   const onSubmit = async (values: CourtFormValues) => {
@@ -300,12 +349,20 @@ const CourtsManagementPage: React.FC = () => {
       if (error) {
         showError('Erro ao atualizar quadra: ' + error.message);
       } else {
+        try {
+          await saveCourtSportModalities(editingCourt.id, courtSportNames);
+        } catch (sportErr: unknown) {
+          const msg = sportErr instanceof Error ? sportErr.message : String(sportErr);
+          showError('Quadra salva, mas falhou ao gravar modalidades: ' + msg);
+          setSaving(false);
+          return;
+        }
         showSuccess('Quadra atualizada.');
         setModalOpen(false);
         fetchCourts();
       }
     } else {
-      const { error } = await supabase.from('courts').insert(payload);
+      const { data: inserted, error } = await supabase.from('courts').insert(payload).select('id').single();
       if (error) {
         if (error.code === '23505') {
           showError('Já existe uma quadra com esse nome nesta empresa.');
@@ -313,6 +370,17 @@ const CourtsManagementPage: React.FC = () => {
           showError('Erro ao cadastrar quadra: ' + error.message);
         }
       } else {
+        const newId = (inserted as { id: string } | null)?.id;
+        if (newId && courtSportNames.length) {
+          try {
+            await saveCourtSportModalities(newId, courtSportNames);
+          } catch (sportErr: unknown) {
+            const msg = sportErr instanceof Error ? sportErr.message : String(sportErr);
+            showError('Quadra criada, mas falhou ao gravar modalidades: ' + msg);
+            setSaving(false);
+            return;
+          }
+        }
         showSuccess('Quadra cadastrada.');
         setModalOpen(false);
         fetchCourts();
@@ -469,6 +537,11 @@ const CourtsManagementPage: React.FC = () => {
                     </p>
                     {court.description ? (
                       <p className={arenaBodyClass}>{court.description}</p>
+                    ) : null}
+                    {court.sport_modalities && court.sport_modalities.length > 0 ? (
+                      <p className={cn(arenaBodyClass, 'break-words')}>
+                        Esportes: {court.sport_modalities.join(' · ')}
+                      </p>
                     ) : null}
                     {court.address || court.city || court.state ? (
                       <p className={cn(arenaBodyClass, 'break-words')}>
@@ -709,6 +782,51 @@ const CourtsManagementPage: React.FC = () => {
                 checked={isActiveValue}
                 onCheckedChange={(v) => setValue('is_active', v, { shouldValidate: true })}
               />
+            </div>
+            <div className="space-y-2 rounded-md border border-gray-200 dark:border-gray-700 p-3">
+              <Label>Modalidades de esporte nesta quadra</Label>
+              <p className="text-xs text-muted-foreground">
+                Opcional. Com 2 ou mais modalidades, o cliente escolhe o esporte na reserva. Deixe vazio se cada
+                quadra já representa um esporte.
+              </p>
+              {courtSportNames.length > 0 ? (
+                <ul className="flex flex-wrap gap-2">
+                  {courtSportNames.map((name) => (
+                    <li key={name}>
+                      <Badge variant="secondary" className="gap-1 pr-1">
+                        {name}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                          aria-label={`Remover ${name}`}
+                          onClick={() => removeSportName(name)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhuma modalidade cadastrada.</p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  className="mt-0"
+                  placeholder="Ex.: Futsal, Vôlei, Beach tennis"
+                  value={newSportName}
+                  onChange={(e) => setNewSportName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addSportName();
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" className="shrink-0" onClick={addSportName}>
+                  Adicionar
+                </Button>
+              </div>
             </div>
             </div>
             <DialogFooter className="shrink-0 gap-2 border-t bg-background px-6 py-4 sm:gap-0">

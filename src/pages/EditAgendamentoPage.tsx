@@ -138,6 +138,7 @@ const EditAgendamentoPage: React.FC = () => {
           mp_payment_status,
           observations,
           status,
+          court_sport_name,
           appointment_services(service_id),
           courts(name)
         `)

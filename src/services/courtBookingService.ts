@@ -11,6 +11,7 @@ export interface CreateCourtBookingParams {
   durationMinutes: number;
   observations?: string | null;
   paymentMethod?: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'mercado_pago' | null;
+  courtSportName?: string | null;
 }
 
 function normalizeTime(t: string): string {
@@ -33,6 +34,7 @@ export async function createCourtBooking(params: CreateCourtBookingParams): Prom
     p_appointment_time: normalizeTime(params.appointmentTime),
     p_duration_minutes: params.durationMinutes,
     p_observations: params.observations ?? null,
+    p_court_sport_name: params.courtSportName ?? null,
   });
 
   if (error) {
@@ -89,6 +91,7 @@ export interface CourtPublicDayView {
   working_start?: string | null;
   working_end?: string | null;
   occupancy?: { appointment_time: string; total_duration_minutes: number | null }[];
+  sport_modalities?: string[];
 }
 
 export async function getCourtPublicDayView(
@@ -122,6 +125,7 @@ export async function createCourtBookingPublic(params: CreateCourtBookingParams)
     p_duration_minutes: params.durationMinutes,
     p_observations: params.observations ?? null,
     p_payment_method: selectedPaymentMethod,
+    p_court_sport_name: params.courtSportName ?? null,
   });
 
   if (error) {

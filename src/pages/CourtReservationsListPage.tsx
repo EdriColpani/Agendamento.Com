@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { format, subDays, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import BrDatePicker from '@/components/ui/br-date-picker';
 import {
   Select,
   SelectContent,
@@ -62,6 +62,7 @@ interface CourtReservationRow {
   status: string | null;
   client_nickname: string | null;
   court_id: string | null;
+  court_sport_name: string | null;
   courts: { name: string } | null;
   clients: { name: string } | null;
 }
@@ -112,8 +113,8 @@ const CourtReservationsListPage: React.FC = () => {
   const [courts, setCourts] = useState<CourtOption[]>([]);
   const [courtFilter, setCourtFilter] = useState<string>('all');
   const [statusScope, setStatusScope] = useState<string>('ativas');
-  const [dateFrom, setDateFrom] = useState(() => format(subDays(new Date(), 7), 'yyyy-MM-dd'));
-  const [dateTo, setDateTo] = useState(() => format(addDays(new Date(), 60), 'yyyy-MM-dd'));
+  const [dateFrom, setDateFrom] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [dateTo, setDateTo] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [rows, setRows] = useState<CourtReservationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [finishingId, setFinishingId] = useState<string | null>(null);
@@ -165,6 +166,7 @@ const CourtReservationsListPage: React.FC = () => {
           status,
           client_nickname,
           court_id,
+          court_sport_name,
           courts(name),
           clients(name)
         `,
@@ -527,26 +529,24 @@ const CourtReservationsListPage: React.FC = () => {
             </div>
             <div>
               <Label htmlFor="cr-from">De</Label>
-              <Input
+              <BrDatePicker
                 id="cr-from"
-                type="date"
                 className={arenaTouchInputClass}
                 value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
+                onChange={(iso) => {
+                  setDateFrom(iso);
                   setPage(1);
                 }}
               />
             </div>
             <div>
               <Label htmlFor="cr-to">Até</Label>
-              <Input
+              <BrDatePicker
                 id="cr-to"
-                type="date"
                 className={arenaTouchInputClass}
                 value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
+                onChange={(iso) => {
+                  setDateTo(iso);
                   setPage(1);
                 }}
               />
@@ -694,6 +694,9 @@ const CourtReservationsListPage: React.FC = () => {
                             </p>
                             <p className="text-base text-gray-800 pt-1">{displayClientName(r)}</p>
                             <p className="text-sm text-gray-600">{courtLabel}</p>
+                            {r.court_sport_name ? (
+                              <p className="text-sm text-gray-600">Esporte: {r.court_sport_name}</p>
+                            ) : null}
                           </div>
                           <Badge
                             className={`${getStatusColor(r.status || '')} shrink-0 text-white text-sm px-2.5 py-1`}
@@ -719,6 +722,7 @@ const CourtReservationsListPage: React.FC = () => {
                       <TableHead>Data</TableHead>
                       <TableHead>Horário</TableHead>
                       <TableHead>Quadra</TableHead>
+                      <TableHead>Esporte</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Duração</TableHead>
                       <TableHead>Valor</TableHead>
@@ -740,6 +744,7 @@ const CourtReservationsListPage: React.FC = () => {
                           <TableCell>{format(new Date(r.appointment_date + 'T12:00:00'), 'dd/MM/yyyy')}</TableCell>
                           <TableCell className="whitespace-nowrap font-medium">{timeRange}</TableCell>
                           <TableCell>{courtLabel}</TableCell>
+                          <TableCell>{r.court_sport_name || '—'}</TableCell>
                           <TableCell>{displayClientName(r)}</TableCell>
                           <TableCell>{r.total_duration_minutes ?? 60} min</TableCell>
                           <TableCell>
