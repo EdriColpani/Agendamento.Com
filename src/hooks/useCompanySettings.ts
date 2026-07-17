@@ -9,6 +9,7 @@ interface CompanySettings {
   guest_appointment_link: string | null;
   public_court_allow_counter_payment: boolean;
   court_enable_monthly_packages: boolean;
+  public_booking_notification_email: string | null;
 }
 
 export function useCompanySettings() {
@@ -27,7 +28,7 @@ export function useCompanySettings() {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('require_client_registration, guest_appointment_link, public_court_allow_counter_payment, court_enable_monthly_packages')
+        .select('require_client_registration, guest_appointment_link, public_court_allow_counter_payment, court_enable_monthly_packages, public_booking_notification_email')
         .eq('id', primaryCompanyId)
         .single();
 

@@ -124,6 +124,9 @@ verify_jwt = false
 [functions.send-contact-request-email]
 verify_jwt = false
 
+[functions.send-public-court-booking-notification]
+verify_jwt = false
+
 [functions.send-password-reset-email]
 verify_jwt = false
 
@@ -131,6 +134,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.subscription-change-scheduler]
+verify_jwt = false
+
+[functions.subscription-expiration-reminder-scheduler]
 verify_jwt = false
 
 [functions.upsert-company-payment-credentials]

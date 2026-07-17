@@ -64,6 +64,7 @@ const ConfigPage: React.FC = () => {
   const [mpSaving, setMpSaving] = useState(false);
   const [allowCounterPaymentPublic, setAllowCounterPaymentPublic] = useState(false);
   const [enableMonthlyPackages, setEnableMonthlyPackages] = useState(false);
+  const [bookingNotificationEmail, setBookingNotificationEmail] = useState("");
 
   const fetchPaymentCredentialsStatus = useCallback(async () => {
     if (!primaryCompanyId || !session?.user) return;
@@ -127,8 +128,18 @@ const ConfigPage: React.FC = () => {
       setGuestAppointmentLink(settings.guest_appointment_link || "");
       setAllowCounterPaymentPublic(settings.public_court_allow_counter_payment === true);
       setEnableMonthlyPackages(settings.court_enable_monthly_packages === true);
+      setBookingNotificationEmail(settings.public_booking_notification_email || "");
     }
   }, [settings]);
+
+  const handleSaveBookingNotificationEmail = async () => {
+    const trimmed = bookingNotificationEmail.trim();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      showError('Informe um e-mail válido ou deixe o campo vazio para desativar.');
+      return;
+    }
+    await updateSettings({ public_booking_notification_email: trimmed || null });
+  };
 
   // Função para buscar banner atual
   const fetchCurrentBanner = useCallback(async () => {
@@ -363,6 +374,42 @@ const ConfigPage: React.FC = () => {
                     >
                       {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                       Salvar opção de pagamento público
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>E-mail de aviso de reserva pública</CardTitle>
+                    <CardDescription>
+                      Informe um e-mail para receber um aviso sempre que uma reserva feita pelo link público for
+                      confirmada (paga no Mercado Pago ou confirmada no balcão). Deixe vazio para desativar.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bookingNotificationEmail" className="text-base">
+                        E-mail para notificações
+                      </Label>
+                      <Input
+                        id="bookingNotificationEmail"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        placeholder="ex.: reservas@suaarena.com.br"
+                        value={bookingNotificationEmail}
+                        onChange={(e) => setBookingNotificationEmail(e.target.value)}
+                        disabled={isSaving}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleSaveBookingNotificationEmail}
+                      disabled={isSaving}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 !rounded-button"
+                    >
+                      {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Salvar e-mail de notificação
                     </Button>
                   </CardContent>
                 </Card>
