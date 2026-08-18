@@ -13,6 +13,22 @@ import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { Edit, MailCheck } from 'lucide-react'; // Importar o ícone MailCheck
 
+/** Normaliza o telefone para DDD + número, removendo o DDI 55 quando vier no cadastro. */
+function toWhatsAppLocalNumber(phone: string | null | undefined): string | null {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+
+  let local = digits;
+  // DDI Brasil (55): só remove se o restante for DDD + número (10 ou 11 dígitos).
+  // Evita cortar DDD 55 (Santa Maria/RS) em números já locais.
+  if (local.startsWith('55') && (local.length === 12 || local.length === 13)) {
+    local = local.slice(2);
+  }
+
+  if (local.length < 10 || local.length > 11) return null;
+  return local;
+}
+
 interface Client {
   id: string;
   name: string;
@@ -101,6 +117,15 @@ const ClientesPage: React.FC = () => {
     }
   };
 
+  const handleOpenWhatsApp = (phone: string) => {
+    const localNumber = toWhatsAppLocalNumber(phone);
+    if (!localNumber) {
+      showError('Telefone inválido para abrir o WhatsApp.');
+      return;
+    }
+    window.open(`https://wa.me/${localNumber}`, '_blank', 'noopener,noreferrer');
+  };
+
   if (sessionLoading || loadingPrimaryCompany || loadingClients) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -179,6 +204,20 @@ const ClientesPage: React.FC = () => {
                     <Badge className={`${getStatusColor(cliente.status)} text-xs`}>
                       {cliente.status.toUpperCase()}
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="!rounded-button whitespace-nowrap"
+                      title="Abrir WhatsApp"
+                      aria-label={`Abrir WhatsApp de ${cliente.name}`}
+                      disabled={!toWhatsAppLocalNumber(cliente.phone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenWhatsApp(cliente.phone);
+                      }}
+                    >
+                      <i className="fab fa-whatsapp text-base text-[#25D366]"></i>
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
