@@ -7,6 +7,7 @@ interface CompanyDetails {
   whatsapp_messaging_enabled: boolean;
   court_booking_enabled?: boolean;
   court_enable_monthly_packages?: boolean;
+  tournament_enabled?: boolean;
 }
 
 export const useCompanyDetails = (companyId: string | null) => {
@@ -27,7 +28,7 @@ export const useCompanyDetails = (companyId: string | null) => {
       try {
         const { data, error } = await supabase
           .from('companies')
-          .select('id, name, whatsapp_messaging_enabled, court_booking_enabled, court_enable_monthly_packages')
+          .select('id, name, whatsapp_messaging_enabled, court_booking_enabled, court_enable_monthly_packages, tournament_enabled')
           .eq('id', companyId)
           .single();
 

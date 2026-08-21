@@ -143,7 +143,7 @@ const LandingPage: React.FC = () => {
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      const headerOffset = 80; // Altura do header fixo
+      const headerOffset = 128; // Altura do header fixo + folga
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
       
@@ -176,6 +176,8 @@ const LandingPage: React.FC = () => {
             to="/"
             titleClassName="text-xl font-bold text-gray-900"
             showFullLogoOnDesktop
+            officialLogo
+            officialLogoClassName="h-14 w-auto max-w-[280px] sm:h-16 sm:max-w-[340px] md:h-16 md:max-w-[380px] shrink-0 object-contain"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           />
 
@@ -296,7 +298,7 @@ const LandingPage: React.FC = () => {
       </header>
 
       {/* Hero Section focado em WhatsApp */}
-      <section id="inicio" className="bg-white pt-20 pb-10">
+      <section id="inicio" className="bg-white pt-28 pb-10 sm:pt-32">
         <div className="container mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
           {/* Texto principal */}
           <div>
