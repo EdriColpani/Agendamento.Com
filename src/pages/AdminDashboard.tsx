@@ -452,6 +452,15 @@ const AdminDashboard: React.FC = () => {
             onClick={() => navigate('/admin-dashboard/arena-login-imagens')}
           />
 
+          <ManagementCard
+            title="Torneio — Licenças avulsas"
+            description="Conceda licença de evento (SKU B) para uma arena testar ou usar torneio sem o add-on mensal."
+            icon={<Zap className="h-6 w-6 text-amber-700" />}
+            buttonText="Gerenciar licenças"
+            buttonColor="bg-amber-700 hover:bg-amber-800"
+            onClick={() => navigate('/admin-dashboard/torneio-licencas')}
+          />
+
         </div>
         
         {/* Logs de Auditoria Recentes */}

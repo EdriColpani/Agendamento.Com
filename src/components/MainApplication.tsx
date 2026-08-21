@@ -16,6 +16,7 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import SubscriptionExpiredPage from '@/pages/SubscriptionExpiredPage';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Zap, Menu, Bell } from 'lucide-react';
@@ -40,6 +41,13 @@ const ARENA_SIDEBAR_FALLBACK_ITEMS: Array<{
   { id: 'arena-reservas', label: 'Reservas', icon: 'fas fa-list', path: '/quadras/reservas' },
   { id: 'arena-precos', label: 'Preços por horário', icon: 'fas fa-tags', path: '/quadras/precos' },
 ];
+
+const TOURNAMENT_SIDEBAR_ITEM = {
+  id: 'arena-torneios',
+  label: 'Torneios',
+  icon: 'fas fa-trophy',
+  path: '/quadras/torneios',
+} as const;
 
 /** Item de menu que leva à página de planos (rota e/ou chave conhecidas). */
 function isPlanosSidebarItem(item: { id: string; path?: string }): boolean {
@@ -75,6 +83,7 @@ const MainApplication: React.FC = () => {
     loading: loadingArenaModule,
     companyDetails,
   } = useCourtBookingModule(primaryCompanyId);
+  const { canUseTournament, loading: loadingTournament } = useTournamentAccess();
   const isMobile = useIsMobile();
 
   const syncHeaderHeight = useCallback(() => {
@@ -110,10 +119,11 @@ const MainApplication: React.FC = () => {
 
   const dynamicMenusFilteredByArena = useMemo(
     () =>
-      dynamicMenuItems.filter(
-        (m) => !m.menu_key.startsWith('arena-') || canUseArenaManagement
-      ),
-    [dynamicMenuItems, canUseArenaManagement]
+      dynamicMenuItems.filter((m) => {
+        if (m.menu_key === 'arena-torneios') return canUseTournament;
+        return !m.menu_key.startsWith('arena-') || canUseArenaManagement;
+      }),
+    [dynamicMenuItems, canUseArenaManagement, canUseTournament]
   );
 
   // Define se estamos em uma rota de aplicação que deve ter sidebar
@@ -227,9 +237,19 @@ const MainApplication: React.FC = () => {
     (isProprietarioOrCompanyAdmin || isCollaborator) &&
     !hasArenaInSidebar;
 
-  const sidebarMenuItems = shouldInjectArenaFallback
+  const sidebarWithArena = shouldInjectArenaFallback
     ? [...finalMenuItems, ...ARENA_SIDEBAR_FALLBACK_ITEMS]
     : finalMenuItems;
+
+  const hasTournamentInSidebar = sidebarWithArena.some((item) => String(item.id) === 'arena-torneios');
+  const shouldInjectTournament =
+    canUseTournament &&
+    (isProprietarioOrCompanyAdmin || isCollaborator) &&
+    !hasTournamentInSidebar;
+
+  const sidebarMenuItems = shouldInjectTournament
+    ? [...sidebarWithArena, TOURNAMENT_SIDEBAR_ITEM]
+    : sidebarWithArena;
 
   // Sem assinatura ativa (ou expirada): só exibir "Planos" na sidebar para Proprietário/Admin
   const restrictSidebarToPlanosOnly =
@@ -263,7 +283,7 @@ const MainApplication: React.FC = () => {
   }
 
   // Se o usuário está carregando a sessão ou os status, exibe loading
-  if (sessionLoading || loadingPrimaryCompany || loadingProprietarioCheck || loadingCompanyAdminCheck || loadingGlobalAdminCheck || loadingClientCheck || loadingCollaboratorCheck || loadingSubscription || loadingMenus || loadingArenaModule) {
+  if (sessionLoading || loadingPrimaryCompany || loadingProprietarioCheck || loadingCompanyAdminCheck || loadingGlobalAdminCheck || loadingClientCheck || loadingCollaboratorCheck || loadingSubscription || loadingMenus || loadingArenaModule || loadingTournament) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-700">Carregando aplicação...</p>
@@ -293,6 +313,7 @@ const MainApplication: React.FC = () => {
               to="/"
               titleClassName="text-xl font-bold text-gray-900 leading-tight"
               showFullLogoOnDesktop
+              officialLogo
               subtitle={session && isCourtMode && canUseArenaManagement ? 'Modo arena / quadras' : undefined}
             />
           </div>

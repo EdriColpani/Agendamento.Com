@@ -33,6 +33,9 @@ import CourtAgendaPage from "./pages/CourtAgendaPage";
 import CourtSlotPriceBandsPage from "./pages/CourtSlotPriceBandsPage";
 import CourtReservationsListPage from "./pages/CourtReservationsListPage";
 import CourtMonthlyPackagesPage from "./pages/CourtMonthlyPackagesPage";
+import TournamentsPage from "./pages/TournamentsPage";
+import TournamentDeskPage from "./pages/TournamentDeskPage";
+import AdminTournamentLicensesPage from "./pages/AdminTournamentLicensesPage";
 import PublicCourtBookingPage from "./pages/PublicCourtBookingPage";
 import ServiceFormPage from "./pages/ServiceFormPage";
 import EditClientPage from "./pages/EditClientPage";
@@ -261,6 +264,7 @@ const App = () => (
             {/* NOVA ROTA: Gerenciamento de Banners Globais */}
             <Route path="/admin-dashboard/global-banners" element={<GlobalAdminProtectedRoute><BannerManagementPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/arena-login-imagens" element={<GlobalAdminProtectedRoute><ArenaLoginMarketingPage /></GlobalAdminProtectedRoute>} />
+            <Route path="/admin-dashboard/torneio-licencas" element={<GlobalAdminProtectedRoute><AdminTournamentLicensesPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gerenciamento de Provedores WhatsApp */}
             <Route path="/admin-dashboard/whatsapp-providers" element={<GlobalAdminProtectedRoute><WhatsAppProviderManagementPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gestão de Perfis (Roles) */}
@@ -294,6 +298,8 @@ const App = () => (
               <Route path="quadras/precos" element={<ProtectedRoute><CourtSlotPriceBandsPage /></ProtectedRoute>} />
               <Route path="quadras/reservas" element={<ProtectedRoute><CourtReservationsListPage /></ProtectedRoute>} />
               <Route path="quadras/pacotes-mensais" element={<ProtectedRoute><CourtMonthlyPackagesPage /></ProtectedRoute>} />
+              <Route path="quadras/torneios" element={<ProtectedRoute><TournamentsPage /></ProtectedRoute>} />
+              <Route path="quadras/torneios/:tournamentId" element={<ProtectedRoute><TournamentDeskPage /></ProtectedRoute>} />
               <Route path="servicos" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
               <Route path="servicos/new" element={<ProtectedRoute><ServiceFormPage /></ProtectedRoute>} />
               <Route path="servicos/edit/:serviceId" element={<ProtectedRoute><ServiceFormPage /></ProtectedRoute>} />
