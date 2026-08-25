@@ -10,6 +10,8 @@ interface BrandHeaderProps {
   showFullLogoOnDesktop?: boolean;
   /** Exibe a logo oficial (PNG) no lugar da SVG — landing/home. */
   officialLogo?: boolean;
+  /** Usa o ícone oficial (PNG) e mantém o texto "PlanoAgenda" ao lado. */
+  officialMark?: boolean;
   /** Classe da logo oficial. Padrão: cabe na altura original do header (h-10). */
   officialLogoClassName?: string;
   subtitle?: string;
@@ -24,6 +26,7 @@ const BrandHeader: React.FC<BrandHeaderProps> = ({
   fullLogoClassName = 'h-10 w-auto max-w-[140px] shrink-0',
   showFullLogoOnDesktop = false,
   officialLogo = false,
+  officialMark = false,
   // Mesma altura do header original — não aumenta a barra nem corta a arte.
   officialLogoClassName = 'h-10 max-h-10 w-auto max-w-[220px] shrink-0 object-contain',
   subtitle,
@@ -36,14 +39,14 @@ const BrandHeader: React.FC<BrandHeaderProps> = ({
           <BrandLogo variant="full" official className={officialLogoClassName} />
         ) : (
           <>
-            <BrandLogo className={`${logoClassName} md:hidden`} />
+            <BrandLogo className={`${logoClassName} md:hidden`} officialMark={officialMark} />
             <BrandLogo variant="full" className={`${fullLogoClassName} hidden md:block`} />
           </>
         )
       ) : (
-        <BrandLogo className={logoClassName} official={officialLogo} />
+        <BrandLogo className={logoClassName} official={officialLogo} officialMark={officialMark} />
       )}
-      {/* Logo oficial já inclui o nome; não repetir "PlanoAgenda" ao lado. */}
+      {/* Logo oficial completa já inclui o nome; não repetir "PlanoAgenda" ao lado. */}
       {!officialLogo ? (
         <div className="flex min-w-0 flex-col items-start">
           <h1 className={`${titleClassName} max-w-[9.5rem] truncate sm:max-w-none`}>PlanoAgenda</h1>
