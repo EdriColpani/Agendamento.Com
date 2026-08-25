@@ -12,7 +12,7 @@ interface LoginFormProps {
   signupTo?: string;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ signupTo = '/signup' }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ signupTo = '/register-professional' }) => {
   const navigate = useNavigate();
   const { session } = useSession();
   const [email, setEmail] = useState('');
@@ -92,11 +92,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ signupTo = '/signup' }) => {
           Esqueceu sua senha?
         </Link>
       </div>
-      <div className="text-center text-sm mt-2">
-        Não tem uma conta?{' '}
-        <Link to={signupTo} className="text-primary hover:underline">
-          Cadastrar
-        </Link>
+      <div className="text-center text-sm mt-2 space-y-1">
+        <p className="text-gray-600">
+          Primeiro acesso? Cadastre a empresa antes de entrar.
+        </p>
+        <p>
+          Não tem conta ainda?{' '}
+          <Link to={signupTo} className="font-semibold text-primary hover:underline">
+            Cadastrar minha empresa
+          </Link>
+        </p>
       </div>
     </form>
   );

@@ -215,7 +215,7 @@ const LandingPage: React.FC = () => {
             </button>
           </nav>
 
-          {/* Menu de Login/Cadastro - Desktop: Botões visíveis, Mobile: Menu hamburger */}
+          {/* Ações: cadastro é o caminho principal; login só para quem já tem empresa */}
           <div className="flex items-center gap-3">
             {session ? (
               // Usuário logado: dropdown com perfil e sair (funciona em desktop e mobile)
@@ -241,32 +241,29 @@ const LandingPage: React.FC = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              // Usuário não logado: botões visíveis no desktop, menu hamburger no mobile
               <>
-                {/* Desktop: Botões visíveis */}
-                <div className="hidden md:flex items-center gap-3">
+                <div className="hidden md:flex items-center gap-2 sm:gap-3">
                   <Button
                     variant="ghost"
-                    className="!rounded-button text-gray-700 hover:text-gray-900"
+                    className="!rounded-button text-gray-600 hover:text-gray-900 text-sm"
                     onClick={() => setIsLoginChoiceModalOpen(true)}
                   >
-                    Login
+                    Já tenho conta
                   </Button>
                   <Button
                     className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-                    onClick={scrollToPlans}
+                    onClick={handleProfessionalSignup}
                   >
-                    Comece Agora
+                    Cadastrar minha empresa
                   </Button>
                 </div>
-                {/* Mobile: Menu hamburger com navegação e login */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="!rounded-button md:hidden">
                       <Menu className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuItem onClick={() => scrollToSection('inicio')}>
                       Início
                     </DropdownMenuItem>
@@ -283,11 +280,14 @@ const LandingPage: React.FC = () => {
                       Contato
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsLoginChoiceModalOpen(true)}>
-                      Login/Cadastro
+                    <DropdownMenuItem
+                      className="font-semibold text-primary focus:text-primary"
+                      onClick={handleProfessionalSignup}
+                    >
+                      Cadastrar minha empresa
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/register-professional')}>
-                      Cadastro da Empresa
+                    <DropdownMenuItem onClick={() => setIsLoginChoiceModalOpen(true)}>
+                      Já tenho conta — Entrar
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -302,6 +302,9 @@ const LandingPage: React.FC = () => {
         <div className="container mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
           {/* Texto principal */}
           <div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-primary">
+              Para donos de negócio · primeiro acesso
+            </p>
             <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight text-gray-900">
               Pare de perder dinheiro com clientes que não aparecem
             </h1>
@@ -326,18 +329,23 @@ const LandingPage: React.FC = () => {
             <div className="flex flex-wrap gap-3 items-center">
               <Button
                 className="!rounded-button px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base"
-                onClick={scrollToPlans}
+                onClick={handleProfessionalSignup}
               >
-                Começar Agora
+                Cadastrar minha empresa
               </Button>
               <Button
                 variant="outline"
                 className="!rounded-button px-6 py-3 text-sm border-gray-300 text-gray-700 hover:bg-gray-50"
-                onClick={scrollToContact}
+                onClick={scrollToPlans}
               >
-                Falar com especialista
+                Ver planos
               </Button>
             </div>
+            <p className="mt-4 max-w-xl text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">Ainda não tem conta?</span> Cadastre a empresa primeiro.
+              O botão <span className="font-semibold text-gray-800">Já tenho conta</span> no topo é só para quem
+              já finalizou o cadastro e vai entrar com e-mail e senha.
+            </p>
           </div>
 
           {/* Mock visual dos lembretes no WhatsApp */}
@@ -371,6 +379,64 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Como começar — remove dúvida entre cadastro e login */}
+      <section id="como-comecar" className="border-y border-gray-100 bg-gray-50 py-14">
+        <div className="container mx-auto px-6">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
+              Como começar no PlanoAgenda
+            </h2>
+            <p className="mt-3 text-gray-600">
+              Login não cria conta. No primeiro acesso você cadastra a empresa; só depois entra com e-mail e senha.
+            </p>
+          </div>
+          <ol className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
+            <li className="rounded-2xl border border-gray-200 bg-white p-6">
+              <span className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                1
+              </span>
+              <h3 className="text-lg font-semibold text-gray-900">Cadastre sua empresa</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Crie o perfil do negócio (dados da empresa e do responsável). É o passo obrigatório do primeiro acesso.
+              </p>
+            </li>
+            <li className="rounded-2xl border border-gray-200 bg-white p-6">
+              <span className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                2
+              </span>
+              <h3 className="text-lg font-semibold text-gray-900">Escolha e ative o plano</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Selecione o plano que combina com o tamanho da operação e conclua a adesão.
+              </p>
+            </li>
+            <li className="rounded-2xl border border-gray-200 bg-white p-6">
+              <span className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                3
+              </span>
+              <h3 className="text-lg font-semibold text-gray-900">Entre com o login</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Depois do cadastro, use <span className="font-semibold text-gray-800">Já tenho conta</span> para acessar o painel com e-mail e senha.
+              </p>
+            </li>
+          </ol>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Button
+              className="!rounded-button bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90"
+              onClick={handleProfessionalSignup}
+            >
+              Ir para o cadastro da empresa
+            </Button>
+            <button
+              type="button"
+              className="text-sm font-medium text-gray-600 underline-offset-4 hover:text-gray-900 hover:underline"
+              onClick={() => setIsLoginChoiceModalOpen(true)}
+            >
+              Já cadastrei — quero entrar
+            </button>
           </div>
         </div>
       </section>
@@ -554,7 +620,7 @@ const LandingPage: React.FC = () => {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Planos Para Profissionais</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4">
-              Escolha o plano ideal para gerenciar seu negócio e crescer sem limites.
+              Escolha o plano e avance para o <strong className="text-gray-900">cadastro da empresa</strong> — o login vem só depois.
             </p>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               <strong className="text-gray-900">Mais de 2.500 profissionais confiam em nós.</strong> Junte-se a eles e transforme seu negócio hoje mesmo.
@@ -781,9 +847,9 @@ const LandingPage: React.FC = () => {
                       
                       <Button
                         className="!rounded-button whitespace-nowrap w-full font-semibold py-2.5 text-base bg-primary text-primary-foreground hover:bg-primary/90"
-                        onClick={handleProfessionalSignup} // Redireciona para o cadastro unificado
+                        onClick={handleProfessionalSignup}
                       >
-                        Começar Agora
+                        Cadastrar empresa neste plano
                       </Button>
                     </CardContent>
                   </Card>
@@ -1065,14 +1131,29 @@ const LandingPage: React.FC = () => {
       <Dialog open={isLoginChoiceModalOpen} onOpenChange={setIsLoginChoiceModalOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl">Como você usa o PlanoAgenda?</DialogTitle>
+            <DialogTitle className="text-xl">Entrar na sua conta</DialogTitle>
             <DialogDescription className="text-left text-base leading-relaxed text-gray-600">
-              Escolha abaixo o tipo de negócio que melhor descreve sua operação. Em ambos os casos você usa o{' '}
-              <strong>mesmo login</strong> (e-mail e senha); a diferença é a <strong>tela e as dicas</strong> alinhadas ao
-              seu contexto. Depois de entrar, o painel segue o <strong>plano</strong> e o <strong>segmento da sua empresa</strong>{' '}
-              (serviços ou quadras).
+              Este acesso é para quem <strong>já cadastrou a empresa</strong> e vai entrar com e-mail e senha.
+              Escolha o perfil de uso só para abrir a tela certa; os recursos do sistema dependem do plano e do
+              segmento da empresa.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <p className="font-semibold">Ainda não tem cadastro?</p>
+            <p className="mt-1 text-amber-900/90">
+              Não use o login no primeiro acesso. Cadastre a empresa primeiro e só depois entre com a conta criada.
+            </p>
+            <Button
+              className="mt-3 !rounded-button bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+              onClick={() => {
+                setIsLoginChoiceModalOpen(false);
+                handleProfessionalSignup();
+              }}
+            >
+              Cadastrar minha empresa
+            </Button>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <button
@@ -1090,7 +1171,7 @@ const LandingPage: React.FC = () => {
                 Para salões, clínicas, estética e negócios que atendem por <strong>serviço e profissional</strong>: agenda
                 por colaborador, serviços, clientes e lembretes no fluxo tradicional.
               </p>
-              <span className="mt-4 text-sm font-medium text-primary">Continuar para o login padrão →</span>
+              <span className="mt-4 text-sm font-medium text-primary">Entrar no login padrão →</span>
             </button>
 
             <button
@@ -1108,7 +1189,7 @@ const LandingPage: React.FC = () => {
                 Para <strong>arenas, quadras esportivas e locais de reserva por horário</strong>: entrada com visual e
                 mensagens pensados para <strong>gestão de quadras</strong>, reservas e operação do módulo Arena.
               </p>
-              <span className="mt-4 text-sm font-medium text-primary">Continuar para o login Arena →</span>
+              <span className="mt-4 text-sm font-medium text-primary">Entrar no login Arena →</span>
             </button>
           </div>
 

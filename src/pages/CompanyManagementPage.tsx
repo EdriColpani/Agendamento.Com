@@ -48,7 +48,7 @@ const CompanyManagementPage: React.FC = () => {
           current_subscription:company_subscriptions(
             end_date,
             status,
-            subscription_plans(name)
+            subscription_plans!company_subscriptions_plan_id_fkey(name)
           )
         `)
         .order('created_at', { ascending: false });
@@ -69,7 +69,13 @@ const CompanyManagementPage: React.FC = () => {
 
       setCompanies(processedCompanies);
     } catch (error: any) {
-      console.error('Error fetching companies:', error);
+      const details = {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      };
+      console.error('Error fetching companies:', details, error);
       showOperationError('Erro ao carregar empresas.', error);
     } finally {
       setLoading(false);
