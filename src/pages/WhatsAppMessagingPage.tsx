@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from '@/integrations/supabase/client';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { showError, showSuccess } from '@/utils/toast';
-import { Loader2, Plus, Edit, Trash2, MessageSquare, Settings, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Plus, Edit, Trash2, MessageSquare, Settings, Clock, CheckCircle2, XCircle, Smartphone } from 'lucide-react';
+import { WhatsAppConnectionCard } from '@/components/WhatsAppConnectionCard';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -472,8 +473,12 @@ const WhatsAppMessagingPage: React.FC = () => {
         </Card>
       )}
 
-      <Tabs defaultValue="templates" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="connection" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          <TabsTrigger value="connection">
+            <Smartphone className="h-4 w-4 mr-2" />
+            Conexão
+          </TabsTrigger>
           <TabsTrigger value="templates">
             <MessageSquare className="h-4 w-4 mr-2" />
             Templates
@@ -487,6 +492,11 @@ const WhatsAppMessagingPage: React.FC = () => {
             Provedor
           </TabsTrigger>
         </TabsList>
+
+        {/* Aba Conexão WhatsApp (Evolution) */}
+        <TabsContent value="connection" className="space-y-4">
+          <WhatsAppConnectionCard companyId={primaryCompanyId} disabled={!whatsappEnabled} />
+        </TabsContent>
 
         {/* Aba Templates */}
         <TabsContent value="templates" className="space-y-4">

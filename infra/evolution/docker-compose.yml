@@ -1,0 +1,84 @@
+# Evolution API Community — PlanoAgenda (self-hosted)
+# Versão pinada: v2.3.7 (tag Docker Hub; release Community)
+# NÃO usar plano comercial / SaaS gerenciado nesta etapa.
+#
+# Uso:
+#   1. cp .env.example .env
+#   2. Editar AUTHENTICATION_API_KEY e senhas
+#   3. docker compose -f docker-compose.yml --env-file .env up -d
+#
+# Portas: API 8080 (localhost), Manager 3000 (opcional)
+
+services:
+  evolution-api:
+    container_name: planoagenda_evolution_api
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    depends_on:
+      - evolution-redis
+      - evolution-postgres
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    env_file:
+      - .env
+    networks:
+      - evolution-net
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # UI opcional (Manager Community). Remova se não precisar.
+  evolution-frontend:
+    container_name: planoagenda_evolution_frontend
+    image: evoapicloud/evolution-manager:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
+    networks:
+      - evolution-net
+    profiles:
+      - manager
+
+  evolution-redis:
+    container_name: planoagenda_evolution_redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --port 6379 --appendonly yes
+    volumes:
+      - evolution_redis:/data
+    networks:
+      evolution-net:
+        aliases:
+          - evolution-redis
+    expose:
+      - "6379"
+
+  evolution-postgres:
+    container_name: planoagenda_evolution_postgres
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE:-evolution_db}
+      POSTGRES_USER: ${POSTGRES_USERNAME:-evolution}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - evolution_postgres:/var/lib/postgresql/data
+    networks:
+      - evolution-net
+    expose:
+      - "5432"
+
+volumes:
+  evolution_instances:
+  evolution_redis:
+  evolution_postgres:
+
+networks:
+  evolution-net:
+    name: planoagenda-evolution-net
+    driver: bridge

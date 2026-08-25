@@ -83,6 +83,566 @@ type MessageSendLogRow = {
   status: 'PENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
 };
 
+// =============================================================================
+// FASE 2/3 — Abstração WhatsAppProvider
+// Default produção: external (LiotPRO).
+// Evolution Community self-hosted: WHATSAPP_PROVIDER=evolution + EVOLUTION_* secrets.
+// =============================================================================
+
+type WhatsAppTransportName = 'external' | 'evolution';
+
+type WhatsAppConnectionStatus =
+  | 'CONNECTING'
+  | 'CONNECTED'
+  | 'DISCONNECTED'
+  | 'ERROR'
+  | 'UNKNOWN'
+  | 'UNSUPPORTED';
+
+type SendTextMessageInput = {
+  phone: string;
+  message: string;
+  companyId: string;
+  notificationId: string;
+  appointmentId: string | null;
+  /** Config HTTP Liot/legado — obrigatório quando transport = external */
+  messagingConfig?: MessagingProviderRow | null;
+};
+
+type SendTextMessageResult = {
+  ok: boolean;
+  status: number;
+  responseBody: any;
+  transport: WhatsAppTransportName;
+};
+
+interface WhatsAppProvider {
+  readonly name: WhatsAppTransportName;
+  connect(companyId: string): Promise<{ ok: boolean; detail?: unknown }>;
+  disconnect(companyId: string): Promise<{ ok: boolean; detail?: unknown }>;
+  getConnectionStatus(companyId: string): Promise<WhatsAppConnectionStatus>;
+  getQRCode(companyId: string): Promise<{ qr: string | null; error?: string }>;
+  getInstanceStatus(companyId: string): Promise<{ status: WhatsAppConnectionStatus; detail?: unknown }>;
+  sendTextMessage(input: SendTextMessageInput): Promise<SendTextMessageResult>;
+}
+
+function resolveWhatsAppTransportName(): WhatsAppTransportName {
+  const raw = (Deno.env.get('WHATSAPP_PROVIDER') || 'external').trim().toLowerCase();
+  if (raw === 'evolution') return 'evolution';
+  return 'external';
+}
+
+/** Factory: a fila/worker só conhecem WhatsAppProvider, não o fornecedor concreto. */
+function createWhatsAppProvider(
+  transport?: WhatsAppTransportName,
+  supabaseAdmin?: ReturnType<typeof createClient>,
+): WhatsAppProvider {
+  const name = transport ?? resolveWhatsAppTransportName();
+  if (name === 'evolution') {
+    return new EvolutionWhatsAppProvider(supabaseAdmin);
+  }
+  return new ExternalWhatsAppProvider();
+}
+
+/**
+ * Encapsula a API externa atual (LiotPRO via messaging_providers).
+ * Comportamento de envio idêntico ao sendViaProvider legado.
+ */
+class ExternalWhatsAppProvider implements WhatsAppProvider {
+  readonly name: WhatsAppTransportName = 'external';
+
+  async connect(_companyId: string) {
+    return {
+      ok: false,
+      detail: {
+        message: 'Conexão gerenciada no painel do provedor externo (LiotPRO).',
+        status: 'UNSUPPORTED' as WhatsAppConnectionStatus,
+      },
+    };
+  }
+
+  async disconnect(_companyId: string) {
+    return {
+      ok: false,
+      detail: {
+        message: 'Desconexão gerenciada no painel do provedor externo (LiotPRO).',
+        status: 'UNSUPPORTED' as WhatsAppConnectionStatus,
+      },
+    };
+  }
+
+  async getConnectionStatus(_companyId: string): Promise<WhatsAppConnectionStatus> {
+    return 'UNKNOWN';
+  }
+
+  async getQRCode(_companyId: string) {
+    return { qr: null, error: 'QR Code não aplicável ao provider external (LiotPRO).' };
+  }
+
+  async getInstanceStatus(companyId: string) {
+    return {
+      status: await this.getConnectionStatus(companyId),
+      detail: { managedBy: 'external_panel' },
+    };
+  }
+
+  async sendTextMessage(input: SendTextMessageInput): Promise<SendTextMessageResult> {
+    const provider = input.messagingConfig;
+    if (!provider) {
+      return {
+        ok: false,
+        status: 0,
+        transport: this.name,
+        responseBody: {
+          error: 'messagingConfig ausente para ExternalWhatsAppProvider',
+          type: 'MISSING_MESSAGING_CONFIG',
+        },
+      };
+    }
+
+    const result = await sendViaExternalHttpProvider(provider, input.phone, input.message);
+    return {
+      ok: result.ok,
+      status: result.status,
+      responseBody: result.responseBody,
+      transport: this.name,
+    };
+  }
+}
+
+type WhatsAppInstanceRow = {
+  instance_name: string;
+  status: string;
+  connected_phone: string | null;
+};
+
+/**
+ * Evolution API Community self-hosted (Baileys via Evolution).
+ * Fase 4: instance_name e status vêm de public.whatsapp_instances (1 por empresa).
+ */
+class EvolutionWhatsAppProvider implements WhatsAppProvider {
+  readonly name: WhatsAppTransportName = 'evolution';
+
+  constructor(private readonly supabaseAdmin?: ReturnType<typeof createClient>) {}
+
+  private apiUrl(): string {
+    return (Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/+$/, '');
+  }
+
+  private apiKey(): string {
+    return Deno.env.get('EVOLUTION_API_KEY') || '';
+  }
+
+  /** Fallback legado (pré-migration) — não usar em produção multi-tenant. */
+  private legacyInstanceNameForCompany(companyId: string): string {
+    const prefix = (Deno.env.get('EVOLUTION_INSTANCE_PREFIX') || 'planoagenda')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .toLowerCase() || 'planoagenda';
+    const safeCompany = companyId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 32);
+    return `${prefix}-${safeCompany || 'unknown'}`;
+  }
+
+  private async loadInstance(companyId: string): Promise<WhatsAppInstanceRow | null> {
+    if (!this.supabaseAdmin) {
+      console.warn('[evolution] supabaseAdmin ausente; usando nome legado (sem whatsapp_instances)');
+      return {
+        instance_name: this.legacyInstanceNameForCompany(companyId),
+        status: 'UNKNOWN',
+        connected_phone: null,
+      };
+    }
+
+    const { data, error } = await this.supabaseAdmin
+      .from<WhatsAppInstanceRow>('whatsapp_instances')
+      .select('instance_name, status, connected_phone')
+      .eq('company_id', companyId)
+      .eq('provider', 'evolution')
+      .maybeSingle();
+
+    if (error) {
+      console.error('[evolution] erro ao carregar whatsapp_instances:', error);
+      return null;
+    }
+
+    return data;
+  }
+
+  private async touchActivity(companyId: string) {
+    if (!this.supabaseAdmin) return;
+    await this.supabaseAdmin
+      .from('whatsapp_instances')
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq('company_id', companyId);
+  }
+
+  private assertConfig(): { ok: true } | { ok: false; error: string } {
+    if (!this.apiUrl()) {
+      return { ok: false, error: 'EVOLUTION_API_URL não configurada' };
+    }
+    if (!this.apiKey()) {
+      return { ok: false, error: 'EVOLUTION_API_KEY não configurada' };
+    }
+    return { ok: true };
+  }
+
+  private headers(): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+      apikey: this.apiKey(),
+    };
+  }
+
+  private async request(
+    method: string,
+    path: string,
+    body?: Record<string, unknown>,
+  ): Promise<{ ok: boolean; status: number; responseBody: any }> {
+    const url = `${this.apiUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+    console.log(`[evolution] ${method} ${url}`);
+
+    const res = await fetch(url, {
+      method,
+      headers: this.headers(),
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    let responseBody: any = null;
+    try {
+      responseBody = await res.json();
+    } catch {
+      responseBody = await res.text().catch(() => null);
+    }
+
+    console.log(`[evolution] status=${res.status} ok=${res.ok}`);
+    return { ok: res.ok, status: res.status, responseBody };
+  }
+
+  /** Health/auth: lista instâncias com a API key global. */
+  async healthCheck(): Promise<{ ok: boolean; status: number; detail?: unknown }> {
+    const cfg = this.assertConfig();
+    if (!cfg.ok) {
+      return { ok: false, status: 0, detail: { error: cfg.error, type: 'EVOLUTION_CONFIG_MISSING' } };
+    }
+
+    try {
+      const result = await this.request('GET', '/instance/fetchInstances');
+      return {
+        ok: result.ok || result.status === 200,
+        status: result.status,
+        detail: result.responseBody,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        status: 0,
+        detail: {
+          error: e instanceof Error ? e.message : String(e),
+          type: 'EVOLUTION_HEALTH_EXCEPTION',
+        },
+      };
+    }
+  }
+
+  async connect(companyId: string) {
+    const cfg = this.assertConfig();
+    if (!cfg.ok) {
+      return { ok: false, detail: { error: cfg.error, type: 'EVOLUTION_CONFIG_MISSING' } };
+    }
+
+    const row = await this.loadInstance(companyId);
+    if (!row) {
+      return { ok: false, detail: { error: 'Instância WhatsApp não configurada para esta empresa', type: 'INSTANCE_NOT_FOUND' } };
+    }
+
+    const instanceName = row.instance_name;
+
+    try {
+      // Cria instância Baileys (idempotente o suficiente: se já existir, Evolution pode retornar erro tratável)
+      const created = await this.request('POST', '/instance/create', {
+        instanceName,
+        integration: 'WHATSAPP-BAILEYS',
+        qrcode: true,
+      });
+
+      // Se já existe, tenta só obter QR / conectar
+      if (!created.ok) {
+        const connect = await this.request('GET', `/instance/connect/${encodeURIComponent(instanceName)}`);
+        return {
+          ok: connect.ok,
+          detail: {
+            instanceName,
+            create: created.responseBody,
+            connect: connect.responseBody,
+          },
+        };
+      }
+
+      return {
+        ok: true,
+        detail: {
+          instanceName,
+          create: created.responseBody,
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        detail: {
+          error: e instanceof Error ? e.message : String(e),
+          type: 'EVOLUTION_CONNECT_EXCEPTION',
+          instanceName,
+        },
+      };
+    }
+  }
+
+  async disconnect(companyId: string) {
+    const cfg = this.assertConfig();
+    if (!cfg.ok) {
+      return { ok: false, detail: { error: cfg.error, type: 'EVOLUTION_CONFIG_MISSING' } };
+    }
+
+    const row = await this.loadInstance(companyId);
+    if (!row) {
+      return { ok: false, detail: { error: 'Instância WhatsApp não configurada', type: 'INSTANCE_NOT_FOUND' } };
+    }
+
+    const instanceName = row.instance_name;
+
+    try {
+      const result = await this.request(
+        'DELETE',
+        `/instance/logout/${encodeURIComponent(instanceName)}`,
+      );
+      return { ok: result.ok, detail: { instanceName, response: result.responseBody } };
+    } catch (e) {
+      return {
+        ok: false,
+        detail: {
+          error: e instanceof Error ? e.message : String(e),
+          type: 'EVOLUTION_DISCONNECT_EXCEPTION',
+          instanceName,
+        },
+      };
+    }
+  }
+
+  private mapEvolutionState(raw: unknown): WhatsAppConnectionStatus {
+    const state = String(raw || '').toLowerCase();
+    if (state === 'open' || state === 'connected') return 'CONNECTED';
+    if (state === 'connecting' || state.includes('qr')) return 'CONNECTING';
+    if (state === 'close' || state === 'closed' || state.includes('disconnect')) {
+      return 'DISCONNECTED';
+    }
+    if (state.includes('error')) return 'ERROR';
+    return 'UNKNOWN';
+  }
+
+  async getConnectionStatus(companyId: string): Promise<WhatsAppConnectionStatus> {
+    const row = await this.loadInstance(companyId);
+    if (row?.status && row.status !== 'UNKNOWN') {
+      return row.status as WhatsAppConnectionStatus;
+    }
+    const status = await this.getInstanceStatus(companyId);
+    return status.status;
+  }
+
+  async getQRCode(companyId: string) {
+    const cfg = this.assertConfig();
+    if (!cfg.ok) {
+      return { qr: null, error: cfg.error };
+    }
+
+    const row = await this.loadInstance(companyId);
+    if (!row) {
+      return { qr: null, error: 'Instância WhatsApp não configurada para esta empresa' };
+    }
+
+    const instanceName = row.instance_name;
+
+    try {
+      const result = await this.request('GET', `/instance/connect/${encodeURIComponent(instanceName)}`);
+      const body = result.responseBody;
+      const base64 =
+        body?.base64 ||
+        body?.qrcode?.base64 ||
+        body?.instance?.qrcode?.base64 ||
+        null;
+      const code = body?.code || body?.qrcode?.code || null;
+
+      if (base64 || code) {
+        return { qr: base64 || code };
+      }
+
+      return {
+        qr: null,
+        error: result.ok
+          ? 'QR Code não disponível (instância já conectada ou resposta sem qrcode).'
+          : `Falha ao obter QR (${result.status})`,
+      };
+    } catch (e) {
+      return {
+        qr: null,
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
+  }
+
+  async getInstanceStatus(companyId: string) {
+    const cfg = this.assertConfig();
+    if (!cfg.ok) {
+      return {
+        status: 'ERROR' as WhatsAppConnectionStatus,
+        detail: { error: cfg.error, type: 'EVOLUTION_CONFIG_MISSING' },
+      };
+    }
+
+    const row = await this.loadInstance(companyId);
+    if (!row) {
+      return {
+        status: 'ERROR' as WhatsAppConnectionStatus,
+        detail: { error: 'Instância WhatsApp não configurada', type: 'INSTANCE_NOT_FOUND' },
+      };
+    }
+
+    const instanceName = row.instance_name;
+
+    try {
+      const result = await this.request(
+        'GET',
+        `/instance/connectionState/${encodeURIComponent(instanceName)}`,
+      );
+      const state =
+        result.responseBody?.instance?.state ||
+        result.responseBody?.state ||
+        result.responseBody?.status ||
+        null;
+
+      return {
+        status: result.ok ? this.mapEvolutionState(state) : 'ERROR',
+        detail: {
+          instanceName,
+          dbStatus: row.status,
+          rawState: state,
+          response: result.responseBody,
+          httpStatus: result.status,
+        },
+      };
+    } catch (e) {
+      return {
+        status: 'ERROR' as WhatsAppConnectionStatus,
+        detail: {
+          error: e instanceof Error ? e.message : String(e),
+          type: 'EVOLUTION_STATUS_EXCEPTION',
+          instanceName,
+        },
+      };
+    }
+  }
+
+  async sendTextMessage(input: SendTextMessageInput): Promise<SendTextMessageResult> {
+    const cfg = this.assertConfig();
+    if (!cfg.ok) {
+      return {
+        ok: false,
+        status: 0,
+        transport: this.name,
+        responseBody: { error: cfg.error, type: 'EVOLUTION_CONFIG_MISSING' },
+      };
+    }
+
+    const row = await this.loadInstance(input.companyId);
+    if (!row) {
+      return {
+        ok: false,
+        status: 404,
+        transport: this.name,
+        responseBody: {
+          error: 'Instância WhatsApp não configurada para esta empresa',
+          type: 'INSTANCE_NOT_FOUND',
+          companyId: input.companyId,
+          notificationId: input.notificationId,
+        },
+      };
+    }
+
+    const instanceName = row.instance_name;
+    const number = input.phone.replace(/[+\s]/g, '');
+
+    if (!number || number.length < 10) {
+      return {
+        ok: false,
+        status: 400,
+        transport: this.name,
+        responseBody: { error: 'Telefone inválido para Evolution', type: 'INVALID_PHONE' },
+      };
+    }
+
+    try {
+      if (row.status !== 'CONNECTED') {
+        return {
+          ok: false,
+          status: 409,
+          transport: this.name,
+          responseBody: {
+            error: 'Instância Evolution não conectada',
+            type: 'EVOLUTION_NOT_CONNECTED',
+            instanceName,
+            connectionStatus: row.status,
+            notificationId: input.notificationId,
+            appointmentId: input.appointmentId,
+          },
+        };
+      }
+
+      const sanitizedText = input.message
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+
+      // Payload Community v2.x (Baileys): number + text
+      const result = await this.request(
+        'POST',
+        `/message/sendText/${encodeURIComponent(instanceName)}`,
+        {
+          number,
+          text: sanitizedText,
+        },
+      );
+
+      await this.touchActivity(input.companyId);
+
+      return {
+        ok: result.ok,
+        status: result.status,
+        transport: this.name,
+        responseBody: {
+          instanceName,
+          notificationId: input.notificationId,
+          appointmentId: input.appointmentId,
+          companyId: input.companyId,
+          ...(typeof result.responseBody === 'object' && result.responseBody
+            ? result.responseBody
+            : { body: result.responseBody }),
+        },
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        status: 0,
+        transport: this.name,
+        responseBody: {
+          error: e instanceof Error ? e.message : String(e),
+          type: 'EVOLUTION_SEND_EXCEPTION',
+          instanceName,
+          notificationId: input.notificationId,
+        },
+      };
+    }
+  }
+}
+
 function addOffsetToDate(base: Date, value: number, unit: 'MINUTES' | 'HOURS' | 'DAYS'): Date {
   const d = new Date(base);
   const before = d.toISOString();
@@ -208,7 +768,8 @@ function applyTemplate(template: string, params: Record<string, string | undefin
   return result;
 }
 
-async function sendViaProvider(
+/** Transporte HTTP legado (LiotPRO). Usado apenas por ExternalWhatsAppProvider. */
+async function sendViaExternalHttpProvider(
   provider: MessagingProviderRow,
   toPhone: string,
   text: string,
@@ -328,21 +889,21 @@ async function sendViaProvider(
     }
   }
 
-  console.log(`sendViaProvider: Preparando requisição para: ${provider.base_url}`);
-  console.log(`sendViaProvider: Telefone original: ${toPhone}`);
-  console.log(`sendViaProvider: Telefone formatado para API (sem +): ${formattedPhoneForAPI}`);
-  console.log(`sendViaProvider: Método HTTP: ${provider.http_method}`);
-  console.log(`sendViaProvider: Headers: ${JSON.stringify(headers)}`);
-  console.log(`sendViaProvider: Content-Type para body: ${contentType}`);
+  console.log(`[external] Preparando requisição para: ${provider.base_url}`);
+  console.log(`[external]  Telefone original: ${toPhone}`);
+  console.log(`[external]  Telefone formatado para API (sem +): ${formattedPhoneForAPI}`);
+  console.log(`[external]  Método HTTP: ${provider.http_method}`);
+  console.log(`[external]  Headers: ${JSON.stringify(headers)}`);
+  console.log(`[external]  Content-Type para body: ${contentType}`);
 
   // Se o body for FormData, não podemos logar diretamente antes de enviar
   // mas podemos logar os campos que estão sendo adicionados ao formData
   if (contentType === 'form-data') {
-    console.log(`sendViaProvider: Body como FormData (campos processados):`, 
+    console.log(`[external]  Body como FormData (campos processados):`, 
       Object.fromEntries((body as FormData).entries())
     );
   } else {
-    console.log(`sendViaProvider: Body como JSON:`, body);
+    console.log(`[external]  Body como JSON:`, body);
   }
 
   const res = await fetch(provider.base_url, {
@@ -358,9 +919,9 @@ async function sendViaProvider(
     responseBody = await res.text().catch(() => null);
   }
 
-  console.log(`sendViaProvider: Resposta da API - Status: ${res.status}`);
-  console.log(`sendViaProvider: Resposta da API - OK: ${res.ok}`);
-  console.log(`sendViaProvider: Resposta da API - Body:`, responseBody);
+  console.log(`[external] Resposta da API - Status: ${res.status}`);
+  console.log(`[external] Resposta da API - OK: ${res.ok}`);
+  console.log(`[external] Resposta da API - Body:`, responseBody);
 
   return {
     ok: res.ok,
@@ -468,6 +1029,7 @@ serve(async (req) => {
   const nowPlus5 = new Date(now.getTime() + 5 * 60 * 1000);
 
   console.log('=== whatsapp-message-scheduler INICIADO ===');
+  console.log('WHATSAPP_PROVIDER (transporte):', resolveWhatsAppTransportName());
   console.log('Timestamp (UTC):', now.toISOString());
   console.log('Timestamp (Brasília):', nowBR.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
   console.log('Janela de busca (UTC):', {
@@ -1071,6 +1633,18 @@ serve(async (req) => {
     // Reaproveitar templates map
 
     const updates: any[] = [];
+    const whatsAppTransport = createWhatsAppProvider(undefined, supabaseAdmin);
+    console.log('Transporte WhatsApp ativo nesta execução:', whatsAppTransport.name);
+    if (whatsAppTransport.name === 'evolution' && whatsAppTransport instanceof EvolutionWhatsAppProvider) {
+      const health = await whatsAppTransport.healthCheck();
+      console.log('Evolution health/auth:', {
+        ok: health.ok,
+        status: health.status,
+      });
+      if (!health.ok) {
+        console.warn('⚠️ Evolution API inacessível ou API key inválida. Envios evolution falharão até corrigir.');
+      }
+    }
 
     for (const log of pendingLogsToProcess) {
       const client = log.client_id ? clientsMap.get(log.client_id) : null;
@@ -1141,12 +1715,20 @@ serve(async (req) => {
       });
 
       try {
-        const sendResult = await sendViaProvider(provider, formattedPhone, renderedText);
+        const sendResult = await whatsAppTransport.sendTextMessage({
+          phone: formattedPhone,
+          message: renderedText,
+          companyId: log.company_id,
+          notificationId: log.id,
+          appointmentId: log.appointment_id,
+          messagingConfig: provider,
+        });
 
         // Log detalhado do resultado
         console.log(`Resultado do envio para log ${log.id}:`, {
           ok: sendResult.ok,
           status: sendResult.status,
+          transport: sendResult.transport,
           response: sendResult.responseBody,
           phone: formattedPhone,
         });
@@ -1157,11 +1739,16 @@ serve(async (req) => {
           console.error(`Verifique no painel do LiotPRO se a conexão WhatsApp está ativa e se user_id/queue_id estão corretos.`);
         }
 
+        const providerResponse =
+          sendResult.responseBody && typeof sendResult.responseBody === 'object'
+            ? { transport: sendResult.transport, ...sendResult.responseBody }
+            : { transport: sendResult.transport, body: sendResult.responseBody };
+
         updates.push({
           id: log.id,
           status: sendResult.ok ? 'SENT' : 'FAILED',
           sent_at: new Date().toISOString(),
-          provider_response: sendResult.responseBody,
+          provider_response: providerResponse,
         });
       } catch (sendError) {
         // Blindagem: uma mensagem com erro não pode abortar o lote inteiro.
