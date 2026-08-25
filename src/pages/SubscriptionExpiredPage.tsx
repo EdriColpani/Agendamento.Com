@@ -2,11 +2,11 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from 'react-router-dom';
-import { Lock, DollarSign, Clock, LogOut, Info } from 'lucide-react';
+import { Check, DollarSign, Clock, LogOut, Lock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { performSignOut } from '@/utils/auth-state';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from '@/lib/utils';
 
 export type SubscriptionBlockReason = 'expired' | 'no_subscription';
 
@@ -36,59 +36,103 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
-      <Card className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 text-center">
-        <CardHeader>
+      <Card className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 sm:p-8 text-center">
+        <CardHeader className="space-y-3 p-0 pb-4">
           <div
-            className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-              isExpired ? 'bg-red-100' : 'bg-amber-100'
-            }`}
+            className={cn(
+              'mx-auto flex h-16 w-16 items-center justify-center rounded-full',
+              isExpired ? 'bg-red-100' : 'bg-primary/10',
+            )}
           >
-            <Lock className={`h-8 w-8 ${isExpired ? 'text-red-600' : 'text-amber-600'}`} />
+            {isExpired ? (
+              <Lock className="h-8 w-8 text-red-600" />
+            ) : (
+              <DollarSign className="h-8 w-8 text-primary" />
+            )}
           </div>
           <CardTitle
-            className={`text-3xl font-bold ${isExpired ? 'text-red-600' : 'text-amber-700'}`}
+            className={cn(
+              'text-2xl font-bold sm:text-3xl',
+              isExpired ? 'text-red-600' : 'text-gray-900 dark:text-white',
+            )}
           >
-            {isExpired ? 'Assinatura expirada' : 'Nenhum plano ativo'}
+            {isExpired ? 'Assinatura expirada' : 'Próximo passo: escolha seu plano'}
           </CardTitle>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-base text-gray-600 dark:text-gray-400">
             {isExpired
               ? 'O acesso às funções de gestão desta empresa foi interrompido após a data de vigência.'
-              : 'É necessário assinar um plano para usar o sistema completo (dashboard, clientes, agenda, relatórios e demais menus).'}
+              : 'Sua empresa já está cadastrada. Para liberar o sistema, selecione e ative um plano agora.'}
           </p>
         </CardHeader>
-        <CardContent className="space-y-4 text-left">
-          <Alert className="border-primary/30 bg-primary/5 text-left">
-            <Info className="h-4 w-4" />
-            <AlertTitle className="text-sm">Menu lateral</AlertTitle>
-            <AlertDescription className="text-sm text-gray-700 dark:text-gray-300">
-              Até existir um plano ativo, a barra lateral mostra apenas <strong>Planos</strong>. Após a confirmação
-              do pagamento, o restante do acesso é liberado automaticamente.
-            </AlertDescription>
-          </Alert>
 
-          {isExpired && endDate && (
-            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2">
-                <Clock className="h-4 w-4 shrink-0" />
-                Término da vigência:{' '}
-                <span className="font-bold text-red-600">{formattedEndDate}</span>
-              </p>
-            </div>
+        <CardContent className="space-y-5 p-0 text-left">
+          {!isExpired && (
+            <ol className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/40">
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                  <Check className="h-4 w-4" aria-hidden />
+                </span>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">1. Cadastro da empresa</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Concluído</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                  2
+                </span>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">2. Escolher e ativar o plano</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Você está nesta etapa — é obrigatória para usar o sistema.
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3 opacity-70">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-sm font-bold text-gray-500 dark:border-gray-600 dark:bg-gray-800">
+                  3
+                </span>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">3. Usar o sistema completo</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Após o pagamento, dashboard, agenda, clientes e demais menus liberam sozinhos.
+                  </p>
+                </div>
+              </li>
+            </ol>
           )}
 
-          <p className="text-gray-700 dark:text-gray-300 text-sm">
-            {isExpired
-              ? 'Renove o plano para reativar o acesso. Você pode voltar a usar todas as funções logo após a aprovação do pagamento.'
-              : 'Escolha um plano na próxima tela e conclua o pagamento. Quando a assinatura estiver ativa, não será preciso fazer mais nada: os menus passam a aparecer sozinhos.'}
-          </p>
+          {isExpired && (
+            <>
+              {endDate && (
+                <div className="rounded-lg bg-gray-50 p-4 text-center dark:bg-gray-700">
+                  <p className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Clock className="h-4 w-4 shrink-0" />
+                    Término da vigência:{' '}
+                    <span className="font-bold text-red-600">{formattedEndDate}</span>
+                  </p>
+                </div>
+              )}
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Renove o plano para reativar o acesso. Você pode voltar a usar todas as funções logo após a
+                aprovação do pagamento. Enquanto isso, o menu lateral mostra apenas <strong>Planos</strong>.
+              </p>
+            </>
+          )}
 
-          <div className="flex flex-col gap-2 pt-2">
+          {!isExpired && (
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              Até o plano ficar ativo, a barra lateral mostra só <strong>Planos</strong>. Isso é esperado.
+            </p>
+          )}
+
+          <div className="flex flex-col gap-2 pt-1">
             <Button
-              className="w-full !rounded-button whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-2.5 text-base"
+              className="w-full !rounded-button whitespace-nowrap bg-primary py-2.5 text-base font-semibold text-primary-foreground hover:bg-primary/90"
               onClick={() => navigate('/planos')}
             >
-              <DollarSign className="h-5 w-5 mr-2" />
-              Ir para planos
+              <DollarSign className="mr-2 h-5 w-5" />
+              {isExpired ? 'Renovar plano' : 'Escolher meu plano agora'}
             </Button>
             <Button
               variant="outline"
@@ -104,7 +148,7 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
               className="w-full text-gray-500 dark:text-gray-400"
               onClick={handleLogout}
             >
-              <LogOut className="h-4 w-4 mr-2" />
+              <LogOut className="mr-2 h-4 w-4" />
               Sair da conta
             </Button>
           </div>

@@ -33,7 +33,7 @@ const AuthPage: React.FC = () => {
     if (location.pathname === '/forgot-password') {
       return <ForgotPasswordForm />;
     }
-    return <LoginForm />;
+    return <LoginForm signupTo="/register-professional" />;
   };
 
   return (
