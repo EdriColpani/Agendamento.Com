@@ -42,7 +42,12 @@ const AuthPage: React.FC = () => {
         <CardHeader className="relative flex flex-row items-center justify-center">
           <div className="flex flex-col items-center w-full">
             <div className="mb-4">
-              <BrandHeader to="/" titleClassName="text-3xl font-bold text-center text-gray-900 dark:text-white" />
+              <BrandHeader
+                to="/"
+                officialMark
+                logoClassName="h-12 w-12 shrink-0"
+                titleClassName="text-3xl font-bold text-center text-gray-900 dark:text-white"
+              />
             </div>
             {/* Título da página baseado na rota */}
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mt-2">
