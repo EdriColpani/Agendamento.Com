@@ -12,8 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from '@/integrations/supabase/client';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { showError, showSuccess } from '@/utils/toast';
-import { Loader2, Plus, Edit, Trash2, MessageSquare, Settings, Clock, CheckCircle2, XCircle, Smartphone } from 'lucide-react';
-import { WhatsAppConnectionCard } from '@/components/WhatsAppConnectionCard';
+import { Loader2, Plus, Edit, Trash2, MessageSquare, Settings, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +23,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+/** Fase 5 Evolution — oculta até infra online estável. Ver docs/WHATSAPP_CHECKPOINT.md */
+const SHOW_WHATSAPP_CONNECTION_TAB = false;
 
 interface MessageKind {
   id: string;
@@ -473,12 +475,13 @@ const WhatsAppMessagingPage: React.FC = () => {
         </Card>
       )}
 
-      <Tabs defaultValue="connection" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-          <TabsTrigger value="connection">
-            <Smartphone className="h-4 w-4 mr-2" />
-            Conexão
-          </TabsTrigger>
+      <Tabs defaultValue="templates" className="w-full">
+        <TabsList className={`grid w-full ${SHOW_WHATSAPP_CONNECTION_TAB ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3'}`}>
+          {SHOW_WHATSAPP_CONNECTION_TAB && (
+            <TabsTrigger value="connection">
+              Conexão
+            </TabsTrigger>
+          )}
           <TabsTrigger value="templates">
             <MessageSquare className="h-4 w-4 mr-2" />
             Templates
@@ -493,10 +496,11 @@ const WhatsAppMessagingPage: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Aba Conexão WhatsApp (Evolution) */}
-        <TabsContent value="connection" className="space-y-4">
-          <WhatsAppConnectionCard companyId={primaryCompanyId} disabled={!whatsappEnabled} />
-        </TabsContent>
+        {SHOW_WHATSAPP_CONNECTION_TAB && (
+          <TabsContent value="connection" className="space-y-4">
+            {/* WhatsAppConnectionCard — reativar com SHOW_WHATSAPP_CONNECTION_TAB */}
+          </TabsContent>
+        )}
 
         {/* Aba Templates */}
         <TabsContent value="templates" className="space-y-4">

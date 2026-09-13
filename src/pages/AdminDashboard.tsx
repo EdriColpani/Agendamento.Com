@@ -263,6 +263,15 @@ const AdminDashboard: React.FC = () => {
           />
 
           <ManagementCard
+            title="Métricas Trial"
+            description="Funil teste grátis: cadastros, conversão pago, WhatsApp configurado e trials expirados sem assinar."
+            icon={<BarChart className="h-6 w-6 text-emerald-600" />}
+            buttonText="Abrir métricas trial"
+            buttonColor="bg-emerald-600 hover:bg-emerald-700"
+            onClick={() => navigate('/admin-dashboard/metricas-trial')}
+          />
+
+          <ManagementCard
             title="Operações de Assinatura"
             description="Monitore trocas de plano, falhas, retries e execute ações operacionais com auditoria."
             icon={<BarChart className="h-6 w-6 text-amber-600" />}
@@ -445,9 +454,9 @@ const AdminDashboard: React.FC = () => {
 
           <ManagementCard
             title="Imagens do login Arena"
-            description="Envie as quatro fotos exibidas no painel esquerdo da página pública /arena (antes do login)."
+            description="Envie as quatro fotos exibidas no painel esquerdo da página /arenalogin."
             icon={<ImageIcon className="h-6 w-6 text-teal-600" />}
-            buttonText="Gerenciar imagens /arena"
+            buttonText="Gerenciar imagens /arenalogin"
             buttonColor="bg-teal-600 hover:bg-teal-700"
             onClick={() => navigate('/admin-dashboard/arena-login-imagens')}
           />

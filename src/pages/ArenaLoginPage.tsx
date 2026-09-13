@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import LoginForm from '@/components/LoginForm';
-import {
-  Dumbbell,
-  Goal,
-  Sparkles,
-  Volleyball,
-} from 'lucide-react';
+import { Dumbbell, Goal, Sparkles, Volleyball } from 'lucide-react';
 import { fetchArenaLoginMarketingPublic } from '@/services/arenaLoginMarketingService';
 import BrandLogo from '@/components/brand/BrandLogo';
 import planoArenaLogo from '@/assets/brand/plano-arena-logo.png';
 import {
+  ARENA_LANDING_PATH,
   ARENA_REGISTER_PROFESSIONAL_URL,
   persistArenaRegistrationIntent,
 } from '@/utils/arenaRegistration';
@@ -21,7 +17,6 @@ const marketingLines = [
   { lead: 'com gestão simples do', highlight: 'seu esporte!' },
 ];
 
-/** Paleta de teste (logo PlanoAgenda): azul vivo → teal; marinho para textos. */
 const brand = {
   navy: '#0c2340',
   blue: '#0066ff',
@@ -32,7 +27,6 @@ const brand = {
 const ArenaLoginPage: React.FC = () => {
   const [slotUrls, setSlotUrls] = useState<(string | null)[]>([null, null, null, null]);
   const fallbackIcons = [Volleyball, Goal, Dumbbell, Sparkles] as const;
-  /** Slots cuja imagem falhou ao carregar — mostra ícone em vez de ícone quebrado. */
   const [imgFailed, setImgFailed] = useState<Record<number, true>>({});
 
   useEffect(() => {
@@ -53,7 +47,6 @@ const ArenaLoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0c2340]">
-      {/* Painel marketing — gradiente marca (azul → teal), alinhado ao logo PlanoAgenda */}
       <aside
         className="relative flex min-h-[220px] flex-1 flex-col justify-between overflow-hidden px-6 py-8 text-white md:min-h-screen md:max-w-[50%] md:px-10 md:py-12"
         style={{
@@ -115,7 +108,6 @@ const ArenaLoginPage: React.FC = () => {
         </div>
       </aside>
 
-      {/* Formulário — mesmo LoginForm de /login; cores só nesta página (seletores abaixo) */}
       <main className="flex flex-1 flex-col items-center justify-center bg-slate-50 px-4 py-10 dark:bg-[#0f172a] md:min-h-screen md:px-8">
         <div className="w-full max-w-md space-y-8">
           <div className="flex flex-col items-center text-center">
@@ -132,7 +124,7 @@ const ArenaLoginPage: React.FC = () => {
           </div>
 
           <Link
-            to={ARENA_REGISTER_PROFESSIONAL_URL}
+            to={`${ARENA_LANDING_PATH}#plans-section`}
             onClick={persistArenaRegistrationIntent}
             className="group block w-full rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-emerald-50 px-5 py-4 text-center shadow-sm transition hover:border-teal-300 hover:shadow-md dark:border-teal-800 dark:from-teal-950/40 dark:via-slate-900 dark:to-emerald-950/30"
           >

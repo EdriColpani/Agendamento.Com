@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { fetchEffectiveSubscription } from '@/utils/effectiveSubscription';
 
 /**
  * Verifica se a empresa tem acesso ao menu WhatsApp através do plano ativo
@@ -12,21 +13,9 @@ export async function checkWhatsAppMenuAccess(
 ): Promise<boolean> {
   try {
     // 1. Buscar plano ativo da empresa
-    const { data: subscriptionData, error: subError } = await supabase
-      .from('company_subscriptions')
-      .select('plan_id')
-      .eq('company_id', companyId)
-      .eq('status', 'active')
-      .order('start_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const subscriptionData = await fetchEffectiveSubscription(supabase, companyId);
 
-    if (subError && subError.code !== 'PGRST116') {
-      console.error('[checkWhatsAppMenuAccess] Erro ao buscar assinatura:', subError);
-      return false;
-    }
-
-    if (!subscriptionData || !subscriptionData.plan_id) {
+    if (!subscriptionData?.plan_id) {
       console.warn('[checkWhatsAppMenuAccess] Empresa sem plano ativo:', companyId);
       return false;
     }

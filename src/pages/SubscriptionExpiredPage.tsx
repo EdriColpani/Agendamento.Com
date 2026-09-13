@@ -8,7 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { performSignOut } from '@/utils/auth-state';
 import { cn } from '@/lib/utils';
 
-export type SubscriptionBlockReason = 'expired' | 'no_subscription';
+export type SubscriptionBlockReason = 'expired' | 'no_subscription' | 'trial_expired';
 
 interface SubscriptionExpiredPageProps {
   endDate: string | null;
@@ -19,6 +19,8 @@ interface SubscriptionExpiredPageProps {
 const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDate, reason }) => {
   const navigate = useNavigate();
   const isExpired = reason === 'expired';
+  const isTrialExpired = reason === 'trial_expired';
+  const isBlocked = isExpired || isTrialExpired;
 
   const formattedEndDate = endDate
     ? format(parseISO(endDate), 'dd/MM/yyyy', { locale: ptBR })
@@ -41,10 +43,10 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
           <div
             className={cn(
               'mx-auto flex h-16 w-16 items-center justify-center rounded-full',
-              isExpired ? 'bg-red-100' : 'bg-primary/10',
+              isBlocked ? 'bg-red-100' : 'bg-primary/10',
             )}
           >
-            {isExpired ? (
+            {isBlocked ? (
               <Lock className="h-8 w-8 text-red-600" />
             ) : (
               <DollarSign className="h-8 w-8 text-primary" />
@@ -53,15 +55,21 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
           <CardTitle
             className={cn(
               'text-2xl font-bold sm:text-3xl',
-              isExpired ? 'text-red-600' : 'text-gray-900 dark:text-white',
+              isBlocked ? 'text-red-600' : 'text-gray-900 dark:text-white',
             )}
           >
-            {isExpired ? 'Assinatura expirada' : 'Próximo passo: escolha seu plano'}
+            {isTrialExpired
+              ? 'Seu teste grátis terminou'
+              : isExpired
+                ? 'Assinatura expirada'
+                : 'Próximo passo: escolha seu plano'}
           </CardTitle>
           <p className="text-base text-gray-600 dark:text-gray-400">
-            {isExpired
-              ? 'O acesso às funções de gestão desta empresa foi interrompido após a data de vigência.'
-              : 'Sua empresa já está cadastrada. Para liberar o sistema, selecione e ative um plano agora.'}
+            {isTrialExpired
+              ? 'Os 15 dias de teste acabaram. Assine um plano para voltar a criar e editar agendamentos, clientes e demais funções de gestão.'
+              : isExpired
+                ? 'O acesso às funções de gestão desta empresa foi interrompido após a data de vigência.'
+                : 'Sua empresa já está cadastrada. Para liberar o sistema, selecione e ative um plano agora.'}
           </p>
         </CardHeader>
 
@@ -102,20 +110,21 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
             </ol>
           )}
 
-          {isExpired && (
+          {isBlocked && (
             <>
               {endDate && (
                 <div className="rounded-lg bg-gray-50 p-4 text-center dark:bg-gray-700">
                   <p className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                     <Clock className="h-4 w-4 shrink-0" />
-                    Término da vigência:{' '}
+                    {isTrialExpired ? 'Teste encerrado em:' : 'Término da vigência:'}{' '}
                     <span className="font-bold text-red-600">{formattedEndDate}</span>
                   </p>
                 </div>
               )}
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Renove o plano para reativar o acesso. Você pode voltar a usar todas as funções logo após a
-                aprovação do pagamento. Enquanto isso, o menu lateral mostra apenas <strong>Planos</strong>.
+                {isTrialExpired
+                  ? 'Escolha o plano que você já estava testando (ou outro da lista) para reativar o acesso completo. Enquanto isso, o menu lateral mostra apenas Planos.'
+                  : 'Renove o plano para reativar o acesso. Você pode voltar a usar todas as funções logo após a aprovação do pagamento. Enquanto isso, o menu lateral mostra apenas Planos.'}
               </p>
             </>
           )}
@@ -132,7 +141,7 @@ const SubscriptionExpiredPage: React.FC<SubscriptionExpiredPageProps> = ({ endDa
               onClick={() => navigate('/planos')}
             >
               <DollarSign className="mr-2 h-5 w-5" />
-              {isExpired ? 'Renovar plano' : 'Escolher meu plano agora'}
+              {isTrialExpired ? 'Assinar plano agora' : isExpired ? 'Renovar plano' : 'Escolher meu plano agora'}
             </Button>
             <Button
               variant="outline"

@@ -26,9 +26,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
-import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
-import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
+import { useAppCompany } from '@/components/AppCompanyContext';
+import ArenaPageGate from '@/components/arena/ArenaPageGate';
 import { getStatusColor } from '@/lib/dashboard-utils';
 import { cn } from '@/lib/utils';
 import {
@@ -106,9 +105,7 @@ function formatReservationTimeRange(
 const CourtReservationsListPage: React.FC = () => {
   const navigate = useNavigate();
   const { session } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
-  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
-  const { canUseArenaManagement, loading: loadingArenaModule } = useCourtBookingModule(primaryCompanyId);
+  const { primaryCompanyId, canUseArenaManagement, isCourtMode } = useAppCompany();
 
   const [courts, setCourts] = useState<CourtOption[]>([]);
   const [courtFilter, setCourtFilter] = useState<string>('all');
@@ -170,7 +167,7 @@ const CourtReservationsListPage: React.FC = () => {
           courts(name),
           clients(name)
         `,
-          { count: 'exact' },
+          { count: 'estimated' },
         )
         .eq('company_id', primaryCompanyId)
         .eq('booking_kind', 'court')
@@ -211,7 +208,7 @@ const CourtReservationsListPage: React.FC = () => {
       const { effFrom, effTo } = clampCourtReservationDateRange(dateFrom, dateTo);
       let q = supabase
         .from('appointments')
-        .select('status, court_id, courts(name)')
+        .select('status, court_id')
         .eq('company_id', primaryCompanyId)
         .eq('booking_kind', 'court')
         .gte('appointment_date', effFrom)
@@ -363,7 +360,7 @@ const CourtReservationsListPage: React.FC = () => {
       else metrics.outros += 1;
 
       const courtKey = row.court_id || 'sem-quadra';
-      const courtName = row.courts?.name || 'Sem quadra';
+      const courtName = (row.court_id && courtNameById.get(row.court_id)) || 'Sem quadra';
       if (!perCourt.has(courtKey)) {
         perCourt.set(courtKey, { courtName, pendente: 0, confirmado: 0, concluido: 0 });
       }
@@ -380,54 +377,7 @@ const CourtReservationsListPage: React.FC = () => {
       conversionRate,
       perCourt: Array.from(perCourt.values()).sort((a, b) => a.courtName.localeCompare(b.courtName)),
     };
-  }, [summaryRows]);
-
-  if (loadingPrimaryCompany || loadingSchedulingMode || loadingArenaModule) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-700 dark:text-gray-300">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!session?.user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Você precisa estar logado.</p>
-      </div>
-    );
-  }
-
-  if (!primaryCompanyId) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <p className="text-gray-700 mb-4">É necessário ter uma empresa primária.</p>
-        <Button onClick={() => navigate('/register-company')}>Cadastrar empresa</Button>
-      </div>
-    );
-  }
-
-  if (!isCourtMode) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (!canUseArenaManagement) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Módulo de quadras indisponível</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-            <p>O módulo de quadras não está habilitado para esta empresa.</p>
-            <Button variant="outline" onClick={() => navigate('/dashboard')}>
-              Voltar ao dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  }, [summaryRows, courtNameById]);
 
   const renderRowActions = (r: CourtReservationRow) => (
     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -468,6 +418,7 @@ const CourtReservationsListPage: React.FC = () => {
   );
 
   return (
+    <ArenaPageGate>
     <div className="min-w-0 space-y-6 overflow-x-hidden">
       <ArenaPageHeader
         title="Reservas por quadra"
@@ -797,6 +748,7 @@ const CourtReservationsListPage: React.FC = () => {
         </CardContent>
       </Card>
     </div>
+    </ArenaPageGate>
   );
 };
 

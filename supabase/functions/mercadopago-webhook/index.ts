@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 import { format, addMonths, parseISO, startOfDay, isPast } from 'https://esm.sh/date-fns@3.6.0';
+import {
+  buildPaidActiveSubscriptionUpdate,
+  findConvertibleTrialSubscription,
+  logTrialConversion,
+} from './trial-subscription-conversion.ts';
 
 const BRAND_NAME = "PlanoAgenda";
 const BRAND_FROM_EMAIL = `${BRAND_NAME} <noreply@planoagenda.com.br>`;
@@ -966,7 +971,7 @@ serve(async (req) => {
     // 3.1 Tentar usar assinatura PENDENTE criada no início do fluxo
     const { data: pendingSub, error: pendingError } = await supabaseAdmin
         .from('company_subscriptions')
-        .select('id')
+        .select('id, trial_ends_at')
         .eq('company_id', companyId)
         .eq('plan_id', planId)
         .eq('status', 'pending')
@@ -1008,17 +1013,26 @@ serve(async (req) => {
 
         const { error: updatePendingError } = await supabaseAdmin
             .from('company_subscriptions')
-            .update({
-                plan_id: planId,
-                end_date: finalEndDate,
-                billing_cycle_start: format(baseDate, 'yyyy-MM-dd'),
-                billing_cycle_end: finalEndDate,
-                status: 'active',
-            })
+            .update(buildPaidActiveSubscriptionUpdate({
+                planId,
+                startDate,
+                finalEndDate,
+                billingCycleStart: format(baseDate, 'yyyy-MM-dd'),
+            }))
             .eq('id', subscriptionId);
 
         if (updatePendingError) throw updatePendingError;
         console.log(`Pending subscription ${subscriptionId} activated successfully, ending on ${finalEndDate}.`);
+
+        if (pendingSub.trial_ends_at) {
+            await logTrialConversion(supabaseAdmin, {
+                companyId,
+                subscriptionId,
+                planId,
+                source: 'mercadopago_webhook',
+                paymentAttemptId,
+            });
+        }
         
         // Sincronizar flags da empresa baseado nas funcionalidades do plano
         try {
@@ -1038,6 +1052,48 @@ serve(async (req) => {
         // Verificar se plano tem WhatsApp e enviar email de notificação
         await checkAndNotifyWhatsAppPlan(supabaseAdmin, companyId, planId);
     } else {
+        const trialSub = await findConvertibleTrialSubscription(supabaseAdmin, companyId);
+
+        if (trialSub) {
+            const newEndDate = addMonths(today, finalDurationMonths);
+            finalEndDate = format(newEndDate, 'yyyy-MM-dd');
+            subscriptionId = trialSub.id;
+
+            const { error: convertTrialError } = await supabaseAdmin
+                .from('company_subscriptions')
+                .update(buildPaidActiveSubscriptionUpdate({
+                    planId,
+                    startDate,
+                    finalEndDate,
+                    billingCycleStart: startDate,
+                }))
+                .eq('id', subscriptionId);
+
+            if (convertTrialError) throw convertTrialError;
+            console.log(`Trial subscription ${subscriptionId} converted to active via webhook, ending on ${finalEndDate}.`);
+
+            await logTrialConversion(supabaseAdmin, {
+                companyId,
+                subscriptionId,
+                planId,
+                source: 'mercadopago_webhook',
+                paymentAttemptId,
+            });
+
+            try {
+                const { error: syncError } = await supabaseAdmin.rpc('sync_company_flags_from_plan', {
+                    p_company_id: companyId,
+                    p_plan_id: planId
+                });
+                if (syncError) {
+                    console.error(`Erro ao sincronizar flags (não crítico):`, syncError);
+                }
+            } catch (syncErr: unknown) {
+                console.error(`Erro ao sincronizar flags (não crítico):`, syncErr);
+            }
+
+            await checkAndNotifyWhatsAppPlan(supabaseAdmin, companyId, planId);
+        } else {
         // Cenário de retrocompatibilidade: não existe pendente, mantém lógica antiga
         let baseDate = today;
 
@@ -1120,6 +1176,7 @@ serve(async (req) => {
             
             // Verificar se plano tem WhatsApp e enviar email de notificação
             await checkAndNotifyWhatsAppPlan(supabaseAdmin, companyId, planId);
+        }
         }
     }
 

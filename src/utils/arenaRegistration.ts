@@ -1,3 +1,5 @@
+export const ARENA_LOGIN_PATH = '/arenalogin';
+export const ARENA_LANDING_PATH = '/arena';
 export const ARENA_REGISTER_PROFESSIONAL_URL = '/register-professional?modo=arena';
 export const ARENA_REGISTER_COMPANY_URL = '/register-company?modo=arena';
 export const ARENA_REGISTRATION_STORAGE_KEY = 'planoagenda.cadastro-modo-arena';

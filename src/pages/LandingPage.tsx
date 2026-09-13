@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from '@/integrations/supabase/client';
 import { performSignOut } from '@/utils/auth-state';
 import { showError } from '@/utils/toast';
 import { Link, useNavigate } from 'react-router-dom'; // Adicionar Link
@@ -12,7 +11,9 @@ import { useIsProprietario } from '@/hooks/useIsProprietario';
 import { useIsCompanyAdmin } from '@/hooks/useIsCompanyAdmin';
 import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
 import { CompanySelectionModal } from '@/components/CompanySelectionModal';
-import { useActivePlans } from '@/hooks/useActivePlans';
+import { useLandingPlansWithMenus } from '@/hooks/useLandingPlansWithMenus';
+import { useTrialSettings } from '@/hooks/useTrialSettings';
+import LandingPlansSection from '@/components/landing/LandingPlansSection';
 import {
   BarChart3,
   Check,
@@ -22,16 +23,21 @@ import {
   MessageSquare,
   Phone,
   PhoneCall,
-  Tag,
   Volleyball,
   Wallet,
   Zap,
 } from 'lucide-react';
 import ContactRequestModal from '@/components/ContactRequestModal'; // Importar o novo modal
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"; // Importar DropdownMenu
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"; // Importar componentes de diálogo
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import BrandHeader from '@/components/brand/BrandHeader';
+import LandingFloatingWhatsApp from '@/components/landing/LandingFloatingWhatsApp';
+import LandingFaqSection from '@/components/landing/LandingFaqSection';
+import LandingClientBookingSection from '@/components/landing/LandingClientBookingSection';
+import LandingSegmentsSection from '@/components/landing/LandingSegmentsSection';
+import LandingHeroVisual from '@/components/landing/LandingHeroVisual';
+import { LANDING_WHATSAPP_URL } from '@/data/landingPageContent';
+import { ARENA_LANDING_PATH, ARENA_LOGIN_PATH } from '@/utils/arenaRegistration';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,86 +46,13 @@ const LandingPage: React.FC = () => {
   const { isProprietario, loadingProprietarioCheck } = useIsProprietario();
   const { isCompanyAdmin, loadingCompanyAdminCheck } = useIsCompanyAdmin();
   const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
-  const { plans, loading: loadingPlans } = useActivePlans();
-  
-  // Buscar menus vinculados aos planos
-  useEffect(() => {
-    const fetchPlansWithMenus = async () => {
-      if (!plans || plans.length === 0) {
-        console.log('[LandingPage] Nenhum plano disponível');
-        setPlansWithMenus([]);
-        return;
-      }
-
-      console.log('[LandingPage] Buscando menus para', plans.length, 'planos');
-
-      try {
-        const plansWithMenusData = await Promise.all(
-          plans.map(async (plan) => {
-            console.log(`[LandingPage] Buscando menus do plano: ${plan.name} (${plan.id})`);
-            
-            // Buscar menus vinculados ao plano
-            const { data: menuPlansData, error: menuPlansError } = await supabase
-              .from('menu_plans')
-              .select('menu_id, menus(id, menu_key, label, icon, description, display_order)')
-              .eq('plan_id', plan.id);
-
-            if (menuPlansError) {
-              console.error(`[LandingPage] Erro ao buscar menus do plano ${plan.name}:`, menuPlansError);
-            }
-
-            const menus = (menuPlansData || [])
-              .map((mp: any) => mp.menus)
-              .filter((menu: any) => menu !== null && menu !== undefined)
-              .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0));
-
-            // Buscar limites do plano (colaboradores e serviços)
-            const { data: planLimitsData, error: limitsError } = await supabase
-              .from('plan_limits')
-              .select('limit_type, limit_value')
-              .eq('plan_id', plan.id)
-              .in('limit_type', ['collaborators', 'services']);
-
-            if (limitsError) {
-              console.error(`[LandingPage] Erro ao buscar limites do plano ${plan.name}:`, limitsError);
-            }
-
-            const limits: { collaborators?: number; services?: number } = {};
-            (planLimitsData || []).forEach((limit: any) => {
-              if (limit.limit_type === 'collaborators') {
-                limits.collaborators = limit.limit_value;
-              } else if (limit.limit_type === 'services') {
-                limits.services = limit.limit_value;
-              }
-            });
-
-            return { ...plan, menus, limits };
-          })
-        );
-
-        console.log('[LandingPage] Planos com menus carregados:', plansWithMenusData.map((p: any) => ({
-          name: p.name,
-          menusCount: p.menus?.length || 0
-        })));
-
-        setPlansWithMenus(plansWithMenusData);
-      } catch (error) {
-        console.error('[LandingPage] Erro ao buscar menus dos planos:', error);
-        setPlansWithMenus(plans.map(p => ({ ...p, menus: [] })));
-      }
-    };
-
-    if (!loadingPlans) {
-      fetchPlansWithMenus();
-    }
-  }, [plans, loadingPlans]);
-  
+  const { plansWithMenus, loading: loadingPlans } = useLandingPlansWithMenus('service');
+  const { trial_enabled: trialEnabled, trial_days_default: trialDays, loading: loadingTrialSettings } =
+    useTrialSettings();
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
   const [isLoginChoiceModalOpen, setIsLoginChoiceModalOpen] = useState(false);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false); // Novo estado para o modal de contato
-  const [isConfirmLogoutDialogOpen, setIsConfirmLogoutDialogOpen] = useState(false); // Novo estado para o diálogo de confirmação de logout
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly'); // Estado para período de cobrança
-  const [plansWithMenus, setPlansWithMenus] = useState<any[]>([]); // Planos com menus vinculados
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isConfirmLogoutDialogOpen, setIsConfirmLogoutDialogOpen] = useState(false);
 
   const loadingRoles = loadingProprietarioCheck || loadingCompanyAdminCheck || loadingGlobalAdminCheck || loadingClientCheck;
 
@@ -128,10 +61,25 @@ const LandingPage: React.FC = () => {
 
   // Logic to open the selection modal if the user is a client and just logged in without a target company
 
-  const handleProfessionalSignup = () => {
-    // Redireciona para a nova página de cadastro unificado
-    navigate('/register-professional');
+  const handleProfessionalSignup = (planId?: string) => {
+    const defaultPlanId = plansWithMenus.length > 0 ? plansWithMenus[0].id : undefined;
+    const selectedPlanId = planId ?? defaultPlanId;
+    const params = new URLSearchParams();
+    if (selectedPlanId) {
+      params.set('plan', selectedPlanId);
+    }
+    if (trialEnabled) {
+      params.set('trial', '1');
+    }
+    const query = params.toString();
+    navigate(query ? `/register-professional?${query}` : '/register-professional');
   };
+
+  const primarySignupLabel = trialEnabled
+    ? `Começar teste grátis de ${trialDays} dias`
+    : 'Cadastrar minha empresa';
+
+  const planSignupLabel = trialEnabled ? `Teste grátis ${trialDays} dias` : 'Cadastrar empresa neste plano';
 
   const handleCompanySelected = (companyId: string) => {
     setTargetCompanyId(companyId);
@@ -156,15 +104,12 @@ const LandingPage: React.FC = () => {
 
   const scrollToPlans = () => scrollToSection('plans-section');
   const scrollToContact = () => scrollToSection('contact-section');
+  const scrollToHowItWorks = () => scrollToSection('como-cliente-agenda');
 
-  const goToLoginPath = (path: '/login' | '/arena') => {
+  const goToLoginPath = (path: '/login' | typeof ARENA_LOGIN_PATH) => {
     setIsLoginChoiceModalOpen(false);
     navigate(path);
   };
-
-  // Determine the most expensive plan for visual highlight (usando plansWithMenus se disponível, senão plans)
-  const plansToUse = plansWithMenus.length > 0 ? plansWithMenus : plans;
-  const highestPricedPlan = plansToUse.reduce((max, plan) => (plan.price > max.price ? plan : max), plansToUse[0] || { price: -1 });
 
   return (
     <div className="min-h-screen bg-white">
@@ -190,6 +135,12 @@ const LandingPage: React.FC = () => {
               Início
             </button>
             <button
+              onClick={scrollToHowItWorks}
+              className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
+            >
+              Como funciona
+            </button>
+            <button
               onClick={() => scrollToSection('beneficios')}
               className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
             >
@@ -205,7 +156,13 @@ const LandingPage: React.FC = () => {
               onClick={() => scrollToSection('depoimentos')}
               className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
             >
-              Depoimentos
+              Segmentos
+            </button>
+            <button
+              onClick={() => scrollToSection('faq-section')}
+              className="text-sm font-medium text-gray-700 hover:text-primary transition-colors"
+            >
+              FAQ
             </button>
             <button
               onClick={() => scrollToSection('contact-section')}
@@ -252,9 +209,9 @@ const LandingPage: React.FC = () => {
                   </Button>
                   <Button
                     className="!rounded-button bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-                    onClick={handleProfessionalSignup}
+                    onClick={() => handleProfessionalSignup()}
                   >
-                    Cadastrar minha empresa
+                    {primarySignupLabel}
                   </Button>
                 </div>
                 <DropdownMenu>
@@ -267,6 +224,9 @@ const LandingPage: React.FC = () => {
                     <DropdownMenuItem onClick={() => scrollToSection('inicio')}>
                       Início
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={scrollToHowItWorks}>
+                      Como funciona
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => scrollToSection('beneficios')}>
                       Benefícios
                     </DropdownMenuItem>
@@ -274,7 +234,10 @@ const LandingPage: React.FC = () => {
                       Planos
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => scrollToSection('depoimentos')}>
-                      Depoimentos
+                      Segmentos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => scrollToSection('faq-section')}>
+                      FAQ
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => scrollToSection('contact-section')}>
                       Contato
@@ -282,9 +245,9 @@ const LandingPage: React.FC = () => {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="font-semibold text-primary focus:text-primary"
-                      onClick={handleProfessionalSignup}
+                      onClick={() => handleProfessionalSignup()}
                     >
-                      Cadastrar minha empresa
+                      {primarySignupLabel}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setIsLoginChoiceModalOpen(true)}>
                       Já tenho conta — Entrar
@@ -297,91 +260,99 @@ const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Hero Section focado em WhatsApp */}
-      <section id="inicio" className="bg-white pt-28 pb-10 sm:pt-32">
-        <div className="container mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
+      {/* Hero */}
+      <section
+        id="inicio"
+        className="relative overflow-hidden bg-gradient-to-br from-amber-50/70 via-white to-emerald-50/40 pt-24 pb-16 sm:pt-28 lg:pb-20"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_70%_-10%,hsl(var(--primary)/0.12),transparent)]"
+        />
+        <div className="container relative mx-auto grid items-center gap-10 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
           {/* Texto principal */}
-          <div>
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-primary">
-              Para donos de negócio · primeiro acesso
-            </p>
-            <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight text-gray-900">
-              Pare de perder dinheiro com clientes que não aparecem
+          <div className="max-w-xl lg:py-4">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary sm:text-sm">
+                Agenda online · WhatsApp automático
+              </p>
+              {trialEnabled && !loadingTrialSettings && (
+                <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-800 sm:text-sm">
+                  Sem cartão · {trialDays} dias grátis
+                </span>
+              )}
+            </div>
+            <h1 className="mb-4 text-4xl font-extrabold leading-[1.1] tracking-tight text-gray-900 md:text-5xl lg:text-[3.25rem]">
+              Menos faltas, agenda cheia e controle do negócio em um só lugar
             </h1>
-            <p className="text-lg text-gray-600 mb-6">
-              O PlanoAgenda envia <span className="font-semibold text-gray-900">lembretes automáticos pelo WhatsApp</span> antes de cada horário marcado.
-              Menos esquecimentos, <span className="font-semibold text-gray-900">mais clientes chegando na hora certa</span>, sem você mandar uma única mensagem manual.
+            <p className="mb-6 text-lg leading-relaxed text-gray-600">
+              O PlanoAgenda combina <span className="font-semibold text-gray-900">agendamento online 24h</span>,{' '}
+              <span className="font-semibold text-gray-900">lembretes automáticos no WhatsApp</span> e gestão
+              financeira — do autônomo à arena esportiva.
             </p>
-            <ul className="space-y-2 mb-8 text-sm text-gray-700">
-              <li className="flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                <span>Lembretes 100% automáticos para cada agendamento</span>
+            <ul className="mb-8 space-y-2.5 text-sm text-gray-700">
+              <li className="flex items-start gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>Lembretes automáticos antes de cada atendimento</span>
               </li>
-              <li className="flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                <span>Mensagens com nome do cliente, empresa e horário</span>
+              <li className="flex items-start gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>Cliente agenda sozinho pelo link da sua empresa</span>
               </li>
-              <li className="flex items-start gap-2">
-                <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                <span>Integrado direto com a sua agenda online</span>
+              <li className="flex items-start gap-2.5">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                <span>Painel, caixa e relatórios no mesmo sistema</span>
               </li>
             </ul>
-            <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
-                className="!rounded-button px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base"
-                onClick={handleProfessionalSignup}
+                className="!rounded-button bg-primary px-6 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90"
+                onClick={() => handleProfessionalSignup()}
               >
-                Cadastrar minha empresa
+                {primarySignupLabel}
               </Button>
               <Button
                 variant="outline"
-                className="!rounded-button px-6 py-3 text-sm border-gray-300 text-gray-700 hover:bg-gray-50"
-                onClick={scrollToPlans}
+                className="!rounded-button border-gray-300 px-6 py-3 text-sm text-gray-700 hover:bg-white/80"
+                onClick={scrollToHowItWorks}
               >
-                Ver planos
+                Ver como funciona
               </Button>
             </div>
-            <p className="mt-4 max-w-xl text-sm text-gray-600">
-              <span className="font-semibold text-gray-900">Ainda não tem conta?</span> Cadastre a empresa primeiro.
-              O botão <span className="font-semibold text-gray-800">Já tenho conta</span> no topo é só para quem
-              já finalizou o cadastro e vai entrar com e-mail e senha.
+            <div className="mt-5 flex flex-wrap items-center gap-4">
+              <Button
+                variant="ghost"
+                className="!rounded-button h-auto p-0 text-sm text-[#128C7E] hover:bg-transparent hover:text-[#0d6b60]"
+                asChild
+              >
+                <a href={LANDING_WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+                  Falar no WhatsApp com a equipe →
+                </a>
+              </Button>
+            </div>
+            <p className="mt-4 text-sm text-gray-500">
+              {trialEnabled ? (
+                <>
+                  <span className="font-medium text-gray-700">Sem cartão no cadastro.</span> Teste por {trialDays} dias
+                  com acesso completo do plano escolhido.
+                </>
+              ) : (
+                <>
+                  Cadastre a empresa primeiro. <span className="font-medium text-gray-700">Já tenho conta</span> é só
+                  para quem já concluiu o cadastro.
+                </>
+              )}
             </p>
           </div>
 
-          {/* Mock visual dos lembretes no WhatsApp */}
-          <div className="relative">
-            <div className="rounded-3xl border border-gray-200 shadow-xl p-4 bg-gradient-to-br from-primary/5 to-white">
-              <div className="text-sm font-semibold mb-3 text-gray-800">
-                Como seus lembretes aparecem no WhatsApp:
-              </div>
-              <div className="space-y-3 text-sm">
-                <div className="bg-white rounded-2xl shadow p-3">
-                  <div className="text-xs text-gray-500 mb-1">Hoje • 10:03</div>
-                  <p className="text-gray-800">
-                    Olá <span className="font-semibold">[CLIENTE]</span> 👋<br />
-                    Seu horário em <span className="font-semibold">[EMPRESA]</span> está confirmado para <span className="font-semibold">[DATA_HORA]</span>.
-                    Qualquer dúvida, é só responder aqui.
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl shadow p-3">
-                  <div className="text-xs text-gray-500 mb-1">1 dia antes do horário</div>
-                  <p className="text-gray-800">
-                    Lembrete: você tem um atendimento amanhã em <span className="font-semibold">[EMPRESA]</span> às <span className="font-semibold">[DATA_HORA]</span>.
-                    Te esperamos! ✨
-                  </p>
-                </div>
-                <div className="bg-white rounded-2xl shadow p-3">
-                  <div className="text-xs text-gray-500 mb-1">2 horas antes do horário</div>
-                  <p className="text-gray-800">
-                    Está quase na hora! ⏰<br />
-                    Seu atendimento começa às <span className="font-semibold">[DATA_HORA]</span>. Qualquer imprevisto, nos avise para liberar o horário para outro cliente.
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* Visual: celular + cards */}
+          <div className="relative flex min-h-[420px] items-center justify-center pb-8 lg:min-h-[480px] lg:justify-end lg:pb-0">
+            <LandingHeroVisual />
           </div>
         </div>
       </section>
+
+      <LandingClientBookingSection />
 
       {/* Como começar — remove dúvida entre cadastro e login */}
       <section id="como-comecar" className="border-y border-gray-100 bg-gray-50 py-14">
@@ -391,7 +362,9 @@ const LandingPage: React.FC = () => {
               Como começar no PlanoAgenda
             </h2>
             <p className="mt-3 text-gray-600">
-              Login não cria conta. No primeiro acesso você cadastra a empresa; só depois entra com e-mail e senha.
+              {trialEnabled
+                ? 'Cadastre a empresa, teste grátis sem cartão e só assine se fizer sentido para o seu negócio.'
+                : 'Login não cria conta. No primeiro acesso você cadastra a empresa; só depois entra com e-mail e senha.'}
             </p>
           </div>
           <ol className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
@@ -408,9 +381,13 @@ const LandingPage: React.FC = () => {
               <span className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                 2
               </span>
-              <h3 className="text-lg font-semibold text-gray-900">Escolha e ative o plano</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {trialEnabled ? `Teste grátis por ${trialDays} dias` : 'Escolha e ative o plano'}
+              </h3>
               <p className="mt-2 text-sm text-gray-600">
-                Selecione o plano que combina com o tamanho da operação e conclua a adesão.
+                {trialEnabled
+                  ? 'Selecione o plano na landing ou no cadastro. Você entra no painel com acesso completo — sem pagamento na hora.'
+                  : 'Selecione o plano que combina com o tamanho da operação e conclua a adesão.'}
               </p>
             </li>
             <li className="rounded-2xl border border-gray-200 bg-white p-6">
@@ -426,9 +403,9 @@ const LandingPage: React.FC = () => {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button
               className="!rounded-button bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90"
-              onClick={handleProfessionalSignup}
+              onClick={() => handleProfessionalSignup()}
             >
-              Ir para o cadastro da empresa
+              {trialEnabled ? primarySignupLabel : 'Ir para o cadastro da empresa'}
             </Button>
             <button
               type="button"
@@ -614,373 +591,69 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Pricing Section (New) */}
-      <section id="plans-section" className="py-20 bg-white">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Planos Para Profissionais</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4">
-              Escolha o plano e avance para o <strong className="text-gray-900">cadastro da empresa</strong> — o login vem só depois.
+      {trialEnabled && !loadingTrialSettings && (
+        <div className="container mx-auto px-6 pt-4">
+          <div className="mx-auto max-w-2xl rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-center text-sm text-green-900">
+            <p className="font-semibold">Teste grátis de {trialDays} dias em qualquer plano de serviços</p>
+            <p className="mt-1 text-green-800">Sem cartão no cadastro — você assina só se quiser continuar após o teste.</p>
+          </div>
+        </div>
+      )}
+
+      <LandingPlansSection
+        plansWithMenus={plansWithMenus}
+        loading={loadingPlans}
+        trialEnabled={trialEnabled}
+        trialDays={trialDays}
+        onPlanSignup={handleProfessionalSignup}
+        planSignupLabel={planSignupLabel}
+        sectionTitle="Planos para serviços"
+        sectionSubtitle="Salões, barbearias, clínicas e profissionais autônomos — escolha o plano e cadastre sua empresa."
+        emptyMessage="Nenhum plano para serviços disponível no momento."
+      />
+
+      <div className="container mx-auto px-6 pb-8 text-center">
+        <p className="text-gray-600">
+          Tem arena ou quadras esportivas?{' '}
+          <Link to={ARENA_LANDING_PATH} className="font-semibold text-primary hover:underline">
+            Conheça o Plano Arena →
+          </Link>
+        </p>
+      </div>
+
+      <LandingSegmentsSection />
+
+      {/* CTA final — trial */}
+      {trialEnabled && !loadingTrialSettings && (
+        <section className="border-y border-primary/20 bg-primary/5 py-14">
+          <div className="container mx-auto px-6 text-center">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-primary">
+              Sem cartão · {trialDays} dias grátis
             </p>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              <strong className="text-gray-900">Mais de 2.500 profissionais confiam em nós.</strong> Junte-se a eles e transforme seu negócio hoje mesmo.
+            <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
+              Experimente o PlanoAgenda com o seu negócio real
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-600">
+              Cadastre a empresa, configure WhatsApp e link de agendamento — sem compromisso financeiro no primeiro passo.
             </p>
-            
-            {/* Toggle Mensal/Anual */}
-            <div className="flex items-center justify-center mb-6">
-              <ToggleGroup 
-                type="single" 
-                value={billingPeriod} 
-                onValueChange={(value) => {
-                  if (value === 'monthly' || value === 'yearly') {
-                    setBillingPeriod(value);
-                  }
-                }}
-                className="border border-gray-300 rounded-lg p-1"
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Button
+                className="!rounded-button bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90"
+                onClick={() => handleProfessionalSignup()}
               >
-                <ToggleGroupItem 
-                  value="monthly" 
-                  aria-label="Mensal"
-                  className={`px-4 py-2 rounded-md ${billingPeriod === 'monthly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-gray-600'}`}
-                >
-                  Mensal
-                </ToggleGroupItem>
-                <ToggleGroupItem 
-                  value="yearly" 
-                  aria-label="Anual"
-                  className={`px-4 py-2 rounded-md ${billingPeriod === 'yearly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-gray-600'}`}
-                >
-                  Anual
-                </ToggleGroupItem>
-              </ToggleGroup>
+                {primarySignupLabel}
+              </Button>
+              <Button
+                variant="outline"
+                className="!rounded-button border-gray-300 px-6 py-3"
+                onClick={scrollToPlans}
+              >
+                Comparar planos e preços
+              </Button>
             </div>
-            
-            {/* Banner de desconto anual */}
-            {billingPeriod === 'yearly' && (
-              <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4 max-w-2xl mx-auto mb-8">
-                <div className="flex items-center gap-2 justify-center">
-                  <div className="bg-green-500 text-white rounded-full p-1">
-                    <Tag className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-green-900">
-                      🎉 Desconto Especial de 15% no Plano Anual!
-                    </p>
-                    <p className="text-xs text-green-700 mt-1">
-                      Economize ao pagar 12 meses de uma vez. O desconto já está aplicado nos preços abaixo.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-
-          {loadingPlans ? (
-            <p className="text-center text-gray-600">Carregando planos...</p>
-          ) : plansWithMenus.length === 0 ? (
-            <p className="text-center text-gray-600">Nenhum plano ativo disponível no momento.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {plansWithMenus.map((plan) => {
-                // Verifica se este é o plano mais caro para destaque
-                const isFeatured = plan.id === highestPricedPlan.id;
-                const cardClasses = isFeatured 
-                  ? 'border-4 border-primary shadow-2xl scale-105' 
-                  : 'border-2 border-gray-200 hover:border-primary transition-all shadow-lg';
-                
-                // Calcular preço base baseado no período selecionado
-                const yearlyBasePrice = plan.price * 12;
-                const basePrice = billingPeriod === 'yearly' 
-                  ? Math.round(yearlyBasePrice * 0.85 * 100) / 100 // 15% de desconto no plano anual
-                  : plan.price;
-                
-                // Calcular valor sem desconto anual para exibição
-                const priceWithoutYearlyDiscount = billingPeriod === 'yearly' ? yearlyBasePrice : plan.price;
-                
-                // Calcular período de duração para exibição
-                const displayDuration = billingPeriod === 'yearly' ? 12 : 1;
-                
-                // Calcular economia do desconto anual (15%)
-                const yearlySavings = billingPeriod === 'yearly' 
-                  ? Math.round((yearlyBasePrice - basePrice) * 100) / 100 
-                  : 0;
-
-                return (
-                  <Card key={plan.id} className={cardClasses}>
-                    {isFeatured && (
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                        <Zap className="h-3 w-3" /> MAIS POPULAR
-                      </div>
-                    )}
-                    <CardHeader className="text-center pt-8">
-                      <CardTitle className="text-3xl font-bold text-gray-900">{plan.name}</CardTitle>
-                      <div className="mt-4">
-                        {billingPeriod === 'yearly' && (
-                          <p className="text-lg font-semibold text-gray-400 line-through mb-1">
-                            R$ {priceWithoutYearlyDiscount.toFixed(2).replace('.', ',')}
-                          </p>
-                        )}
-                        <p className="text-5xl font-extrabold text-primary">
-                          R$ {basePrice.toFixed(2).replace('.', ',')}
-                        </p>
-                        <p className="text-base text-gray-500">
-                          /{displayDuration} {displayDuration > 1 ? 'meses' : 'mês'}
-                          {billingPeriod === 'yearly' && yearlySavings > 0 && (
-                            <span className="block text-xs text-green-600 font-semibold mt-1">
-                              💰 Você economiza R$ {yearlySavings.toFixed(2).replace('.', ',')} com 15% de desconto!
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="space-y-3">
-                        <p className="text-center text-gray-600">{plan.description}</p>
-                        
-                        {/* Badge de Suporte baseado no plano */}
-                        {(() => {
-                          const planName = plan.name.toLowerCase();
-                          if (planName.includes('platinum')) {
-                            return (
-                              <div className="flex items-center justify-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                                <Clock className="h-4 w-4 text-blue-600" />
-                                <span className="text-sm font-medium text-blue-900">Suporte em horário comercial</span>
-                              </div>
-                            );
-                          } else if (planName.includes('full')) {
-                            return (
-                              <div className="flex items-center justify-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                                <Zap className="h-4 w-4 text-green-600" />
-                                <span className="text-sm font-medium text-green-900">Suporte 24hrs</span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      
-                      {/* Exibir features do plano com limites integrados */}
-                      {(() => {
-                        const limits = (plan as any).limits || {};
-                        let featuresToShow: string[] = [];
-                        
-                        // Se o plano tem features definidas, usar elas
-                        if (plan.features && Array.isArray(plan.features) && plan.features.length > 0) {
-                          featuresToShow = [...plan.features];
-                          
-                          // Integrar limites nas features (substituir placeholders ou adicionar)
-                          featuresToShow = featuresToShow.map(feature => {
-                            // Se a feature contém placeholder para colaboradores, substituir
-                            if (feature.includes('{collaborators}') || feature.toLowerCase().includes('colaborador')) {
-                              const collaboratorLimit = limits.collaborators !== undefined && limits.collaborators > 0 
-                                ? limits.collaborators 
-                                : null;
-                              if (collaboratorLimit !== null) {
-                                return `Até ${collaboratorLimit} Colaborador${collaboratorLimit > 1 ? 'es' : ''}${collaboratorLimit === 1 ? ' (Proprietário)' : ''}`;
-                              }
-                            }
-                            // Se a feature contém placeholder para serviços, substituir
-                            if (feature.includes('{services}') || feature.toLowerCase().includes('serviço')) {
-                              const serviceLimit = limits.services !== undefined && limits.services > 0 
-                                ? limits.services 
-                                : null;
-                              if (serviceLimit !== null) {
-                                return `Até ${serviceLimit} Serviço${serviceLimit > 1 ? 's' : ''}`;
-                              }
-                            }
-                            return feature;
-                          });
-                          
-                          // Adicionar limites se não estiverem nas features
-                          if (limits.collaborators !== undefined && limits.collaborators > 0) {
-                            const hasCollaboratorFeature = featuresToShow.some(f => 
-                              f.toLowerCase().includes('colaborador')
-                            );
-                            if (!hasCollaboratorFeature) {
-                              // Inserir após a segunda feature (ou no início se houver menos de 2)
-                              const insertIndex = featuresToShow.length >= 2 ? 2 : featuresToShow.length;
-                              featuresToShow.splice(insertIndex, 0, 
-                                `Até ${limits.collaborators} Colaborador${limits.collaborators > 1 ? 'es' : ''}${limits.collaborators === 1 ? ' (Proprietário)' : ''}`
-                              );
-                            }
-                          }
-                          
-                          if (limits.services !== undefined && limits.services > 0) {
-                            const hasServiceFeature = featuresToShow.some(f => 
-                              f.toLowerCase().includes('serviço')
-                            );
-                            if (!hasServiceFeature) {
-                              // Inserir após colaboradores ou no final
-                              const collaboratorIndex = featuresToShow.findIndex(f => 
-                                f.toLowerCase().includes('colaborador')
-                              );
-                              const insertIndex = collaboratorIndex >= 0 ? collaboratorIndex + 1 : featuresToShow.length;
-                              featuresToShow.splice(insertIndex, 0, 
-                                `Até ${limits.services} Serviço${limits.services > 1 ? 's' : ''}`
-                              );
-                            }
-                          }
-                        } else if (plan.menus && plan.menus.length > 0) {
-                          // Fallback para menus se não houver features
-                          featuresToShow = plan.menus.map((menu: any) => menu.label || menu.menu_key);
-                        }
-                        
-                        if (featuresToShow.length > 0) {
-                          return (
-                            <ul className="space-y-2 text-sm text-gray-700">
-                              {featuresToShow.map((feature, index) => (
-                                <li key={index} className="flex items-center gap-2">
-                                  <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                  <span>{feature}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          );
-                        }
-                        
-                        return (
-                          <p className="text-sm text-gray-500 text-center">
-                            Nenhum módulo configurado para este plano.
-                          </p>
-                        );
-                      })()}
-                      
-                      <Button
-                        className="!rounded-button whitespace-nowrap w-full font-semibold py-2.5 text-base bg-primary text-primary-foreground hover:bg-primary/90"
-                        onClick={handleProfessionalSignup}
-                      >
-                        Cadastrar empresa neste plano
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Depoimentos */}
-      <section id="depoimentos" className="py-20 bg-gray-50">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">O Que Nossos Clientes Dizem</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Histórias reais de profissionais que transformaram seus negócios
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <img 
-                    src="https://randomuser.me/api/portraits/women/44.jpg" 
-                    alt="Maria Silva" 
-                    className="w-12 h-12 rounded-full object-cover flex-shrink-0 border-2 border-gray-200"
-                  />
-                  <div>
-                    <h3 className="font-bold text-gray-900">Maria Silva</h3>
-                    <p className="text-sm text-gray-600">Salão de Beleza</p>
-                  </div>
-                </div>
-                <div className="flex gap-1 mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-primary">★</span>
-                  ))}
-                </div>
-                <p className="text-gray-700 mb-4">
-                  "Em 3 meses, aumentei meus agendamentos em 45%. O sistema de lembretes automáticos reduziu faltas em 80%. Não consigo mais imaginar meu negócio sem o PlanoAgenda!"
-                </p>
-                <p className="text-sm font-bold text-primary">
-                  Resultado: +45% de agendamentos em 3 meses
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <img 
-                    src="https://i.pravatar.cc/150?img=12" 
-                    alt="João Santos" 
-                    className="w-12 h-12 rounded-full object-cover flex-shrink-0 border-2 border-gray-200"
-                  />
-                  <div>
-                    <h3 className="font-bold text-gray-900">João Santos</h3>
-                    <p className="text-sm text-gray-600">Personal Trainer</p>
-                  </div>
-                </div>
-                <div className="flex gap-1 mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-primary">★</span>
-                  ))}
-                </div>
-                <p className="text-gray-700 mb-4">
-                  "O controle financeiro mudou tudo! Agora sei exatamente quanto ganho por cliente, quais horários são mais rentáveis e consigo planejar melhor meu mês. Recomendo para qualquer profissional!"
-                </p>
-                <p className="text-sm font-bold text-primary">
-                  Resultado: Controle total das finanças
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <img 
-                    src="https://i.pravatar.cc/150?img=47" 
-                    alt="Ana Costa" 
-                    className="w-12 h-12 rounded-full object-cover flex-shrink-0 border-2 border-gray-200"
-                  />
-                  <div>
-                    <h3 className="font-bold text-gray-900">Ana Costa</h3>
-                    <p className="text-sm text-gray-600">Clínica de Estética</p>
-                  </div>
-                </div>
-                <div className="flex gap-1 mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-primary">★</span>
-                  ))}
-                </div>
-                <p className="text-gray-700 mb-4">
-                  "O sistema de fidelidade e WhatsApp automático são incríveis! Meus clientes adoram receber lembretes e ganhar pontos. A retenção de clientes aumentou muito desde que comecei a usar."
-                </p>
-                <p className="text-sm font-bold text-primary">
-                  Resultado: +60% de retenção de clientes
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-gray-200 hover:border-primary transition-all shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <img 
-                    src="https://randomuser.me/api/portraits/men/32.jpg" 
-                    alt="Carlos Mendes" 
-                    className="w-12 h-12 rounded-full object-cover flex-shrink-0 border-2 border-gray-200"
-                  />
-                  <div>
-                    <h3 className="font-bold text-gray-900">Carlos Mendes</h3>
-                    <p className="text-sm text-gray-600">Barbearia</p>
-                  </div>
-                </div>
-                <div className="flex gap-1 mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-primary">★</span>
-                  ))}
-                </div>
-                <p className="text-gray-700 mb-4">
-                  "Antes eu perdia muito tempo ligando para confirmar horários. Agora o sistema envia os lembretes automaticamente pelo WhatsApp e meus clientes sempre aparecem no horário certo. Minha agenda está sempre cheia!"
-                </p>
-                <p className="text-sm font-bold text-primary">
-                  Resultado: Agenda sempre cheia e sem faltas
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Por Que Escolher */}
       <section className="py-20 bg-white">
@@ -1041,6 +714,8 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      <LandingFaqSection trialEnabled={trialEnabled} trialDays={trialDays} />
+
       {/* Seção de Contato (Agora com Cards) */}
       <section id="contact-section" className="py-20 bg-gray-900 text-white">
         <div className="container mx-auto px-6 text-center">
@@ -1070,7 +745,7 @@ const LandingPage: React.FC = () => {
                 <MessageSquare className="h-12 w-12 mx-auto text-green-500" />
                 <h3 className="text-xl font-semibold">Converse por WhatsApp</h3>
                 <a 
-                  href="https://wa.me/5546999163402" 
+                  href={LANDING_WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors text-sm block"
@@ -1122,6 +797,8 @@ const LandingPage: React.FC = () => {
         </div>
       </footer>
       
+      <LandingFloatingWhatsApp />
+
       {/* Contact Request Modal */}
       <ContactRequestModal
         isOpen={isContactModalOpen}
@@ -1151,7 +828,7 @@ const LandingPage: React.FC = () => {
                 handleProfessionalSignup();
               }}
             >
-              Cadastrar minha empresa
+              {primarySignupLabel}
             </Button>
           </div>
 
@@ -1176,7 +853,7 @@ const LandingPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => goToLoginPath('/arena')}
+              onClick={() => navigate(ARENA_LANDING_PATH)}
               className="group flex flex-col rounded-xl border-2 border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -1189,7 +866,7 @@ const LandingPage: React.FC = () => {
                 Para <strong>arenas, quadras esportivas e locais de reserva por horário</strong>: entrada com visual e
                 mensagens pensados para <strong>gestão de quadras</strong>, reservas e operação do módulo Arena.
               </p>
-              <span className="mt-4 text-sm font-medium text-primary">Entrar no login Arena →</span>
+              <span className="mt-4 text-sm font-medium text-primary">Conhecer Plano Arena →</span>
             </button>
           </div>
 

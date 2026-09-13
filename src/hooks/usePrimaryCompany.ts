@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSession } from '@/components/SessionContextProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
+import { useIsGlobalAdmin } from '@/hooks/useIsGlobalAdmin';
+import { ensureValidSessionForQuery, getAuthErrorUserMessage, isJwtClockSkewError } from '@/utils/edge-auth';
+import {
+  clearPrimaryCompanyCacheForUser,
+  isPrimaryCompanyCacheReady,
+  readPrimaryCompanyCache,
+  writePrimaryCompanyCache,
+} from '@/hooks/companyDataCache';
 
 interface UserCompanyContext {
   company_id: string;
@@ -13,36 +21,66 @@ interface UserCompanyContext {
 
 export function usePrimaryCompany() {
   const { session, loading: sessionLoading } = useSession();
-  const [primaryCompanyId, setPrimaryCompanyId] = useState<string | null>(null);
-  const [primaryCompanyName, setPrimaryCompanyName] = useState<string | null>(null);
-  const [loadingPrimaryCompany, setLoadingPrimaryCompany] = useState(true);
-  const location = useLocation();
-  // Usa apenas o user.id como dependência para evitar re-execuções desnecessárias
+  const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
   const userId = session?.user?.id || null;
+  const cachedOnMount = readPrimaryCompanyCache(userId);
+
+  const [primaryCompanyId, setPrimaryCompanyId] = useState<string | null>(cachedOnMount.companyId);
+  const [primaryCompanyName, setPrimaryCompanyName] = useState<string | null>(cachedOnMount.companyName);
+  const [loadingPrimaryCompany, setLoadingPrimaryCompany] = useState(
+    () => !!userId && !isPrimaryCompanyCacheReady(userId),
+  );
+  const location = useLocation();
+  const primaryCompanyIdRef = useRef<string | null>(primaryCompanyId);
+  primaryCompanyIdRef.current = primaryCompanyId;
+
+  const skipPrimaryCompanyFetch = useMemo(() => {
+    if (!session?.user) return true;
+    if (location.pathname.startsWith('/agendar/')) return true;
+    if (location.pathname.startsWith('/guest-appointment/')) return true;
+    if (location.pathname.startsWith('/admin-dashboard')) return true;
+    const metadataRole = (session.user.user_metadata?.role || '').toUpperCase();
+    if (metadataRole === 'GLOBAL_ADMIN') return true;
+    if (isGlobalAdmin) return true;
+    return false;
+  }, [session?.user, location.pathname, isGlobalAdmin]);
+
+  useEffect(() => {
+    if (!userId) {
+      clearPrimaryCompanyCacheForUser(null);
+    }
+  }, [userId]);
 
   useEffect(() => {
     const fetchPrimaryCompany = async () => {
-      if (sessionLoading) {
-        return; // Wait for session to load
+      if (sessionLoading || loadingGlobalAdminCheck) {
+        return;
       }
 
-      // Para rotas públicas baseadas em companyId na URL (como /agendar e /guest-appointment),
-      // não tentamos descobrir empresa primária nem mostrar warnings.
-      const isPublicCompanyRoute =
-        location.pathname.startsWith('/agendar/') ||
-        location.pathname.startsWith('/guest-appointment/');
-
-      if (!session?.user || isPublicCompanyRoute) {
+      if (skipPrimaryCompanyFetch) {
         setPrimaryCompanyId(null);
         setPrimaryCompanyName(null);
         setLoadingPrimaryCompany(false);
         return;
       }
 
-      setLoadingPrimaryCompany(true);
+      if (userId && isPrimaryCompanyCacheReady(userId)) {
+        const cached = readPrimaryCompanyCache(userId);
+        setPrimaryCompanyId(cached.companyId);
+        setPrimaryCompanyName(cached.companyName);
+        setLoadingPrimaryCompany(false);
+        return;
+      }
+
+      const isInitialLoad = primaryCompanyIdRef.current === null;
+      if (isInitialLoad) {
+        setLoadingPrimaryCompany(true);
+      }
+
       try {
-        const { data, error } = await supabase
-          .rpc('get_user_context', { p_user_id: session.user.id });
+        await ensureValidSessionForQuery();
+
+        const { data, error } = await supabase.rpc('get_user_context', { p_user_id: session!.user.id });
 
         if (error) {
           console.error('usePrimaryCompany: Erro ao buscar contexto do usuário:', error);
@@ -58,7 +96,6 @@ export function usePrimaryCompany() {
           foundCompanyId = primaryCompany.company_id;
           foundCompanyName = primaryCompany.company_name;
         } else {
-          // Se não encontrou empresa primária em user_companies, buscar qualquer empresa
           const anyCompany = data.find((company: UserCompanyContext) => company.company_id);
           if (anyCompany) {
             foundCompanyId = anyCompany.company_id;
@@ -66,12 +103,11 @@ export function usePrimaryCompany() {
           }
         }
 
-        // Se não encontrou em user_companies, buscar em collaborators (para colaboradores)
         if (!foundCompanyId) {
           const { data: collaboratorData, error: collaboratorError } = await supabase
             .from('collaborators')
             .select('company_id')
-            .eq('user_id', session.user.id)
+            .eq('user_id', session!.user.id)
             .eq('is_arena_system_placeholder', false)
             .limit(1)
             .maybeSingle();
@@ -85,14 +121,14 @@ export function usePrimaryCompany() {
           }
         }
 
+        let resolvedCompanyName = foundCompanyName;
+
         if (foundCompanyId) {
           setPrimaryCompanyId(foundCompanyId);
 
-          // Se já temos o nome da empresa (de user_companies), usar diretamente
           if (foundCompanyName) {
             setPrimaryCompanyName(foundCompanyName);
           } else {
-            // Se não temos o nome, buscar na tabela companies
             const { data: companyNameData, error: companyNameError } = await supabase
               .from('companies')
               .select('name')
@@ -102,8 +138,10 @@ export function usePrimaryCompany() {
             if (companyNameError) {
               console.warn('usePrimaryCompany: Erro ao buscar nome da empresa (não crítico):', companyNameError);
               setPrimaryCompanyName(null);
+              resolvedCompanyName = null;
             } else {
               setPrimaryCompanyName(companyNameData.name);
+              resolvedCompanyName = companyNameData.name;
             }
           }
         } else {
@@ -111,18 +149,29 @@ export function usePrimaryCompany() {
           setPrimaryCompanyName(null);
         }
 
-      } catch (error: any) {
+        if (userId) {
+          writePrimaryCompanyCache(userId, foundCompanyId, resolvedCompanyName);
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         console.error('Error fetching primary company:', error);
-        showError('Erro ao carregar empresa primária: ' + error.message);
+
+        if (!isJwtClockSkewError(message)) {
+          showError('Erro ao carregar empresa primária: ' + getAuthErrorUserMessage(message));
+        }
+
         setPrimaryCompanyId(null);
         setPrimaryCompanyName(null);
+        if (userId) {
+          clearPrimaryCompanyCacheForUser(userId);
+        }
       } finally {
         setLoadingPrimaryCompany(false);
       }
     };
 
     fetchPrimaryCompany();
-  }, [userId, sessionLoading, location.pathname]); // Usa userId em vez de session inteiro
+  }, [userId, sessionLoading, loadingGlobalAdminCheck, skipPrimaryCompanyFetch]);
 
   return { primaryCompanyId, primaryCompanyName, loadingPrimaryCompany };
 }

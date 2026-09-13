@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input'; // Importar Input
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"; // Importar Dialog
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import TrialBanner from '@/components/TrialBanner';
 
 interface Menu {
   id: string;
@@ -52,7 +53,9 @@ interface Subscription {
   billing_cycle_end?: string | null;
   next_plan_id?: string | null;
   pending_change_type?: 'upgrade' | 'downgrade' | null;
-  status: 'active' | 'inactive' | 'pending' | 'canceled';
+  status: 'active' | 'inactive' | 'pending' | 'canceled' | 'trial';
+  is_trial?: boolean | null;
+  trial_ends_at?: string | null;
   subscription_plans: Plan;
 }
 
@@ -61,7 +64,13 @@ const SubscriptionPlansPage: React.FC = () => {
   const { session, loading: sessionLoading } = useSession();
   const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
   const { isClient, loadingClientCheck } = useIsClient();
-  const { status: subscriptionStatus } = useSubscriptionStatus();
+  const {
+    status: subscriptionStatus,
+    endDate: subscriptionEndDate,
+    trialDaysRemaining,
+    isTrial,
+    planId: trialPlanId,
+  } = useSubscriptionStatus();
   const { isProprietario } = useIsProprietario();
   const { isCompanyAdmin } = useIsCompanyAdmin();
   const { isGlobalAdmin } = useIsGlobalAdmin();
@@ -70,6 +79,7 @@ const SubscriptionPlansPage: React.FC = () => {
     !isGlobalAdmin &&
     (isProprietario || isCompanyAdmin) &&
     (subscriptionStatus === 'no_subscription' || subscriptionStatus === 'expired');
+  const trialPlanRef = useRef<HTMLDivElement | null>(null);
 
   // Redirecionar clientes para meus agendamentos (planos são apenas para profissionais)
   useEffect(() => {
@@ -634,6 +644,11 @@ const SubscriptionPlansPage: React.FC = () => {
     fetchSubscriptionData();
   }, [fetchSubscriptionData]);
 
+  useEffect(() => {
+    if (!isTrial || !trialPlanId || loadingData) return;
+    trialPlanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [isTrial, trialPlanId, loadingData, availablePlans.length]);
+
 
   if (loadingData || sessionLoading || loadingPrimaryCompany || loadingSchedulingMode) {
     return (
@@ -661,7 +676,27 @@ const SubscriptionPlansPage: React.FC = () => {
   }
   
   const isCanceled = currentSubscription?.status === 'canceled';
-  const isExpired = currentSubscription?.end_date ? isPast(parseISO(currentSubscription.end_date)) : false;
+  const isTrialSubscription =
+    currentSubscription?.status === 'trial' && !!currentSubscription?.is_trial;
+  const trialEndsAt = currentSubscription?.trial_ends_at ?? subscriptionEndDate;
+  const isTrialExpired =
+    isTrialSubscription && trialEndsAt
+      ? isPast(parseISO(trialEndsAt))
+      : subscriptionStatus === 'expired' && isTrial;
+  const isTrialActive =
+    isTrialSubscription && trialEndsAt
+      ? !isPast(parseISO(trialEndsAt))
+      : isTrial && (subscriptionStatus === 'trial' || subscriptionStatus === 'expiring_soon');
+  const isExpired =
+    isTrialExpired
+      ? true
+      : currentSubscription?.status === 'expired' &&
+          !currentSubscription?.trial_ends_at &&
+          currentSubscription?.end_date
+        ? isPast(parseISO(currentSubscription.end_date))
+        : currentSubscription?.end_date
+          ? isPast(parseISO(currentSubscription.end_date))
+          : false;
   const isExpiringSoon = subscriptionStatus === 'expiring_soon';
   const couponBlockedByActiveSub =
     !!currentSubscription &&
@@ -678,8 +713,10 @@ const SubscriptionPlansPage: React.FC = () => {
 
   // Ajustar o status para exibição
   let displayStatus = currentSubscription?.status;
-  if (displayStatus !== 'canceled' && isExpired) {
-    displayStatus = 'expired'; // Priorizar 'expired' se não for 'canceled'
+  if (isTrialExpired) {
+    displayStatus = 'trial_expired';
+  } else if (displayStatus !== 'canceled' && isExpired) {
+    displayStatus = 'expired';
   }
 
   console.log('--- Debug SubscriptionPlansPage ---');
@@ -699,6 +736,8 @@ const SubscriptionPlansPage: React.FC = () => {
   const getSubscriptionStatusBadge = (status: string) => {
     switch (status) {
       case 'active': return <Badge className="bg-green-500 text-white">Ativo</Badge>;
+      case 'trial': return <Badge className="bg-emerald-600 text-white">Teste grátis</Badge>;
+      case 'trial_expired': return <Badge className="bg-red-500 text-white">Teste encerrado</Badge>;
       case 'inactive': return <Badge className="bg-gray-500 text-white">Inativo</Badge>;
       case 'pending': return <Badge className="bg-primary/100 text-black">Pendente</Badge>;
       case 'canceled': return <Badge className="bg-red-500 text-white">Cancelado</Badge>;
@@ -713,6 +752,20 @@ const SubscriptionPlansPage: React.FC = () => {
         {isCourtMode ? 'Planos para Arena / Quadras' : 'Planos de Assinatura'}
       </h1>
 
+      {isTrialActive && (
+        <TrialBanner trialDaysRemaining={trialDaysRemaining} endDate={trialEndsAt ?? subscriptionEndDate} />
+      )}
+
+      {isTrialExpired && (
+        <Alert className="border-red-400 bg-red-50">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertTitle className="text-red-900">Teste grátis encerrado</AlertTitle>
+          <AlertDescription className="text-red-900/90">
+            Seu período de teste terminou. Assine o plano abaixo para reativar o acesso completo ao sistema.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {showPlanActivationHint && (
         <Alert className="border-primary/40 bg-primary/5">
           <Info className="h-4 w-4" />
@@ -726,7 +779,7 @@ const SubscriptionPlansPage: React.FC = () => {
         </Alert>
       )}
 
-      {isExpiringSoon && !isExpired && !isCanceled && (
+      {isExpiringSoon && !isExpired && !isCanceled && !isTrial && (
         <Alert className="border-amber-500 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-700" />
           <AlertTitle className="text-amber-900">Seu plano está encerrando</AlertTitle>
@@ -750,7 +803,13 @@ const SubscriptionPlansPage: React.FC = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className={`text-xl text-gray-900 flex items-center gap-2 ${isCanceled || isExpired ? 'text-red-600' : 'text-primary'}`}>
             {isCanceled || isExpired ? <AlertTriangle className="h-6 w-6" /> : <Zap className="h-6 w-6" />}
-            {isExpired && !isCanceled ? 'Assinatura Expirada' : 'Sua Assinatura Atual'}
+            {isTrialExpired && !isCanceled
+              ? 'Teste grátis encerrado'
+              : isTrialActive
+                ? 'Seu teste grátis'
+                : isExpired && !isCanceled
+                  ? 'Assinatura Expirada'
+                  : 'Sua Assinatura Atual'}
           </CardTitle>
           {currentSubscription && displayStatus && getSubscriptionStatusBadge(displayStatus)}
         </CardHeader>
@@ -775,21 +834,43 @@ const SubscriptionPlansPage: React.FC = () => {
                 </div>
               )}
 
+              {isTrialActive && trialEndsAt && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                  Teste grátis ativo —{' '}
+                  {trialDaysRemaining !== null ? (
+                    <>
+                      restam <strong>{trialDaysRemaining}</strong> dia{trialDaysRemaining === 1 ? '' : 's'}.
+                    </>
+                  ) : (
+                    <>encerra em breve.</>
+                  )}{' '}
+                  Término:{' '}
+                  <strong>{format(parseISO(trialEndsAt), 'dd/MM/yyyy', { locale: ptBR })}</strong>.
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
                 <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> Início: {format(parseISO(currentSubscription.start_date), 'dd/MM/yyyy', { locale: ptBR })}</p>
                 <p className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Preço: R$ {currentSubscription.subscription_plans?.price?.toFixed(2).replace('.', ',') || '0,00'} / {currentSubscription.subscription_plans?.duration_months} {currentSubscription.subscription_plans?.duration_months && currentSubscription.subscription_plans.duration_months > 1 ? 'meses' : 'mês'}</p>
-                {currentSubscription.end_date && (
+                {isTrialActive && trialEndsAt ? (
+                  <p className="flex items-center gap-2 col-span-2">
+                    <Clock className="h-4 w-4 text-emerald-600" /> Teste válido até:{' '}
+                    {format(parseISO(trialEndsAt), 'dd/MM/yyyy', { locale: ptBR })}
+                  </p>
+                ) : currentSubscription.end_date ? (
                     <p className="flex items-center gap-2"><X className="h-4 w-4 text-red-500" /> Expira em: {expirationDateFormatted}</p>
-                )}
+                ) : null}
               </div>
+              {!isTrialActive && (
               <Button 
                 variant="outline" 
                 className="!rounded-button whitespace-nowrap mt-4"
                 disabled={isCanceled || loadingData}
-                onClick={() => setIsCancelModalOpen(true)} // Abre o modal de cancelamento
+                onClick={() => setIsCancelModalOpen(true)}
               >
                 {isCanceled ? 'Assinatura Cancelada' : 'Gerenciar / Cancelar Assinatura'}
               </Button>
+              )}
             </>
           ) : (
             <p className="text-gray-600">Você não possui uma assinatura ativa. Selecione um plano abaixo para começar.</p>
@@ -908,15 +989,19 @@ const SubscriptionPlansPage: React.FC = () => {
         availablePlans.map((plan) => {
           if (!plan) return null; 
           
-          const isCurrentPlan = currentSubscription?.plan_id === plan.id;
-          
-          const canRenewCurrentPlan = isCurrentPlan && isExpiringSoon;
+          const isCurrentPlan =
+            currentSubscription?.plan_id === plan.id || (isTrialActive && trialPlanId === plan.id);
+
+          const isCurrentTrialPlan = isCurrentPlan && isTrialActive;
+          const canRenewCurrentPlan = isCurrentPlan && isExpiringSoon && !isTrialActive;
           const isCurrentAndActive =
             isCurrentPlan && displayStatus === 'active' && !isExpired && !isExpiringSoon;
           const buttonDisabled = loadingData || isCurrentAndActive;
 
           let buttonText = 'Assinar Agora';
-          if (canRenewCurrentPlan) {
+          if (isCurrentTrialPlan) {
+            buttonText = 'Assinar e continuar';
+          } else if (canRenewCurrentPlan) {
             buttonText = 'Renovar Plano';
           } else if (isCurrentAndActive) {
             buttonText = 'Plano Atual';
@@ -963,8 +1048,14 @@ const SubscriptionPlansPage: React.FC = () => {
             : 0;
 
           return (
-            <Card key={plan.id} className={`border-2 ${isCurrentPlan ? 'border-primary shadow-xl' : 'border-gray-200'}`}>
+            <div key={plan.id} ref={trialPlanId === plan.id ? trialPlanRef : undefined}>
+            <Card
+              className={`border-2 ${isCurrentPlan ? 'border-primary shadow-xl ring-2 ring-primary/20' : 'border-gray-200'}`}
+            >
               <CardHeader className="text-center">
+                {isCurrentTrialPlan && (
+                  <Badge className="mb-2 w-fit self-center bg-emerald-600 text-white">Seu plano no teste</Badge>
+                )}
                 <CardTitle className="text-2xl font-bold text-gray-900">{plan.name}</CardTitle>
                 <div className="flex justify-center items-center mt-2">
                   {/* Botão para gerenciar funcionalidades do plano */}
@@ -1120,6 +1211,7 @@ const SubscriptionPlansPage: React.FC = () => {
                 </Button>
               </CardContent>
             </Card>
+            </div>
           );
         })
         )}

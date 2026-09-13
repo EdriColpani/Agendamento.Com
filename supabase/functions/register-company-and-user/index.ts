@@ -4,6 +4,7 @@ import {
   getPostAuthRedirectTo,
   isSegmentCourtMode,
 } from "./post-auth-redirect.ts";
+import { sendAndLogTrialReminder } from "./trial-email.ts";
 
 const BRAND_NAME = "PlanoAgenda";
 const BRAND_SITE_URL = "https://www.planoagenda.com.br";
@@ -110,6 +111,8 @@ serve(async (req) => {
         address, number, neighborhood, complement, zipCode, city, state, imageBase64,
         /** Código opcional de vendedor externo (?ref= no cadastro). Domínio separado da comissão de colaboradores. */
         referralCode,
+        /** Plano escolhido na landing (?plan=). Usado para iniciar trial quando trial_enabled. */
+        planId,
     } = requestBody;
 
     // 1. Input Validation (Basic check, detailed validation is done on frontend)
@@ -336,6 +339,47 @@ serve(async (req) => {
     if (setPrimaryError) {
         console.error('Set Primary Error:', setPrimaryError.message);
         throw new Error('Failed to set company as primary: ' + setPrimaryError.message);
+    }
+
+    // 6b. Trial gratuito (Fase 2) — sem Mercado Pago no cadastro
+    let trialInfo: Record<string, unknown> | null = null;
+    if (typeof planId === 'string' && planId.trim() !== '') {
+        const { data: trialResult, error: trialError } = await supabaseAdmin.rpc(
+            'start_company_trial_subscription',
+            { p_company_id: companyId, p_plan_id: planId.trim() },
+        );
+
+        if (trialError) {
+            console.warn('[register-company-and-user] trial RPC error (non-fatal):', trialError.message);
+        } else if (trialResult && typeof trialResult === 'object' && (trialResult as { success?: boolean }).success) {
+            trialInfo = trialResult as Record<string, unknown>;
+            console.log('[register-company-and-user] Trial started for company', companyId, trialInfo);
+        } else {
+            console.log('[register-company-and-user] Trial not started:', trialResult);
+        }
+    }
+
+    // 6c. E-mail de boas-vindas do trial (Fase 6 — imediato, deduplicado via trial_reminder_log)
+    if (trialInfo?.subscription_id) {
+        const trialResendKey = Deno.env.get('RESEND_API_KEY');
+        if (trialResendKey) {
+            try {
+                const welcomeResult = await sendAndLogTrialReminder(supabaseAdmin, trialResendKey, {
+                    companyId,
+                    subscriptionId: String(trialInfo.subscription_id),
+                    toEmail: email,
+                    day: 0,
+                    companyName: companyName,
+                    planName: typeof trialInfo.plan_name === 'string' ? trialInfo.plan_name : null,
+                    trialDays: Number(trialInfo.trial_days) || 15,
+                    trialEndsAt: typeof trialInfo.trial_ends_at === 'string' ? trialInfo.trial_ends_at : null,
+                });
+                console.log('[register-company-and-user] Trial welcome email:', welcomeResult);
+            } catch (trialEmailErr: unknown) {
+                const msg = trialEmailErr instanceof Error ? trialEmailErr.message : String(trialEmailErr);
+                console.warn('[register-company-and-user] Trial welcome email failed (non-fatal):', msg);
+            }
+        }
     }
 
     // 7. Update user type to PROPRIETARIO
@@ -629,6 +673,8 @@ serve(async (req) => {
         userId: userId,
         email: email,
         requiresEmailConfirmation: true, // Flag to indicate email confirmation is required
+        trialStarted: !!trialInfo,
+        trial: trialInfo,
     }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -18,6 +18,7 @@ import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
 import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import SubscriptionExpiredPage from '@/pages/SubscriptionExpiredPage';
+import TrialBanner from '@/components/TrialBanner';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Zap, Menu, Bell } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -27,6 +28,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import NotificationList from './NotificationList'; // Importar novo componente
 import { useIsMobile } from '@/hooks/use-mobile';
 import BrandHeader from '@/components/brand/BrandHeader';
+import { AppCompanyProvider } from '@/components/AppCompanyContext';
 
 /** Mesmas rotas/ícones dos registros em `menus` (migration arena); usado se o plano ainda não tiver menu_plans. */
 const ARENA_SIDEBAR_FALLBACK_ITEMS: Array<{
@@ -76,14 +78,14 @@ const MainApplication: React.FC = () => {
   const { isGlobalAdmin, loadingGlobalAdminCheck } = useIsGlobalAdmin();
   const { isClient, loadingClientCheck } = useIsClient();
   const { isCollaborator, loading: loadingCollaboratorCheck } = useIsCollaborator();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
+  const { primaryCompanyId, primaryCompanyName, loadingPrimaryCompany } = usePrimaryCompany();
   const { isCourtMode } = useCompanySchedulingMode(primaryCompanyId);
   const {
     canUseArenaManagement,
     loading: loadingArenaModule,
     companyDetails,
   } = useCourtBookingModule(primaryCompanyId);
-  const { canUseTournament, loading: loadingTournament } = useTournamentAccess();
+  const { canShowTournamentMenu } = useTournamentAccess();
   const isMobile = useIsMobile();
 
   const syncHeaderHeight = useCallback(() => {
@@ -101,7 +103,13 @@ const MainApplication: React.FC = () => {
   }, [syncHeaderHeight, isCourtMode, canUseArenaManagement, session?.user]);
 
   // Novo: Status da Assinatura
-  const { status: subscriptionStatus, endDate, loading: loadingSubscription } = useSubscriptionStatus();
+  const {
+    status: subscriptionStatus,
+    endDate,
+    trialDaysRemaining,
+    isTrial,
+    loading: loadingSubscription,
+  } = useSubscriptionStatus();
   
   // Novo: Notificações (apenas para Proprietário/Admin)
   const { notifications, unreadCount, loading: loadingNotifications, markAllAsRead } = useNotifications();
@@ -120,10 +128,10 @@ const MainApplication: React.FC = () => {
   const dynamicMenusFilteredByArena = useMemo(
     () =>
       dynamicMenuItems.filter((m) => {
-        if (m.menu_key === 'arena-torneios') return canUseTournament;
+        if (m.menu_key === 'arena-torneios') return canShowTournamentMenu;
         return !m.menu_key.startsWith('arena-') || canUseArenaManagement;
       }),
-    [dynamicMenuItems, canUseArenaManagement, canUseTournament]
+    [dynamicMenuItems, canUseArenaManagement, canShowTournamentMenu]
   );
 
   // Define se estamos em uma rota de aplicação que deve ter sidebar
@@ -243,7 +251,7 @@ const MainApplication: React.FC = () => {
 
   const hasTournamentInSidebar = sidebarWithArena.some((item) => String(item.id) === 'arena-torneios');
   const shouldInjectTournament =
-    canUseTournament &&
+    canShowTournamentMenu &&
     (isProprietarioOrCompanyAdmin || isCollaborator) &&
     !hasTournamentInSidebar;
 
@@ -271,25 +279,49 @@ const MainApplication: React.FC = () => {
 
   // Se o usuário é Proprietário/Admin e a assinatura expirou ou não existe, bloqueia o acesso a todas as rotas de gerenciamento
   if (isProprietarioOrCompanyAdmin && (subscriptionStatus === 'expired' || subscriptionStatus === 'no_subscription')) {
-    // Permite apenas acesso a rotas públicas, perfil, e a página de planos
     if (!['/planos', '/profile'].includes(location.pathname)) {
+      const blockReason =
+        subscriptionStatus === 'expired'
+          ? isTrial
+            ? 'trial_expired'
+            : 'expired'
+          : 'no_subscription';
+
       return (
         <SubscriptionExpiredPage
           endDate={endDate}
-          reason={subscriptionStatus === 'expired' ? 'expired' : 'no_subscription'}
+          reason={blockReason}
         />
       );
     }
   }
 
-  // Se o usuário está carregando a sessão ou os status, exibe loading
-  if (sessionLoading || loadingPrimaryCompany || loadingProprietarioCheck || loadingCompanyAdminCheck || loadingGlobalAdminCheck || loadingClientCheck || loadingCollaboratorCheck || loadingSubscription || loadingMenus || loadingArenaModule || loadingTournament) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-700">Carregando aplicação...</p>
-      </div>
-    );
-  }
+  // Shell sempre visível — nunca substituir layout inteiro por loading (evita flash ao trocar rota).
+  const shellReady =
+    !sessionLoading &&
+    !(loadingPrimaryCompany && !primaryCompanyId) &&
+    !(loadingArenaModule && isCourtMode && !companyDetails);
+
+  const appCompanyValue = useMemo(
+    () => ({
+      primaryCompanyId,
+      primaryCompanyName,
+      isCourtMode,
+      canUseArenaManagement,
+      canShowTournamentMenu,
+      companyDetails: companyDetails ?? null,
+      shellReady,
+    }),
+    [
+      primaryCompanyId,
+      primaryCompanyName,
+      isCourtMode,
+      canUseArenaManagement,
+      canShowTournamentMenu,
+      companyDetails,
+      shellReady,
+    ],
+  );
 
   // Renderiza o componente principal
   return (
@@ -483,18 +515,25 @@ const MainApplication: React.FC = () => {
           </aside>
         )}
         <main className="flex-1 min-w-0 p-4 pb-24 sm:p-6 sm:pb-6">
-          {/* Aviso de Expiração */}
-          {isProprietarioOrCompanyAdmin && subscriptionStatus === 'expiring_soon' && endDate && (
+          {isProprietarioOrCompanyAdmin && isTrial && (subscriptionStatus === 'trial' || subscriptionStatus === 'expiring_soon') && (
+            <TrialBanner trialDaysRemaining={trialDaysRemaining} endDate={endDate} />
+          )}
+          {isProprietarioOrCompanyAdmin &&
+            subscriptionStatus === 'expiring_soon' &&
+            !isTrial &&
+            endDate && (
             <Alert className="mb-6 border-primary bg-primary/10 text-amber-900">
               <AlertTriangle className="h-4 w-4 text-primary" />
               <AlertTitle className="text-amber-900">Aviso de Expiração!</AlertTitle>
               <AlertDescription>
-                Sua assinatura expira em breve, no dia {format(parseISO(endDate), 'dd/MM/yyyy', { locale: ptBR })}. 
+                Sua assinatura expira em breve, no dia {format(parseISO(endDate), 'dd/MM/yyyy', { locale: ptBR })}.
                 <Link to="/planos" className="font-semibold underline ml-1">Renove agora</Link> para evitar a interrupção dos serviços.
               </AlertDescription>
             </Alert>
           )}
-          <Outlet />
+          <AppCompanyProvider value={appCompanyValue}>
+            <Outlet />
+          </AppCompanyProvider>
         </main>
       </div>
     </div>

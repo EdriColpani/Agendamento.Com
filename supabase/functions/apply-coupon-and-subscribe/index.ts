@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.46.0';
 import { format, addMonths, parseISO, isPast, startOfDay } from 'https://esm.sh/date-fns@3.6.0';
+import {
+  buildPaidActiveSubscriptionUpdate,
+  buildPendingCheckoutUpdate,
+  findConvertibleTrialSubscription,
+  logTrialConversion,
+} from './trial-subscription-conversion.ts';
 
 const BRAND_NAME = "PlanoAgenda";
 const BRAND_SITE_URL = "https://www.planoagenda.com.br";
@@ -255,7 +261,33 @@ async function handleSubscription(
     let finalEndDate: string;
     let subscriptionId: string;
 
-    if (existingSub) {
+    const trialSub = await findConvertibleTrialSubscription(supabaseAdmin, companyId);
+
+    if (trialSub) {
+        const calculatedEndDate = addMonths(today, durationMonths);
+        finalEndDate = format(calculatedEndDate, 'yyyy-MM-dd');
+        subscriptionId = trialSub.id;
+
+        const { error: updateTrialError } = await supabaseAdmin
+            .from('company_subscriptions')
+            .update(buildPaidActiveSubscriptionUpdate({
+                planId,
+                startDate,
+                finalEndDate,
+                billingCycleStart: startDate,
+            }))
+            .eq('id', subscriptionId);
+
+        if (updateTrialError) throw updateTrialError;
+        console.log(`Trial subscription ${subscriptionId} converted to active until ${finalEndDate}.`);
+
+        await logTrialConversion(supabaseAdmin, {
+            companyId,
+            subscriptionId,
+            planId,
+            source: 'apply_coupon_free',
+        });
+    } else if (existingSub) {
         // Extend the end date from the current end date
         const currentEndDate = startOfDay(parseISO(existingSub.end_date || startDate));
         const baseDate = isPast(currentEndDate) ? today : currentEndDate;
@@ -581,8 +613,27 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Payment service not configured.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
-        // --- 2. Garantir que exista uma assinatura pendente para esta empresa + plano ---
+        // --- 2. Garantir assinatura pendente (reutiliza linha do trial se existir) ---
         let pendingSubscriptionId: string | null = null;
+        const trialSub = await findConvertibleTrialSubscription(supabaseAdmin, companyId);
+        const today = new Date();
+        const startDate = format(today, 'yyyy-MM-dd');
+
+        if (trialSub) {
+            const { error: trialPendingError } = await supabaseAdmin
+                .from('company_subscriptions')
+                .update(buildPendingCheckoutUpdate({ planId, startDate }))
+                .eq('id', trialSub.id);
+
+            if (trialPendingError) {
+                console.error('Error converting trial to pending:', trialPendingError);
+                throw trialPendingError;
+            }
+
+            pendingSubscriptionId = trialSub.id;
+            console.log(`Trial subscription ${trialSub.id} set to pending for Mercado Pago checkout.`);
+        }
+
         const { data: existingPending, error: pendingError } = await supabaseAdmin
             .from('company_subscriptions')
             .select('id')
@@ -598,13 +649,10 @@ serve(async (req) => {
             throw pendingError;
         }
 
-        if (existingPending) {
+        if (!pendingSubscriptionId && existingPending) {
             pendingSubscriptionId = existingPending.id;
             console.log(`Found existing pending subscription ${pendingSubscriptionId} for company ${companyId}.`);
-        } else {
-            const today = new Date();
-            const startDate = format(today, 'yyyy-MM-dd');
-
+        } else if (!pendingSubscriptionId) {
             const { data: newPending, error: insertPendingError } = await supabaseAdmin
                 .from('company_subscriptions')
                 .insert({

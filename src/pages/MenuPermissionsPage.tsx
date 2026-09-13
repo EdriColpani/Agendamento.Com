@@ -10,6 +10,7 @@ import { showError, showOperationError, showSuccess } from '@/utils/toast';
 import { Loader2, ArrowLeft, Shield, Save } from 'lucide-react';
 import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
 import { useSession } from '@/components/SessionContextProvider';
+import { fetchEffectiveSubscription } from '@/utils/effectiveSubscription';
 
 interface Menu {
   id: string;
@@ -57,19 +58,7 @@ const MenuPermissionsPage: React.FC = () => {
     setLoading(true);
     try {
       // 1. Buscar plano ativo da empresa
-      const { data: subscriptionData, error: subError } = await supabase
-        .from('company_subscriptions')
-        .select('plan_id')
-        .eq('company_id', primaryCompanyId)
-        .eq('status', 'active')
-        .order('start_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (subError && subError.code !== 'PGRST116') {
-        throw subError;
-      }
-
+      const subscriptionData = await fetchEffectiveSubscription(supabase, primaryCompanyId);
       const planId = subscriptionData?.plan_id || null;
       setActivePlanId(planId);
 

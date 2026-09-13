@@ -1,7 +1,16 @@
 # Checkpoint — WhatsApp Evolution Community
 
-**Salvo em:** 25/08/2026  
+**Salvo em:** 25/08/2026 (noite)  
 **Objetivo:** retomar o desenvolvimento sem perder o contexto.
+
+---
+
+## Decisão atual (importante)
+
+- **Produção PlanoAgenda:** continua `WHATSAPP_PROVIDER=external` (**Liot**). Não mudar.
+- **Aba Conexão (Fase 5):** **oculta** no frontend (`SHOW_WHATSAPP_CONNECTION_TAB = false` em `WhatsAppMessagingPage.tsx`).
+- **VPS:** pausado por custo. ngrok = só teste pontual.
+- **Reativar UI:** setar flag `true` + deploy frontend quando infra Evolution estiver estável.
 
 ---
 
@@ -9,26 +18,40 @@
 
 | Fase | Status |
 |------|--------|
-| 1 — Auditoria | Concluída → `docs/WHATSAPP_FASE1_AUDITORIA.md` |
-| 2 — WhatsAppProvider | Código pronto → `docs/WHATSAPP_FASE2.md` (deploy Edge Function pode estar pendente) |
-| 3 — Evolution Community | Stack local + auth OK |
-| 4 — Instâncias por empresa | Código pronto → `docs/WHATSAPP_FASE4.md` (aplicar migration + deploy) |
-| 5+ | UI QR — **próxima fase** |
+| 1 — Auditoria | ✅ `docs/WHATSAPP_FASE1_AUDITORIA.md` |
+| 2 — WhatsAppProvider | ✅ Código + doc `docs/WHATSAPP_FASE2.md` |
+| 3 — Evolution Community | ✅ Docker local OK `docs/WHATSAPP_FASE3.md` |
+| 4 — Instâncias por empresa | ✅ Migration + Edge Function + doc `docs/WHATSAPP_FASE4.md` |
+| 5 — UI QR (Conexão) | ✅ Frontend em produção + doc `docs/WHATSAPP_FASE5.md` |
+| 6+ | Webhooks etc. — **não iniciado** |
 
-**Produção PlanoAgenda:** manter `WHATSAPP_PROVIDER=external` (Liot) até validação completa.
+**UI em produção:** `https://planoagenda.com.br/mensagens-whatsapp` → aba **Conexão**.
 
 ---
 
-## O que já funciona localmente
+## O que já está feito
 
-* Docker Desktop instalado e ok
-* Stack em `infra/evolution/`:
-  * `evoapicloud/evolution-api:v2.3.7` (tag com **`v`**)
-  * Postgres + Redis
-  * Containers: `planoagenda_evolution_api`, `_postgres`, `_redis`
-* Auth Evolution OK (`fetchInstances` sem 401)
-* Instância de teste criada: **`planoagenda-teste`**
-* Endpoint `connect` devolve QR em **base64** (PowerShell mostra texto; precisa salvar PNG para escanear)
+### Backend / banco
+* Migration `whatsapp_instances` aplicada (tabela existe no projeto Agendamento)
+* RPCs: `ensure_whatsapp_instance`, `get_whatsapp_instance`, `update_whatsapp_instance_status`
+* Edge Function `whatsapp-evolution-instance` deployada (v5+) — CORS OK, timeout Evolution, try/catch
+* Secrets necessários: `EVOLUTION_API_URL`, `EVOLUTION_API_KEY` (URL **pública** HTTPS)
+
+### Frontend
+* `src/components/WhatsAppConnectionCard.tsx`
+* `src/utils/whatsappEvolutionApi.ts`
+* Aba **Conexão** em `WhatsAppMessagingPage.tsx`
+* Merge PR #49 → `main`; deploy Vercel Production via commit `chore: trigger production deploy`
+
+### Evolution local
+* Stack `infra/evolution/` — imagem `evoapicloud/evolution-api:v2.3.7`
+* Porta **127.0.0.1:8080** (Docker); atenção: Vite também usa 8080 em `0.0.0.0` — ngrok deve usar `127.0.0.1:8080`
+* `.env` local com `AUTHENTICATION_API_KEY` (não commit)
+
+### Teste ngrok (já feito nesta sessão)
+* Túnel funcionou: Evolution responde via HTTPS ngrok
+* Exemplo de URL usada: `https://kaylin-geostatic-interacademically.ngrok-free.dev` (muda se reiniciar ngrok)
+* Erro em produção visto: `502` / `Falha ao conectar Evolution (0)` = Supabase **não alcança** localhost
 
 ---
 
@@ -36,69 +59,61 @@
 
 | Arquivo | Uso |
 |---------|-----|
-| `docs/PLANO_WHATSAPP_EVOLUTION_COMMUNITY.md` | Plano completo (22 fases) |
-| `docs/WHATSAPP_FASE1_AUDITORIA.md` | Auditoria sistema atual |
-| `docs/WHATSAPP_FASE2.md` | Abstração provider |
-| `docs/WHATSAPP_FASE3.md` | Evolution self-hosted |
-| `docs/WHATSAPP_EVOLUTION_LICENSE.md` | Licença / versão |
+| `docs/PLANO_WHATSAPP_EVOLUTION_COMMUNITY.md` | Plano completo |
+| `docs/WHATSAPP_FASE1` … `FASE5.md` | Docs por fase |
 | `docs/WHATSAPP_SETUP_EVOLUTION.md` | Setup Docker |
-| `infra/evolution/docker-compose.yml` | Compose pinado `v2.3.7` |
+| `infra/evolution/docker-compose.yml` | Compose |
 | `infra/evolution/.env` | Secrets locais (**não commit**) |
+| `supabase/migrations/20260825193000_whatsapp_instances_fase4.sql` | Schema instâncias |
+| `supabase/functions/whatsapp-evolution-instance/index.ts` | Edge QR/connect |
 | `supabase/functions/whatsapp-message-scheduler/index.ts` | Provider external + evolution |
+| `src/components/WhatsAppConnectionCard.tsx` | UI conexão |
 
 ---
 
 ## Como retomar (PowerShell)
 
+### Subir Evolution local
+
 ```powershell
 cd c:\V3\tipoagenda.com\infra\evolution
-
-# Subir stack (se parado)
 docker compose --env-file .env up -d
-
-# Conferir
 docker ps
-docker logs planoagenda_evolution_api --tail 30
-
-# Auth (chave vem do container)
-$chave = (docker exec planoagenda_evolution_api printenv AUTHENTICATION_API_KEY).Trim()
-Invoke-RestMethod -Uri "http://127.0.0.1:8080/instance/fetchInstances" -Headers @{ apikey = $chave } | ConvertTo-Json -Depth 5
 ```
 
-### Gerar PNG do QR (instância de teste)
+### Túnel rápido (teste — PC ligado)
 
 ```powershell
-cd c:\V3\tipoagenda.com\infra\evolution
-$chave = (docker exec planoagenda_evolution_api printenv AUTHENTICATION_API_KEY).Trim()
-$resp = Invoke-RestMethod -Uri "http://127.0.0.1:8080/instance/connect/planoagenda-teste" -Headers @{ apikey = $chave }
-$b64 = $resp.base64
-if (-not $b64) { $b64 = $resp.qrcode.base64 }
-$b64 = $b64 -replace '^data:image/png;base64,', ''
-$path = Join-Path (Get-Location) 'qrcode-planoagenda-teste.png'
-[IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($b64))
-Start-Process $path
+# IMPORTANTE: usar 127.0.0.1 (Evolution), não só "8080" (conflito com Vite)
+ngrok http 127.0.0.1:8080
 ```
 
-Escaneie no WhatsApp → Aparelhos conectados.
+Depois, no Supabase → Edge Function **`whatsapp-evolution-instance`** → Secrets:
 
-### Manager UI (opcional)
+| Secret | Valor |
+|--------|--------|
+| `EVOLUTION_API_URL` | URL HTTPS do ngrok (sem barra no final) |
+| `EVOLUTION_API_KEY` | Mesmo `AUTHENTICATION_API_KEY` do `.env` Evolution |
 
-```powershell
-docker compose --env-file .env --profile manager up -d
-# http://127.0.0.1:3000
-```
+Opcional no `.env` Evolution: `SERVER_URL=<mesma URL ngrok>` e recreate do container.
+
+Teste: site → Mensagens WhatsApp → Conexão → Conectar WhatsApp.
+
+### Produção 24h (quando aceitar custo)
+
+* VPS Ubuntu + Docker + Caddy + subdomínio fixo (ex. `evolution.planoagenda.com.br`)
+* Secrets Supabase **uma vez** com URL fixa
+* PC **não** precisa ficar ligado
 
 ---
 
-## Pendências imediatas (ao voltar)
+## Pendências ao voltar
 
-1. [ ] Abrir/escanear QR da instância `planoagenda-teste` (salvar PNG)
-2. [ ] Confirmar `connectionState` = `open` / CONNECTED
-3. [ ] Teste manual `sendText` para um número próprio
-4. [ ] Redeploy Edge Function `whatsapp-message-scheduler` (código Fase 2/3 no painel Supabase)
-5. [ ] **Não** setar `WHATSAPP_PROVIDER=evolution` em produção ainda  
-   (Supabase não acessa `localhost`; precisa URL pública HTTPS depois)
-6. [ ] Autorizar **Fase 4** — tabela/instâncias por empresa
+1. [ ] Decidir caminho: Liot só / teste ngrok / VPS depois
+2. [ ] Se testar: ngrok + secrets Supabase + QR na UI
+3. [ ] **Não** setar `WHATSAPP_PROVIDER=evolution` em produção até CONNECTED estável
+4. [ ] Fase 6 — webhooks (quando Evolution estiver estável online)
+5. [ ] Redeploy `whatsapp-message-scheduler` se código local divergir do painel
 
 ---
 
@@ -106,12 +121,13 @@ docker compose --env-file .env --profile manager up -d
 
 * Uma única fonte de scheduler (cron-job.org) — sem segundo cron
 * Checklist + aprovação antes de alterar worker/cron WhatsApp
-* Evolution = **Community self-hosted** (sem plano comercial nesta etapa)
+* Evolution = Community self-hosted (sem plano comercial nesta etapa)
 * Secrets só em `.env` / Edge secrets — nunca no frontend/Git
 * `AUTHENTICATION_API_KEY` da Evolution ≠ chave Supabase
+* Edge Function **não** acessa `localhost`
 
 ---
 
 ## Frase para retomar no chat
 
-> Continuar WhatsApp Evolution a partir do checkpoint em `docs/WHATSAPP_CHECKPOINT.md` — Fase 3 local OK, falta escanear QR e depois Fase 4.
+> Continuar WhatsApp Evolution a partir de `docs/WHATSAPP_CHECKPOINT.md` — Fases 1–5 feitas (UI em prod); produção continua Liot; VPS pausado por custo; próximo = teste ngrok ou VPS quando decidir.

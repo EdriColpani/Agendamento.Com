@@ -639,7 +639,7 @@ const PlanFeaturesManagementPage: React.FC = () => {
                 value={featureName}
                 onChange={(e) => setFeatureName(e.target.value)}
                 className="col-span-3"
-                placeholder="Ex: Envio de Mensagens WhatsApp"
+                placeholder="Ex: Torneios ou Envio de Mensagens WhatsApp"
                 disabled={creatingNewFeature || (!!editingPlanFeature && editingPlanFeature.features.name === featureName)}
               />
             </div>
@@ -666,8 +666,9 @@ const PlanFeaturesManagementPage: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhum (apenas descritiva)</SelectItem>
-                  <SelectItem value="whatsapp_messaging_enabled">whatsapp_messaging_enabled</SelectItem>
-                  {/* Adicione mais flags conforme necessário */}
+                  <SelectItem value="whatsapp_messaging_enabled">whatsapp_messaging_enabled (WhatsApp)</SelectItem>
+                  <SelectItem value="tournament_enabled">tournament_enabled (Torneios)</SelectItem>
+                  <SelectItem value="court_booking_enabled">court_booking_enabled (Módulo Arena)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

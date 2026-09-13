@@ -7,9 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
-import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
-import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
+import { useAppCompany } from '@/components/AppCompanyContext';
+import ArenaPageGate from '@/components/arena/ArenaPageGate';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -160,9 +159,7 @@ const WEEK_DAYS = [
 
 const CourtMonthlyPackagesPage: React.FC = () => {
   const { session } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
-  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
-  const { canUseArenaManagement, loading: loadingArenaModule, companyDetails } = useCourtBookingModule(primaryCompanyId);
+  const { primaryCompanyId, canUseArenaManagement, isCourtMode, companyDetails } = useAppCompany();
 
   const monthlyEnabled = companyDetails?.court_enable_monthly_packages === true;
   const [loadingData, setLoadingData] = useState(false);
@@ -675,11 +672,8 @@ const CourtMonthlyPackagesPage: React.FC = () => {
     }
   };
 
-  if (loadingPrimaryCompany || loadingSchedulingMode || loadingArenaModule) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin mr-2" />Carregando...</div>;
-  if (!session?.user) return <Navigate to="/login" replace />;
-  if (!isCourtMode || !canUseArenaManagement) return <Navigate to="/dashboard" replace />;
-
   return (
+    <ArenaPageGate>
     <div className="space-y-6">
       <ArenaPageHeader
         title="Pacotes mensais da arena"
@@ -838,6 +832,7 @@ const CourtMonthlyPackagesPage: React.FC = () => {
         </>
       )}
     </div>
+    </ArenaPageGate>
   );
 };
 

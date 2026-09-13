@@ -26,9 +26,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess, showOperationError, sanitizeErrorMessage } from '@/utils/toast';
 import { createCourtBooking } from '@/services/courtBookingService';
 import { useSession } from '@/components/SessionContextProvider';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
-import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
-import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
+import { useAppCompany } from '@/components/AppCompanyContext';
+import ArenaPageGate from '@/components/arena/ArenaPageGate';
 import {
   computeCourtSlotsForDay,
   estimateCourtBookingTotalPrice,
@@ -180,9 +179,7 @@ interface BookingContext {
 const CourtAgendaPage: React.FC = () => {
   const navigate = useNavigate();
   const { session } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
-  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
-  const { canUseArenaManagement, loading: loadingArenaModule } = useCourtBookingModule(primaryCompanyId);
+  const { primaryCompanyId, canUseArenaManagement, isCourtMode } = useAppCompany();
   const [courts, setCourts] = useState<CourtOption[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
   const [dateWindowStart, setDateWindowStart] = useState<Date>(() => startOfDay(new Date()));
@@ -387,53 +384,6 @@ const CourtAgendaPage: React.FC = () => {
     refreshAgenda();
   }, [refreshAgenda]);
 
-  if (loadingPrimaryCompany || loadingSchedulingMode || loadingArenaModule) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-700 dark:text-gray-300">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!session?.user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Você precisa estar logado.</p>
-      </div>
-    );
-  }
-
-  if (!primaryCompanyId) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <p className="text-gray-700 mb-4">É necessário ter uma empresa primária.</p>
-        <Button onClick={() => navigate('/register-company')}>Cadastrar empresa</Button>
-      </div>
-    );
-  }
-
-  if (!isCourtMode) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (!canUseArenaManagement) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Módulo de quadras indisponível</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-            <p>O módulo de quadras não está habilitado para o seu plano ou foi desativado na empresa.</p>
-            <Button className="!rounded-button" variant="outline" onClick={() => navigate('/dashboard')}>
-              Voltar ao dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const openBookModal = (court: CourtOption, slot: CourtAgendaSlot, slotMinutes: number) => {
     const modalities = courtSportsMap[court.id] || [];
     const autoSport = courtSportAutoValue(modalities);
@@ -505,6 +455,7 @@ const CourtAgendaPage: React.FC = () => {
   const hasAnySlots = courts.some((court) => (courtAgendas[court.id]?.slots.length ?? 0) > 0);
 
   return (
+    <ArenaPageGate>
     <div className="min-w-0 space-y-6 overflow-x-hidden">
       <ArenaPageHeader
         title="Agenda das quadras"
@@ -746,6 +697,7 @@ const CourtAgendaPage: React.FC = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </ArenaPageGate>
   );
 };
 

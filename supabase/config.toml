@@ -133,10 +133,19 @@ verify_jwt = false
 [functions.signup-client]
 verify_jwt = false
 
+[functions.start-trial-subscription]
+verify_jwt = false
+
 [functions.subscription-change-scheduler]
 verify_jwt = false
 
 [functions.subscription-expiration-reminder-scheduler]
+verify_jwt = false
+
+[functions.trial-expiration-scheduler]
+verify_jwt = false
+
+[functions.trial-reminder-scheduler]
 verify_jwt = false
 
 [functions.upsert-company-payment-credentials]

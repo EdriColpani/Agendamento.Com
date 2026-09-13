@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
 import { usePrimaryCompany } from './usePrimaryCompany';
-import { useReportsData } from './useReportsData';
 import { format, startOfDay, endOfDay, parse, addMinutes, startOfMonth, subMonths, endOfMonth } from 'date-fns';
 
 interface MonthlyRevenueDataPoint {
@@ -60,12 +59,11 @@ const initialDashboardData: DashboardData = {
 export function useDashboardData() {
   const { session } = useSession();
   const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
-  const { reportsData, loading: loadingReports } = useReportsData('last_month'); // Use last_month for KPI base
   const [data, setData] = useState<DashboardData>(initialDashboardData);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!primaryCompanyId || !session?.user || loadingReports) {
+    if (!primaryCompanyId || !session?.user) {
       setLoading(false);
       return;
     }
@@ -273,7 +271,7 @@ export function useDashboardData() {
     } finally {
       setLoading(false);
     }
-  }, [primaryCompanyId, session?.user, loadingReports]);
+  }, [primaryCompanyId, session?.user]);
 
   useEffect(() => {
     if (!loadingPrimaryCompany) {

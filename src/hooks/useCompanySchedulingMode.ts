@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  readSchedulingModeCache,
+  writeSchedulingModeCache,
+  type CompanySchedulingMode,
+} from '@/hooks/companyDataCache';
 
-export type CompanySchedulingMode = 'service' | 'court';
+export type { CompanySchedulingMode };
 
 interface SchedulingCache {
   companyId: string;
@@ -10,17 +15,22 @@ interface SchedulingCache {
 
 /**
  * Modo de agenda da empresa a partir do segmento vinculado (segment_types.scheduling_mode).
- * Usado para rotear UX (dashboard arena vs serviços) sem depender do nome do segmento.
- *
- * `loading` fica true enquanto não houver resultado para o **companyId atual** (evita flash
- * em que isCourtMode ainda é false após trocar de rota / remontar hooks).
  */
 export function useCompanySchedulingMode(companyId: string | null) {
-  const [cache, setCache] = useState<SchedulingCache | null>(null);
+  const cachedMode = readSchedulingModeCache(companyId);
+  const [cache, setCache] = useState<SchedulingCache | null>(() =>
+    companyId && cachedMode ? { companyId, mode: cachedMode } : null,
+  );
 
   useEffect(() => {
     if (!companyId) {
       setCache(null);
+      return;
+    }
+
+    const knownMode = readSchedulingModeCache(companyId);
+    if (knownMode) {
+      setCache({ companyId, mode: knownMode });
       return;
     }
 
@@ -35,7 +45,10 @@ export function useCompanySchedulingMode(companyId: string | null) {
           .maybeSingle();
 
         if (companyError || !companyRow?.segment_type) {
-          if (!cancelled) setCache({ companyId, mode: 'service' });
+          if (!cancelled) {
+            writeSchedulingModeCache(companyId, 'service');
+            setCache({ companyId, mode: 'service' });
+          }
           return;
         }
 
@@ -46,16 +59,25 @@ export function useCompanySchedulingMode(companyId: string | null) {
           .maybeSingle();
 
         if (segmentError || !segmentRow) {
-          if (!cancelled) setCache({ companyId, mode: 'service' });
+          if (!cancelled) {
+            writeSchedulingModeCache(companyId, 'service');
+            setCache({ companyId, mode: 'service' });
+          }
           return;
         }
 
         const mode: CompanySchedulingMode =
           segmentRow.scheduling_mode === 'court' ? 'court' : 'service';
-        if (!cancelled) setCache({ companyId, mode });
+        if (!cancelled) {
+          writeSchedulingModeCache(companyId, mode);
+          setCache({ companyId, mode });
+        }
       } catch (e) {
         console.error('useCompanySchedulingMode:', e);
-        if (!cancelled) setCache({ companyId, mode: 'service' });
+        if (!cancelled) {
+          writeSchedulingModeCache(companyId, 'service');
+          setCache({ companyId, mode: 'service' });
+        }
       }
     };
 
@@ -75,4 +97,4 @@ export function useCompanySchedulingMode(companyId: string | null) {
     isCourtMode,
     loading,
   };
-}
+};

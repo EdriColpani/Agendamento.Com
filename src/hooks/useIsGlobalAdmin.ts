@@ -2,18 +2,18 @@ import { useState, useEffect } from 'react';
 import { useSession } from '@/components/SessionContextProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
+import { ensureValidSessionForQuery, getAuthErrorUserMessage, isJwtClockSkewError } from '@/utils/edge-auth';
 
 export function useIsGlobalAdmin() {
   const { session, loading: sessionLoading } = useSession();
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [loadingGlobalAdminCheck, setLoadingGlobalAdminCheck] = useState(true);
-  // Usa apenas o user.id como dependência para evitar re-execuções desnecessárias
   const userId = session?.user?.id || null;
 
   useEffect(() => {
     const checkGlobalAdminStatus = async () => {
       if (sessionLoading) {
-        return; // Wait for session to load
+        return;
       }
 
       if (!session?.user) {
@@ -24,14 +24,14 @@ export function useIsGlobalAdmin() {
 
       setLoadingGlobalAdminCheck(true);
       try {
-        // Usar maybeSingle() para evitar erro 406
+        await ensureValidSessionForQuery();
+
         const { data, error } = await supabase
           .from('type_user')
           .select('cod')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
-        // Tratar erro 406 (Not Acceptable) - pode ser RLS, mas não é crítico
         if (error && error.code !== 'PGRST116' && error.code !== 'PGRST301') {
           console.warn('useIsGlobalAdmin: Erro ao buscar type_user (não crítico):', error);
         }
@@ -39,19 +39,21 @@ export function useIsGlobalAdmin() {
         const cod = (data?.cod || '').toUpperCase();
         const metadataRole = (session.user.user_metadata?.role || '').toUpperCase();
 
-        // Aceita variações comuns para admin global
-        const userIsGlobalAdmin = [
-          'GLOBAL_ADMIN',
-          'ADMIN_GLOBAL',
-          'ADMINISTRADOR_GLOBAL',
-          'SUPER_ADMIN',
-        ].includes(cod) || metadataRole === 'GLOBAL_ADMIN';
+        const userIsGlobalAdmin =
+          ['GLOBAL_ADMIN', 'ADMIN_GLOBAL', 'ADMINISTRADOR_GLOBAL', 'SUPER_ADMIN'].includes(cod) ||
+          metadataRole === 'GLOBAL_ADMIN';
 
         setIsGlobalAdmin(userIsGlobalAdmin);
-
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         console.error('Error checking global admin status:', error);
-        showError('Erro ao verificar status de administrador global: ' + error.message);
+
+        if (isJwtClockSkewError(message)) {
+          showError(getAuthErrorUserMessage(message));
+        } else {
+          showError('Erro ao verificar status de administrador global: ' + getAuthErrorUserMessage(message));
+        }
+
         setIsGlobalAdmin(false);
       } finally {
         setLoadingGlobalAdminCheck(false);
@@ -59,7 +61,7 @@ export function useIsGlobalAdmin() {
     };
 
     checkGlobalAdminStatus();
-  }, [userId, sessionLoading]); // Usa userId em vez de session inteiro
+  }, [userId, sessionLoading]);
 
   return { isGlobalAdmin, loadingGlobalAdminCheck };
 }

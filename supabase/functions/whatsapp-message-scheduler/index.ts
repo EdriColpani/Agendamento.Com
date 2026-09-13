@@ -1232,8 +1232,67 @@ serve(async (req) => {
     }
 
     console.log('5) Processando schedules e buscando agendamentos...');
-    // 5) Para cada empresa/regra, descobrir agendamentos que caem na janela de envio
+    // 5) Para cada empresa/regra, descobrir agendamentos que caem na janela de envio.
+    // Appointments e telefones são buscados UMA vez por empresa (não por regra).
     const pendingLogsToInsert: Omit<MessageSendLogRow, 'id' | 'created_at' | 'updated_at'>[] = [];
+    const appointmentsByCompany = new Map<string, AppointmentRow[]>();
+    const clientsPhoneByCompany = new Map<string, Map<string, string | null>>();
+
+    const loadCompanyAppointments = async (companyId: string): Promise<AppointmentRow[]> => {
+      const cached = appointmentsByCompany.get(companyId);
+      if (cached) return cached;
+
+      const windowStart = new Date(now);
+      windowStart.setDate(windowStart.getDate() - 7);
+      const windowEnd = new Date(now);
+      windowEnd.setDate(windowEnd.getDate() + 7);
+
+      const { data: appointments, error: appointmentsError } = await supabaseAdmin
+        .from<AppointmentRow>('appointments')
+        .select('id, company_id, client_id, appointment_date, appointment_time, status')
+        .eq('company_id', companyId)
+        .neq('status', 'cancelado')
+        .gte('appointment_date', windowStart.toISOString().slice(0, 10))
+        .lte('appointment_date', windowEnd.toISOString().slice(0, 10));
+
+      if (appointmentsError) {
+        console.error('Erro ao buscar appointments para company', companyId, appointmentsError);
+        appointmentsByCompany.set(companyId, []);
+        return [];
+      }
+
+      const rows = appointments || [];
+      appointmentsByCompany.set(companyId, rows);
+      return rows;
+    };
+
+    const loadCompanyClientPhones = async (
+      companyId: string,
+      appointments: AppointmentRow[],
+    ): Promise<Map<string, string | null>> => {
+      const cached = clientsPhoneByCompany.get(companyId);
+      if (cached) return cached;
+
+      const appointmentClientIds = Array.from(
+        new Set(appointments.map((a) => a.client_id).filter((id): id is string => !!id)),
+      );
+      const phoneMap = new Map<string, string | null>();
+      if (appointmentClientIds.length > 0) {
+        const { data: appointmentClients, error: clientsPhoneError } = await supabaseAdmin
+          .from<ClientRow>('clients')
+          .select('id, phone')
+          .in('id', appointmentClientIds);
+        if (clientsPhoneError) {
+          console.error('Erro ao buscar telefones dos clientes:', clientsPhoneError);
+        } else if (appointmentClients) {
+          appointmentClients.forEach((c) => {
+            phoneMap.set(c.id, c.phone);
+          });
+        }
+      }
+      clientsPhoneByCompany.set(companyId, phoneMap);
+      return phoneMap;
+    };
 
     for (const schedule of schedules || []) {
       console.log(`Processando schedule ${schedule.id} para company ${schedule.company_id}`);
@@ -1268,53 +1327,11 @@ serve(async (req) => {
         continue;
       }
 
-      // Vamos procurar agendamentos cujo horário de início, somado ao offset, caia entre nowMinus5 e nowPlus5
-      // Isso exige um range de datas razoável. Aqui vamos pegar agendamentos de hoje - 7 dias até hoje + 7 dias,
-      // o que é suficiente para lembretes antes do atendimento.
-
-      const windowStart = new Date(now);
-      windowStart.setDate(windowStart.getDate() - 7);
-
-      const windowEnd = new Date(now);
-      windowEnd.setDate(windowEnd.getDate() + 7);
-
-      const { data: appointments, error: appointmentsError } = await supabaseAdmin
-        .from<AppointmentRow>('appointments')
-        .select('id, company_id, client_id, appointment_date, appointment_time, status')
-        .eq('company_id', companyId)
-        .neq('status', 'cancelado')
-        .gte('appointment_date', windowStart.toISOString().slice(0, 10))
-        .lte('appointment_date', windowEnd.toISOString().slice(0, 10));
-
-      if (appointmentsError) {
-        console.error('Erro ao buscar appointments para company', companyId, appointmentsError);
+      const appointments = await loadCompanyAppointments(companyId);
+      if (!appointments.length) {
         continue;
       }
-
-      if (!appointments || appointments.length === 0) {
-        continue;
-      }
-
-      // Buscar telefones dos clientes dos agendamentos para validar antes de criar logs
-      const appointmentClientIds = Array.from(
-        new Set(appointments.map((a) => a.client_id).filter((id): id is string => !!id)),
-      );
-
-      let clientsPhoneMap = new Map<string, string | null>();
-      if (appointmentClientIds.length > 0) {
-        const { data: appointmentClients, error: clientsPhoneError } = await supabaseAdmin
-          .from<ClientRow>('clients')
-          .select('id, phone')
-          .in('id', appointmentClientIds);
-
-        if (clientsPhoneError) {
-          console.error('Erro ao buscar telefones dos clientes:', clientsPhoneError);
-        } else if (appointmentClients) {
-          appointmentClients.forEach((c) => {
-            clientsPhoneMap.set(c.id, c.phone);
-          });
-        }
-      }
+      const clientsPhoneMap = await loadCompanyClientPhones(companyId, appointments);
 
       for (const appointment of appointments) {
         // Validar se o cliente tem telefone antes de criar o log
@@ -1477,14 +1494,19 @@ serve(async (req) => {
       now_BR: nowBR.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     });
 
+    const PENDING_BATCH_LIMIT = 200;
+    const dueThreshold = toBrasiliaISOString(new Date(now.getTime() + TOLERANCE_MS));
+
     const { data: allPending, error: pendingError } = await supabaseAdmin
       .from<MessageSendLogRow>('message_send_log')
-      .select('*')
+      .select(
+        'id, company_id, client_id, appointment_id, message_kind_id, channel, scheduled_for, status, template_id, provider_id',
+      )
+      .eq('channel', 'WHATSAPP')
       .eq('status', 'PENDING')
-      // Ordenar por scheduled_for evita starvation de mensagens antigas
-      // quando a fila cresce.
+      .lte('scheduled_for', dueThreshold)
       .order('scheduled_for', { ascending: true })
-      .limit(5000);
+      .limit(PENDING_BATCH_LIMIT);
 
     if (pendingError) {
       console.error('❌ ERRO ao buscar logs pendentes para envio:', pendingError);
@@ -1765,22 +1787,26 @@ serve(async (req) => {
       }
     }
 
-    // 8) Atualizar logs com status SENT/FAILED
+    // 8) Atualizar logs com status SENT/FAILED (lotes paralelos — mesmo UPDATE por id)
     if (updates.length > 0) {
-      // Supabase não permite update em lote com array direto; fazemos 1 a 1
-      for (const u of updates) {
-        const { error: updateError } = await supabaseAdmin
-          .from('message_send_log')
-          .update({
-            status: u.status,
-            sent_at: u.sent_at,
-            provider_response: u.provider_response,
-          })
-          .eq('id', u.id);
-
-        if (updateError) {
-          console.error('Erro ao atualizar message_send_log', u.id, updateError);
-        }
+      const UPDATE_CHUNK = 25;
+      for (let i = 0; i < updates.length; i += UPDATE_CHUNK) {
+        const chunk = updates.slice(i, i + UPDATE_CHUNK);
+        await Promise.all(
+          chunk.map(async (u) => {
+            const { error: updateError } = await supabaseAdmin
+              .from('message_send_log')
+              .update({
+                status: u.status,
+                sent_at: u.sent_at,
+                provider_response: u.provider_response,
+              })
+              .eq('id', u.id);
+            if (updateError) {
+              console.error('Erro ao atualizar message_send_log', u.id, updateError);
+            }
+          }),
+        );
       }
     }
 

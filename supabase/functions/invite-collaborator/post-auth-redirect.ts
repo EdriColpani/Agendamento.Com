@@ -10,7 +10,7 @@ export function getPostAuthRedirectTo(
   isCourtMode: boolean
 ): string {
   const base = siteBaseUrl.replace(/\/+$/, "");
-  return `${base}${isCourtMode ? "/arena" : "/login"}`;
+  return `${base}${isCourtMode ? "/arenalogin" : "/login"}`;
 }
 
 type AdminLike = {

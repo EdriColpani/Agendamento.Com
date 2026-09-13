@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePrimaryCompany } from './usePrimaryCompany';
 import { useSession } from '@/components/SessionContextProvider';
+import { fetchEffectiveSubscription } from '@/utils/effectiveSubscription';
 
 export interface MenuItem {
   id: string;
@@ -17,6 +18,8 @@ export function useMenuItems() {
   const { primaryCompanyId } = usePrimaryCompany();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const menuItemsRef = useRef<MenuItem[]>([]);
+  menuItemsRef.current = menuItems;
 
   const fetchMenuItems = useCallback(async () => {
     if (!session?.user) {
@@ -25,7 +28,9 @@ export function useMenuItems() {
       return;
     }
 
-    setLoading(true);
+    if (menuItemsRef.current.length === 0) {
+      setLoading(true);
+    }
     try {
       // Determinar companyId e roleTypeId
       let companyId = primaryCompanyId;
@@ -80,18 +85,7 @@ export function useMenuItems() {
       }
 
       // 1. Buscar plano ativo da empresa
-      const { data: subscriptionData, error: subError } = await supabase
-        .from('company_subscriptions')
-        .select('plan_id')
-        .eq('company_id', companyId)
-        .eq('status', 'active')
-        .order('start_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (subError && subError.code !== 'PGRST116') {
-        throw subError;
-      }
+      const subscriptionData = await fetchEffectiveSubscription(supabase, companyId);
 
       const planId = subscriptionData?.plan_id;
       console.log('[useMenuItems] Plano ativo encontrado:', planId);

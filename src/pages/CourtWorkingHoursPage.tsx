@@ -15,9 +15,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess, showOperationError } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
-import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
-import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
+import { useAppCompany } from '@/components/AppCompanyContext';
+import ArenaPageGate from '@/components/arena/ArenaPageGate';
 import { cn } from '@/lib/utils';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
 import ArenaToolbar from '@/components/arena/ArenaToolbar';
@@ -56,9 +55,7 @@ function toPgTime(html: string): string {
 const CourtWorkingHoursPage: React.FC = () => {
   const navigate = useNavigate();
   const { session } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
-  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
-  const { canUseArenaManagement, loading: loadingArenaModule } = useCourtBookingModule(primaryCompanyId);
+  const { primaryCompanyId, canUseArenaManagement, isCourtMode, shellReady } = useAppCompany();
   const [courts, setCourts] = useState<CourtOption[]>([]);
   const [courtId, setCourtId] = useState<string>('');
   const [slotMinutes, setSlotMinutes] = useState(60);
@@ -184,54 +181,8 @@ const CourtWorkingHoursPage: React.FC = () => {
     }
   };
 
-  if (loadingPrimaryCompany || loadingSchedulingMode || loadingArenaModule) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-700 dark:text-gray-300">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!session?.user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Você precisa estar logado.</p>
-      </div>
-    );
-  }
-
-  if (!primaryCompanyId) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <p className="text-gray-700 mb-4">É necessário ter uma empresa primária.</p>
-        <Button onClick={() => navigate('/register-company')}>Cadastrar empresa</Button>
-      </div>
-    );
-  }
-
-  if (!isCourtMode) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (!canUseArenaManagement) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Módulo de quadras indisponível</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-            <p>O módulo de quadras não está habilitado para o seu plano ou foi desativado na empresa.</p>
-            <Button className="!rounded-button" variant="outline" onClick={() => navigate('/dashboard')}>
-              Voltar ao dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
+    <ArenaPageGate>
     <div className="space-y-6">
       <ArenaPageHeader
         title="Horários de funcionamento"
@@ -342,6 +293,7 @@ const CourtWorkingHoursPage: React.FC = () => {
         </Card>
       )}
     </div>
+    </ArenaPageGate>
   );
 };
 

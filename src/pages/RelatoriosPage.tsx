@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useReportsData } from '@/hooks/useReportsData';
 import { DateRangeKey } from '@/utils/date-utils';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
+import { useAppCompany } from '@/components/AppCompanyContext';
 import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSession } from '@/components/SessionContextProvider';
@@ -51,7 +51,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, comparison, isPositive,
 const RelatoriosPage: React.FC = () => {
   const navigate = useNavigate();
   const { session, loading: sessionLoading } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
+  const { primaryCompanyId, shellReady } = useAppCompany();
   const { isCollaborator } = useIsCollaborator();
   const [dateRangeKey, setDateRangeKey] = useState<DateRangeKey>('current_month');
   const { reportsData, loading, collaborators } = useReportsData(dateRangeKey);
@@ -63,9 +63,9 @@ const RelatoriosPage: React.FC = () => {
   const [selectedServiceCommissionsForModal, setSelectedServiceCommissionsForModal] = useState<any[]>([]);
 
 
-  if (sessionLoading || loadingPrimaryCompany || loading) {
+  if (sessionLoading || !shellReady || (loading && !reportsData)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-700">Carregando relatórios...</p>
       </div>
     );
@@ -73,7 +73,7 @@ const RelatoriosPage: React.FC = () => {
 
   if (!session?.user || !primaryCompanyId) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="flex flex-col items-center justify-center py-16 p-4">
         <p className="text-gray-700 text-center mb-4">
           Você precisa ter uma empresa primária cadastrada para acessar relatórios.
         </p>

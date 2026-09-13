@@ -163,34 +163,50 @@ const AgendamentosPage: React.FC = () => {
         throw error;
       }
 
-      // Process data to ensure client name is available even if RLS on clients table fails for auto-registered clients
-      const processedAppointments: Appointment[] = await Promise.all(data.map(async (agendamento: any) => {
-        let clientNameFromClientsTable = agendamento.clients?.name;
-        let clientNickname = agendamento.client_nickname;
-        
-        // Fallback logic: If nickname is missing AND clients.name is missing, try to fetch from profiles
-        if (!clientNickname && !clientNameFromClientsTable && agendamento.clients?.client_auth_id) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', agendamento.clients.client_auth_id)
-            .single();
+      const missingProfileIds = Array.from(
+        new Set(
+          (data || [])
+            .filter(
+              (agendamento: any) =>
+                !agendamento.client_nickname &&
+                !agendamento.clients?.name &&
+                agendamento.clients?.client_auth_id,
+            )
+            .map((agendamento: any) => agendamento.clients.client_auth_id as string),
+        ),
+      );
 
-          if (!profileError && profileData) {
-            clientNameFromClientsTable = `${profileData.first_name} ${profileData.last_name}`;
-          }
+      const profileNameById = new Map<string, string>();
+      if (missingProfileIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', missingProfileIds);
+        if (!profilesError && profilesData) {
+          profilesData.forEach((profile: { id: string; first_name: string | null; last_name: string | null }) => {
+            profileNameById.set(
+              profile.id,
+              `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+            );
+          });
         }
+      }
 
-        // Update the object for display
+      const processedAppointments: Appointment[] = (data || []).map((agendamento: any) => {
+        const profileName = agendamento.clients?.client_auth_id
+          ? profileNameById.get(agendamento.clients.client_auth_id)
+          : undefined;
+        const clientNameFromClientsTable = agendamento.clients?.name || profileName || null;
+
         return {
           ...agendamento,
-          client_nickname: clientNickname,
+          client_nickname: agendamento.client_nickname,
           clients: {
             ...agendamento.clients,
             name: clientNameFromClientsTable,
           },
         } as Appointment;
-      }));
+      });
 
       setAppointments(processedAppointments);
     } catch (error: any) {

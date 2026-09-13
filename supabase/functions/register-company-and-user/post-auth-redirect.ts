@@ -2,7 +2,7 @@
  * Cópia colocal: o deploy das Edge Functions não embarca `../_shared/`. Manter as três
  * cópias (register-company-and-user, resend-email-confirmation, invite-collaborator) alinhadas.
  *
- * Pós-clique em e-mail: `segment_types.scheduling_mode === 'court'` → /arena; senão /login.
+ * Pós-clique em e-mail: `segment_types.scheduling_mode === 'court'` → /arenalogin; senão /login.
  * Alinhado a useCompanySchedulingMode no app.
  */
 export function getPostAuthRedirectTo(
@@ -10,7 +10,7 @@ export function getPostAuthRedirectTo(
   isCourtMode: boolean
 ): string {
   const base = siteBaseUrl.replace(/\/+$/, "");
-  return `${base}${isCourtMode ? "/arena" : "/login"}`;
+  return `${base}${isCourtMode ? "/arenalogin" : "/login"}`;
 }
 
 type AdminLike = {

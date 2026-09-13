@@ -155,7 +155,8 @@ const WhatsAppMessageQueuePage: React.FC = () => {
   const [messages, setMessages] = useState<MessageLog[]>([]);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
+  const QUEUE_PAGE_SIZE = 100;
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [refreshing, setRefreshing] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -190,7 +191,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('message_send_log')
         .select(`
           id,
@@ -207,7 +208,14 @@ const WhatsAppMessageQueuePage: React.FC = () => {
         `)
         .eq('company_id', effectiveCompanyId)
         .eq('channel', 'WHATSAPP')
-        .order('scheduled_for', { ascending: true });
+        .order('scheduled_for', { ascending: true })
+        .limit(QUEUE_PAGE_SIZE);
+
+      if (statusFilter !== 'ALL') {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setMessages((data || []) as MessageLog[]);
@@ -219,7 +227,7 @@ const WhatsAppMessageQueuePage: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [effectiveCompanyId]);
+  }, [effectiveCompanyId, statusFilter]);
 
   const fetchQueueHealth = useCallback(async () => {
     if (!effectiveCompanyId) return;

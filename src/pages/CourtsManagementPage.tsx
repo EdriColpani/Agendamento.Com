@@ -21,9 +21,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { useSession } from '@/components/SessionContextProvider';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
-import { useCompanySchedulingMode } from '@/hooks/useCompanySchedulingMode';
-import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
+import { useAppCompany } from '@/components/AppCompanyContext';
+import ArenaPageGate from '@/components/arena/ArenaPageGate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Copy, Edit, PlusCircle, Trash2, Upload, X } from 'lucide-react';
 import ArenaPageHeader from '@/components/arena/ArenaPageHeader';
@@ -84,9 +83,7 @@ interface CourtRow {
 const CourtsManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { session } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
-  const { isCourtMode, loading: loadingSchedulingMode } = useCompanySchedulingMode(primaryCompanyId);
-  const { canUseArenaManagement, loading: loadingArenaModule, companyDetails } = useCourtBookingModule(primaryCompanyId);
+  const { primaryCompanyId, canUseArenaManagement, isCourtMode, shellReady, companyDetails } = useAppCompany();
   const monthlyPackagesEnabled = companyDetails?.court_enable_monthly_packages === true;
   const [courts, setCourts] = useState<CourtRow[]>([]);
   const [loadingCourts, setLoadingCourts] = useState(true);
@@ -231,12 +228,12 @@ const CourtsManagementPage: React.FC = () => {
   }, [primaryCompanyId, session?.user]);
 
   useEffect(() => {
-    if (!loadingPrimaryCompany && !loadingSchedulingMode && !loadingArenaModule && isCourtMode && canUseArenaManagement) {
+    if (shellReady && isCourtMode && canUseArenaManagement) {
       fetchCourts();
-    } else if (!loadingSchedulingMode && !loadingArenaModule && (!isCourtMode || !canUseArenaManagement)) {
+    } else if (shellReady && (!isCourtMode || !canUseArenaManagement)) {
       setLoadingCourts(false);
     }
-  }, [fetchCourts, loadingPrimaryCompany, loadingSchedulingMode, loadingArenaModule, isCourtMode, canUseArenaManagement]);
+  }, [fetchCourts, shellReady, isCourtMode, canUseArenaManagement]);
 
   const openCreate = () => {
     setEditingCourt(null);
@@ -438,57 +435,8 @@ const CourtsManagementPage: React.FC = () => {
     }
   };
 
-  if (loadingPrimaryCompany || loadingSchedulingMode || loadingArenaModule) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-700 dark:text-gray-300">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!session?.user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Você precisa estar logado.</p>
-      </div>
-    );
-  }
-
-  if (!primaryCompanyId) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <p className="text-gray-700 mb-4">É necessário ter uma empresa primária para gerenciar quadras.</p>
-        <Button onClick={() => navigate('/register-company')}>Cadastrar empresa</Button>
-      </div>
-    );
-  }
-
-  if (!isCourtMode) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (!canUseArenaManagement) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Módulo de quadras indisponível</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-            <p>
-              O módulo de reserva de quadras não está habilitado para o seu plano ou foi desativado na empresa. Use o
-              dashboard ou fale com o suporte.
-            </p>
-            <Button className="!rounded-button" variant="outline" onClick={() => navigate('/dashboard')}>
-              Voltar ao dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
+    <ArenaPageGate>
     <div className="space-y-6">
       <ArenaPageHeader
         title="Quadras"
@@ -858,6 +806,7 @@ const CourtsManagementPage: React.FC = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </ArenaPageGate>
   );
 };
 

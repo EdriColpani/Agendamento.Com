@@ -12,7 +12,6 @@ export function useTournamentAccess() {
   } = useCourtBookingModule(primaryCompanyId);
 
   const tournamentEnabled = companyDetails?.tournament_enabled === true;
-  const [hasAccessRpc, setHasAccessRpc] = useState(false);
   const [canCreateRpc, setCanCreateRpc] = useState(false);
   const [loadingRpc, setLoadingRpc] = useState(true);
 
@@ -20,22 +19,15 @@ export function useTournamentAccess() {
     let cancelled = false;
     const run = async () => {
       if (!primaryCompanyId) {
-        setHasAccessRpc(false);
         setCanCreateRpc(false);
         setLoadingRpc(false);
         return;
       }
       setLoadingRpc(true);
-      const [accessRes, createRes] = await Promise.all([
-        supabase.rpc('company_has_tournament_access', {
-          p_company_id: primaryCompanyId,
-        }),
-        supabase.rpc('company_can_create_tournament', {
-          p_company_id: primaryCompanyId,
-        }),
-      ]);
+      const createRes = await supabase.rpc('company_can_create_tournament', {
+        p_company_id: primaryCompanyId,
+      });
       if (cancelled) return;
-      setHasAccessRpc(!accessRes.error && accessRes.data === true);
       setCanCreateRpc(!createRes.error && createRes.data === true);
       setLoadingRpc(false);
     };
@@ -46,13 +38,16 @@ export function useTournamentAccess() {
   }, [primaryCompanyId, tournamentEnabled]);
 
   const loading = loadingPrimaryCompany || loadingArena || loadingRpc;
-  const canUseTournament = !loading && canUseArenaManagement && hasAccessRpc;
-  const canCreateTournament = !loading && canUseArenaManagement && canCreateRpc;
+  /** Sidebar e rotas do módulo: somente com flag do plano (Plano Arena Full). */
+  const canShowTournamentMenu = !loading && canUseArenaManagement && tournamentEnabled;
+  const canUseTournament = canShowTournamentMenu;
+  const canCreateTournament = canShowTournamentMenu && canCreateRpc;
 
   return {
     primaryCompanyId,
     canUseArenaManagement,
     tournamentEnabled,
+    canShowTournamentMenu,
     canUseTournament,
     canCreateTournament,
     loading,

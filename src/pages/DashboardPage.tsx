@@ -6,10 +6,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { getStatusColor, createButton, createCard } from '@/lib/dashboard-utils';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
+import { useAppCompany } from '@/components/AppCompanyContext';
 import { useSession } from '@/components/SessionContextProvider';
 import { useMenuItems } from '@/hooks/useMenuItems';
-import { useCourtBookingModule } from '@/hooks/useCourtBookingModule';
 import MonthlyRevenueChart from '@/components/MonthlyRevenueChart';
 import CriticalStockReport from '@/components/CriticalStockReport';
 import ArenaDashboardPanel from '@/components/ArenaDashboardPanel';
@@ -17,14 +16,13 @@ import ArenaDashboardPanel from '@/components/ArenaDashboardPanel';
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { session, loading: sessionLoading } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
+  const { primaryCompanyId, isCourtMode, canUseArenaManagement, shellReady } = useAppCompany();
   const { data, loading } = useDashboardData();
   const { menuItems: dynamicMenuItems, loading: loadingMenus } = useMenuItems();
-  const { isCourtMode, canUseArenaManagement, loading: loadingArenaModule } = useCourtBookingModule(primaryCompanyId);
 
-  if (sessionLoading || loadingPrimaryCompany || loading || loadingMenus || loadingArenaModule) {
+  if (sessionLoading || (loading && !data) || (loadingMenus && dynamicMenuItems.length === 0) || !shellReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-700">Carregando Dashboard...</p>
       </div>
     );
@@ -32,7 +30,7 @@ const DashboardPage: React.FC = () => {
 
   if (!session?.user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-red-500">Você precisa estar logado para ver o Dashboard.</p>
       </div>
     );
@@ -40,7 +38,7 @@ const DashboardPage: React.FC = () => {
 
   if (!primaryCompanyId) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="flex flex-col items-center justify-center py-16 p-4">
         <p className="text-gray-700 text-center mb-4">
           Você precisa ter uma empresa primária cadastrada para acessar o Dashboard.
         </p>

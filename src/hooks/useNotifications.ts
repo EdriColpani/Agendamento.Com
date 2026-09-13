@@ -46,8 +46,7 @@ export function useNotifications() {
 
     setLoading(true);
     try {
-      // Fetch Pending Appointments (status = 'pendente')
-      const { data: pendingApps, error: pendingError } = await supabase
+      const { data: recentApps, error: appsError } = await supabase
         .from('appointments')
         .select(`
           id,
@@ -60,31 +59,14 @@ export function useNotifications() {
           collaborators(first_name)
         `)
         .eq('company_id', primaryCompanyId)
-        .eq('status', 'pendente')
+        .in('status', ['pendente', 'cancelado'])
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
-      if (pendingError) throw pendingError;
+      if (appsError) throw appsError;
 
-      // Fetch Cancelled Appointments (status = 'cancelado')
-      const { data: cancelledApps, error: cancelledError } = await supabase
-        .from('appointments')
-        .select(`
-          id,
-          appointment_date,
-          appointment_time,
-          status,
-          created_at,
-          client_nickname,
-          clients(name),
-          collaborators(first_name)
-        `)
-        .eq('company_id', primaryCompanyId)
-        .eq('status', 'cancelado')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (cancelledError) throw cancelledError;
+      const pendingApps = (recentApps || []).filter((app) => app.status === 'pendente').slice(0, 10);
+      const cancelledApps = (recentApps || []).filter((app) => app.status === 'cancelado').slice(0, 10);
 
       const allNotifications: Notification[] = [];
 

@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { showError, showOperationError, showSuccess } from '@/utils/toast'; // Importar showSuccess
 import { invokeEdgeWithAuthOrThrow } from '@/utils/edge-invoke';
 import { useSession } from '@/components/SessionContextProvider';
-import { usePrimaryCompany } from '@/hooks/usePrimaryCompany';
+import { useAppCompany } from '@/components/AppCompanyContext';
 import { Edit, MailCheck } from 'lucide-react'; // Importar o ícone MailCheck
 
 /** Normaliza o telefone para DDD + número, removendo o DDI 55 quando vier no cadastro. */
@@ -42,15 +42,27 @@ interface Client {
 const ClientesPage: React.FC = () => {
   const navigate = useNavigate();
   const { session, loading: sessionLoading } = useSession();
-  const { primaryCompanyId, loadingPrimaryCompany } = usePrimaryCompany();
+  const { primaryCompanyId, shellReady } = useAppCompany();
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [resendingInviteId, setResendingInviteId] = useState<string | null>(null); // Estado para controlar o loading do reenvio
+  const PAGE_SIZE = 50;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchTerm]);
 
   const fetchClients = useCallback(async () => {
-    if (sessionLoading || loadingPrimaryCompany) {
-      return; // Aguarda a sessão e a empresa primária carregarem
+    if (sessionLoading || !shellReady) {
+      return;
     }
 
     if (!session?.user) {
@@ -66,32 +78,40 @@ const ClientesPage: React.FC = () => {
     }
 
     setLoadingClients(true);
-    // AGORA FILTRANDO EXPLICITAMENTE PELA EMPRESA PRIMÁRIA
-    const { data, error } = await supabase
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    let query = supabase
       .from('clients')
-      .select('id, name, phone, email, status, points') // Incluir email
-      .eq('company_id', primaryCompanyId) // Filtro adicionado
-      .order('name', { ascending: true });
+      .select('id, name, phone, email, status, points', { count: 'exact' })
+      .eq('company_id', primaryCompanyId)
+      .order('name', { ascending: true })
+      .range(from, to);
+
+    if (debouncedSearch) {
+      const escaped = debouncedSearch.replace(/%/g, '\\%').replace(/,/g, '');
+      query = query.or(`name.ilike.%${escaped}%,phone.ilike.%${escaped}%,email.ilike.%${escaped}%`);
+    }
+
+    const { data, error, count } = await query;
 
     if (error) {
       showOperationError('Erro ao carregar clientes.', error);
       console.error('Error fetching clients:', error);
       setClients([]);
+      setTotalCount(0);
     } else if (data) {
       setClients(data as Client[]);
+      setTotalCount(typeof count === 'number' ? count : data.length);
     }
     setLoadingClients(false);
-  }, [session, primaryCompanyId, sessionLoading, loadingPrimaryCompany]);
+  }, [session, primaryCompanyId, sessionLoading, shellReady, page, debouncedSearch]);
 
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
 
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredClients = clients;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const handleResendInvite = async (client: Client) => {
     if (!session?.user || !primaryCompanyId) {
@@ -126,9 +146,9 @@ const ClientesPage: React.FC = () => {
     window.open(`https://wa.me/${localNumber}`, '_blank', 'noopener,noreferrer');
   };
 
-  if (sessionLoading || loadingPrimaryCompany || loadingClients) {
+  if (sessionLoading || !shellReady || (loadingClients && clients.length === 0)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-700">Carregando clientes...</p>
       </div>
     );
@@ -136,7 +156,7 @@ const ClientesPage: React.FC = () => {
 
   if (!session?.user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-red-500">Você precisa estar logado para ver os clientes.</p>
       </div>
     );
@@ -252,6 +272,30 @@ const ClientesPage: React.FC = () => {
           ))
         )}
       </div>
+
+      {totalCount > PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1 || loadingClients}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-gray-600">
+            Página {page} de {totalPages} ({totalCount} clientes)
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages || loadingClients}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Próxima
+          </Button>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       {/* ... (seu modal de exclusão de cliente, se houver) */}

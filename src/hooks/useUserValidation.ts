@@ -229,18 +229,25 @@ export function useUserValidation() {
         if (companyId) {
           const { data: subscriptionData, error: subscriptionError } = await supabase
             .from('company_subscriptions')
-            .select('id')
+            .select('id, status, is_trial, trial_ends_at, end_date')
             .eq('company_id', companyId)
-            .eq('status', 'active')
+            .in('status', ['active', 'trial'])
             .order('start_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .limit(5);
 
-          if (subscriptionData) {
-            subscriptionId = subscriptionData.id;
-            console.log('[useUserValidation] Assinatura ativa encontrada:', subscriptionId);
+          const activeSub = (subscriptionData ?? []).find((row) => {
+            if (row.status === 'active') return true;
+            if (row.status === 'trial' && row.is_trial && row.trial_ends_at) {
+              return new Date(row.trial_ends_at).getTime() > Date.now();
+            }
+            return false;
+          });
+
+          if (activeSub) {
+            subscriptionId = activeSub.id;
+            console.log('[useUserValidation] Assinatura vigente encontrada:', subscriptionId);
           } else {
-            console.log('[useUserValidation] Nenhuma assinatura ativa encontrada para a empresa');
+            console.log('[useUserValidation] Nenhuma assinatura vigente encontrada para a empresa');
           }
         }
 

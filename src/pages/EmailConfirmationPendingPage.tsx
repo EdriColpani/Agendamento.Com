@@ -10,7 +10,7 @@ const EmailConfirmationPendingPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const email = searchParams.get('email');
-  const loginPath = searchParams.get('origem') === 'arena' ? '/arena' : '/login';
+  const loginPath = searchParams.get('origem') === 'arena' ? '/arenalogin' : '/login';
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
 
@@ -173,7 +173,7 @@ const EmailConfirmationPendingPage: React.FC = () => {
                 onClick={() => navigate(loginPath)}
                 className="!rounded-button"
               >
-                Ir para Login{loginPath === '/arena' ? ' da arena' : ''}
+                Ir para Login{loginPath === '/arenalogin' ? ' da arena' : ''}
               </Button>
               <Button
                 variant="outline"

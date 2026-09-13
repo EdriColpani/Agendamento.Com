@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ArenaLoginPage from "./pages/ArenaLoginPage";
+import ArenaLandingPage from "./pages/ArenaLandingPage";
+import ScrollToTop from "./components/ScrollToTop";
 import { SessionContextProvider, useSession } from "./components/SessionContextProvider";
 import MainApplication from "./components/MainApplication";
 import ProfilePage from "./pages/ProfilePage";
@@ -94,15 +96,25 @@ import ColaboradorAgendamentosPage from "./pages/ColaboradorAgendamentosPage";
 import WaitingApprovalPage from "./pages/WaitingApprovalPage"; // Importar página de aprovação pendente
 import HelpPage from "./pages/HelpPage"; // Importar página de ajuda
 import SubscriptionChangeOpsPage from "./pages/SubscriptionChangeOpsPage";
+import TrialMetricsPage from "./pages/TrialMetricsPage";
 import ExternalSalesRepManagementPage from "./pages/ExternalSalesRepManagementPage";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, loading } = useSession();
+  const hasAuthenticatedOnce = React.useRef(false);
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  if (session) {
+    hasAuthenticatedOnce.current = true;
+  }
+
+  if (loading && !hasAuthenticatedOnce.current) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-gray-600">Carregando...</p>
+      </div>
+    );
   }
 
   if (!session) {
@@ -204,13 +216,15 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <SessionContextProvider>
           <Routes>
             <Route path="/" element={<IndexPage />} />
 
             {/* Rotas de autenticação (sem layout MainApplication) */}
             <Route path="/login" element={<AuthPage />} />
-            <Route path="/arena" element={<ArenaLoginPage />} />
+            <Route path="/arena" element={<ArenaLandingPage />} />
+            <Route path="/arenalogin" element={<ArenaLoginPage />} />
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/reset-password" element={<AuthPage />} />
             <Route path="/forgot-password" element={<AuthPage />} />
@@ -261,6 +275,7 @@ const App = () => (
             <Route path="/admin-dashboard/court-booking-timeout-health" element={<GlobalAdminProtectedRoute><CourtBookingTimeoutHealthPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/arena-cancelamentos-estornos" element={<GlobalAdminProtectedRoute><CourtBookingRefundHealthPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/operacoes-assinatura" element={<GlobalAdminProtectedRoute><SubscriptionChangeOpsPage /></GlobalAdminProtectedRoute>} />
+            <Route path="/admin-dashboard/metricas-trial" element={<GlobalAdminProtectedRoute><TrialMetricsPage /></GlobalAdminProtectedRoute>} />
             {/* NOVA ROTA: Gerenciamento de Banners Globais */}
             <Route path="/admin-dashboard/global-banners" element={<GlobalAdminProtectedRoute><BannerManagementPage /></GlobalAdminProtectedRoute>} />
             <Route path="/admin-dashboard/arena-login-imagens" element={<GlobalAdminProtectedRoute><ArenaLoginMarketingPage /></GlobalAdminProtectedRoute>} />

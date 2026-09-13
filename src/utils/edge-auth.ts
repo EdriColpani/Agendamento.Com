@@ -99,3 +99,50 @@ export async function requireCurrentAccessToken(): Promise<string> {
   return accessToken;
 }
 
+export function isJwtClockSkewError(message: string | undefined): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('jwt issued at future') ||
+    normalized.includes('issued in the future') ||
+    normalized.includes('clock skew')
+  );
+}
+
+export function getAuthErrorUserMessage(message: string | undefined): string {
+  if (isJwtClockSkewError(message)) {
+    return 'Relógio do computador dessincronizado. Ajuste data/hora do Windows para automático, sincronize e recarregue a página (F5).';
+  }
+  return message || 'Erro de autenticação.';
+}
+
+/** Atualiza sessão antes de queries autenticadas (expiração ou relógio local atrasado). */
+export async function ensureValidSessionForQuery(): Promise<void> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+
+  const session = data.session;
+  if (!session?.access_token) {
+    throw new Error('Sessão expirada ou inválida. Faça login novamente.');
+  }
+
+  const payload = decodeJwtPayload(session.access_token);
+  const issuedAt = typeof payload?.iat === 'number' ? payload.iat : 0;
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const expiresAt = session.expires_at ?? 0;
+  const tokenLooksFromFuture = issuedAt > nowInSeconds + 30;
+  const isExpiredOrNearExpiry = !expiresAt || expiresAt - nowInSeconds <= 60;
+
+  if (!tokenLooksFromFuture && !isExpiredOrNearExpiry) {
+    return;
+  }
+
+  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError || !refreshData.session?.access_token) {
+    if (tokenLooksFromFuture) {
+      throw new Error('JWT issued at future');
+    }
+    throw refreshError ?? new Error('Sessão expirada ou inválida. Faça login novamente.');
+  }
+}
+

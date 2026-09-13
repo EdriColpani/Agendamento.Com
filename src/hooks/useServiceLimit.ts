@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePrimaryCompany } from './usePrimaryCompany';
+import { fetchEffectiveSubscription } from '@/utils/effectiveSubscription';
 
 interface ServiceLimitInfo {
   currentCount: number;
@@ -30,25 +31,11 @@ export function useServiceLimit(): ServiceLimitInfo {
 
     try {
       // 1. Buscar plano ativo da empresa
-      const { data: subscriptionData, error: subError } = await supabase
-        .from('company_subscriptions')
-        .select('plan_id')
-        .eq('company_id', primaryCompanyId)
-        .eq('status', 'active')
-        .order('start_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (subError && subError.code !== 'PGRST116') {
-        console.warn('useServiceLimit: Erro ao buscar assinatura:', subError);
-        setLimitInfo(prev => ({ ...prev, loading: false }));
-        return;
-      }
+      const subscriptionData = await fetchEffectiveSubscription(supabase, primaryCompanyId);
 
       let maxAllowed: number | null = null;
 
       if (subscriptionData?.plan_id) {
-        // 2. Buscar limite de serviços do plano
         const { data: limitData, error: limitError } = await supabase
           .from('plan_limits')
           .select('limit_value')

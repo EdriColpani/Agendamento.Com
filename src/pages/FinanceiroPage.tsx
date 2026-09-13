@@ -48,31 +48,39 @@ const FinanceiroPage: React.FC = () => {
 
     setLoadingTransactions(true);
     try {
-      // Fetch all transactions for the primary company from cash_movements
-      const { data, error } = await supabase
-        .from('cash_movements')
-        .select('*')
-        .eq('company_id', primaryCompanyId)
-        .order('transaction_date', { ascending: false });
+      const [listResult, totalsResult] = await Promise.all([
+        supabase
+          .from('cash_movements')
+          .select(
+            'id, transaction_type, total_amount, transaction_date, payment_method, observations, appointment_id, product_id, quantity_sold, unit_price',
+          )
+          .eq('company_id', primaryCompanyId)
+          .order('transaction_date', { ascending: false })
+          .limit(50),
+        supabase.rpc('get_company_cash_totals', { p_company_id: primaryCompanyId }),
+      ]);
 
-      if (error) throw error;
+      if (listResult.error) throw listResult.error;
+      setTransactions((listResult.data || []) as Transaction[]);
 
-      setTransactions(data as Transaction[]);
-
-      // Calculate totals
-      let totalEntradas = 0;
-      let totalSaidas = 0;
-
-      data.forEach(t => {
-        if (t.transaction_type === 'recebimento' || t.transaction_type === 'abertura') {
-          totalEntradas += t.total_amount;
-        } else if (t.transaction_type === 'despesa') {
-          totalSaidas += t.total_amount;
-        }
-      });
-
-      setEntradas(totalEntradas);
-      setSaidas(totalSaidas);
+      if (totalsResult.error) {
+        console.warn('[FinanceiroPage] Falha ao agregar totais, usando soma da página:', totalsResult.error);
+        let totalEntradas = 0;
+        let totalSaidas = 0;
+        (listResult.data || []).forEach((t: Transaction) => {
+          if (t.transaction_type === 'recebimento' || t.transaction_type === 'abertura') {
+            totalEntradas += t.total_amount;
+          } else if (t.transaction_type === 'despesa') {
+            totalSaidas += t.total_amount;
+          }
+        });
+        setEntradas(totalEntradas);
+        setSaidas(totalSaidas);
+      } else {
+        const row = Array.isArray(totalsResult.data) ? totalsResult.data[0] : totalsResult.data;
+        setEntradas(Number(row?.entradas ?? 0));
+        setSaidas(Number(row?.saidas ?? 0));
+      }
 
     } catch (error: any) {
       console.error('Erro ao carregar transações financeiras:', error);

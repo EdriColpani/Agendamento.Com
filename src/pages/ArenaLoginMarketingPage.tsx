@@ -104,7 +104,7 @@ const ArenaLoginMarketingPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Imagens do login Arena</h1>
           <p className="mt-1 text-muted-foreground">
-            As quatro imagens aparecem no painel esquerdo da página pública <strong>/arena</strong> (antes do login).
+            As quatro imagens aparecem no painel esquerdo da página pública <strong>/arenalogin</strong>.
             Apenas administradores globais podem alterar.
           </p>
           {updatedAt && (

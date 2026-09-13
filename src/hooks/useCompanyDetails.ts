@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  readCompanyDetailsCache,
+  writeCompanyDetailsCache,
+  type CachedCompanyDetails,
+} from '@/hooks/companyDataCache';
 
-interface CompanyDetails {
-  id: string;
-  name: string;
-  whatsapp_messaging_enabled: boolean;
-  court_booking_enabled?: boolean;
-  court_enable_monthly_packages?: boolean;
-  tournament_enabled?: boolean;
-}
+export type CompanyDetails = CachedCompanyDetails;
 
 export const useCompanyDetails = (companyId: string | null) => {
-  const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = readCompanyDetailsCache(companyId);
+  const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(cached);
+  const [loading, setLoading] = useState(() => !!companyId && !cached);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,22 +21,31 @@ export const useCompanyDetails = (companyId: string | null) => {
       return;
     }
 
+    const cachedDetails = readCompanyDetailsCache(companyId);
+    if (cachedDetails) {
+      setCompanyDetails(cachedDetails);
+      setLoading(false);
+      return;
+    }
+
     const fetchCompanyDetails = async () => {
       setLoading(true);
       setError(null);
       try {
-        const { data, error } = await supabase
+        const { data, error: fetchError } = await supabase
           .from('companies')
           .select('id, name, whatsapp_messaging_enabled, court_booking_enabled, court_enable_monthly_packages, tournament_enabled')
           .eq('id', companyId)
           .single();
 
-        if (error) {
-          throw error;
+        if (fetchError) {
+          throw fetchError;
         }
         setCompanyDetails(data);
-      } catch (err: any) {
-        setError(err.message || 'Erro ao carregar detalhes da empresa.');
+        writeCompanyDetailsCache(data);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Erro ao carregar detalhes da empresa.';
+        setError(message);
         console.error('Erro ao carregar detalhes da empresa:', err);
       } finally {
         setLoading(false);
@@ -49,4 +57,3 @@ export const useCompanyDetails = (companyId: string | null) => {
 
   return { companyDetails, loading, error };
 };
-

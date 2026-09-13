@@ -16,6 +16,7 @@ import ContractAcceptanceModal from '@/components/ContractAcceptanceModal';
 import { useSession } from '@/components/SessionContextProvider';
 import { invokeEdgePublicOrThrow } from '@/utils/edge-invoke';
 import {
+  ARENA_LOGIN_PATH,
   clearArenaRegistrationIntent,
   getCourtSegmentOptions,
   pickDefaultCourtSegmentId,
@@ -25,6 +26,7 @@ import {
   duplicateRegistrationEmailHelp,
   isDuplicateRegistrationEmailError,
 } from '@/utils/registrationErrors';
+import { useTrialSettings } from '@/hooks/useTrialSettings';
 
 // Helper function for numeric preprocessing
 const numericPreprocess = (val: unknown) => {
@@ -102,6 +104,11 @@ const UnifiedRegistrationPage: React.FC = () => {
   const [segmentOptions, setSegmentOptions] = useState<SegmentOption[]>([]);
   const [loadingSegments, setLoadingSegments] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const [selectedPlanName, setSelectedPlanName] = useState<string | null>(null);
+  const planIdFromUrl = searchParams.get('plan')?.trim() || '';
+  const trialFromUrl = searchParams.get('trial') === '1';
+  const { trial_enabled: trialEnabled, trial_days_default: trialDays } = useTrialSettings();
+  const showTrialCopy = trialFromUrl && trialEnabled;
 
   const {
     register,
@@ -148,6 +155,30 @@ const UnifiedRegistrationPage: React.FC = () => {
   const visibleSegmentOptions = arenaRegistrationLocked
     ? getCourtSegmentOptions(segmentOptions)
     : segmentOptions;
+
+  useEffect(() => {
+    if (!planIdFromUrl) {
+      setSelectedPlanName(null);
+      return;
+    }
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from('subscription_plans')
+        .select('name')
+        .eq('id', planIdFromUrl)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (error) {
+        console.warn('[UnifiedRegistrationPage] Erro ao buscar plano:', error.message);
+        setSelectedPlanName(null);
+        return;
+      }
+
+      setSelectedPlanName(data?.name ?? null);
+    })();
+  }, [planIdFromUrl]);
 
   useEffect(() => {
     if (!arenaRegistrationLocked || loadingSegments || segmentOptions.length === 0) return;
@@ -423,6 +454,10 @@ const UnifiedRegistrationPage: React.FC = () => {
       cleanedData.referralCode = refParam.trim().toLowerCase();
     }
 
+    if (planIdFromUrl && showTrialCopy) {
+      cleanedData.planId = planIdFromUrl;
+    }
+
     // Explicitly ensure no File objects are in the data
     if (cleanedData.companyLogo) {
       delete cleanedData.companyLogo;
@@ -451,16 +486,22 @@ const UnifiedRegistrationPage: React.FC = () => {
     });
 
     try {
-      const responseData = await invokeEdgePublicOrThrow<{ email: string }>(
+      const responseData = await invokeEdgePublicOrThrow<{ email: string; trialStarted?: boolean }>(
         'register-company-and-user',
         {
           body: cleanedData,
         },
       );
-      const { email: registeredEmail } = responseData;
+      const { email: registeredEmail, trialStarted } = responseData;
 
       // Não fazer login automático - usuário precisa confirmar email primeiro
-      showSuccess('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar sua conta.');
+      if (trialStarted) {
+        showSuccess(
+          `Cadastro realizado! Seu teste grátis de ${trialDays} dias começa após confirmar o e-mail.`,
+        );
+      } else {
+        showSuccess('Cadastro realizado com sucesso! Verifique seu e-mail para confirmar sua conta.');
+      }
       clearArenaRegistrationIntent();
       
       setIsContractModalOpen(false);
@@ -526,7 +567,7 @@ const UnifiedRegistrationPage: React.FC = () => {
             >
               {signingOut ? 'Saindo...' : 'Sair e criar nova conta de arena'}
             </Button>
-            <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/arena')}>
+            <Button type="button" variant="outline" className="w-full" onClick={() => navigate(ARENA_LOGIN_PATH)}>
               Voltar ao login da arena
             </Button>
           </CardContent>
@@ -553,8 +594,22 @@ const UnifiedRegistrationPage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             {arenaRegistrationLocked
               ? 'Preencha seus dados pessoais e da arena em um único passo. Depois confirme o e-mail para entrar.'
-              : 'Preencha seus dados pessoais e da sua empresa para começar a usar a plataforma.'}
+              : showTrialCopy
+                ? `Cadastre sua empresa e comece com ${trialDays} dias grátis${selectedPlanName ? ` no ${selectedPlanName}` : ''}. Sem cartão na hora do cadastro.`
+                : 'Preencha seus dados pessoais e da sua empresa para começar a usar a plataforma.'}
           </p>
+          {showTrialCopy && (
+            <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-100">
+              Teste grátis de <strong>{trialDays} dias</strong>
+              {selectedPlanName ? (
+                <>
+                  {' '}
+                  no <strong>{selectedPlanName}</strong>
+                </>
+              ) : null}
+              . Após confirmar o e-mail, você já entra no painel com acesso completo do plano.
+            </div>
+          )}
           {(searchParams.get('ref') || searchParams.get('referral')) && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
               Cadastro por indicação. Código:{' '}
